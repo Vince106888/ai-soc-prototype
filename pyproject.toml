@@ -1,0 +1,25 @@
+[project]
+name = "ai-soc-prototype"
+version = "0.1.0"
+description = "Defensive AI-assisted cybersecurity monitoring prototype for small cloud-email environments"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "fastapi>=0.116,<1",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<1",
+  "pytest>=8.4,<9",
+  "ruff>=0.12,<1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+

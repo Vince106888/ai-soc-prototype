@@ -1,0 +1,11 @@
+{
+  "sender": "Support <support@example.com>",
+  "display_name": "Account Support",
+  "reply_to": "recovery@unknown.test",
+  "subject": "Urgent: verify your account",
+  "body": "Your account is suspended. Click here immediately to confirm your identity.",
+  "urls": [
+    "https://bit.ly/example",
+    "https://secure-account.test/login"
+  ]
+}

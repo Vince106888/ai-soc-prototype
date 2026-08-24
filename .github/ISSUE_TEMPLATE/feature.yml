@@ -1,0 +1,31 @@
+name: Feature or requirement
+description: Track an implementable capability tied to the project requirements.
+title: "feat: "
+labels: [feature]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and user outcome
+      description: What problem does this solve and who benefits?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Write observable, testable outcomes.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security/privacy considerations
+    validations:
+      required: true
+  - type: input
+    id: evidence
+    attributes:
+      label: Evidence artifact
+      description: Test, screenshot, log or report location.
+

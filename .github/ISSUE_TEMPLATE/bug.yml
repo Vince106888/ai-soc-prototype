@@ -1,0 +1,24 @@
+name: Bug or defect
+description: Track a reproducible defect or regression.
+title: "fix: "
+labels: [bug]
+body:
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Security, privacy or evaluation impact
+    validations:
+      required: true
+
