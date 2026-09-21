@@ -1,6 +1,6 @@
 [project]
 name = "ai-soc-prototype"
-version = "0.1.0"
+version = "0.2.0"
 description = "Defensive AI-assisted cybersecurity monitoring prototype for small cloud-email environments"
 requires-python = ">=3.13,<3.14"
 dependencies = [
@@ -12,6 +12,7 @@ dependencies = [
 dev = [
   "httpx>=0.28,<1",
   "pytest>=8.4,<9",
+  "pytest-cov>=7,<8",
   "ruff>=0.12,<1",
 ]
 
@@ -22,4 +23,15 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py313"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
 
