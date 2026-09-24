@@ -1,19 +1,50 @@
 # Implementation Backlog
 
-This is the engineering sequence. GitHub issues are the operational copy; this document is the local design index.
+The controlled-data platform and dashboard are now implemented. This backlog
+tracks the remaining gaps between that research prototype and the Chapter 4
+target architecture.
 
-## Epic sequence
+## Priority 1: evidence and calibration
 
-1. Inception and architecture
-2. Data contract and normalisation
-3. Detection rules
-4. Scoring and correlation
-5. API and persistence
-6. Dashboard and usability
-7. Cloud authorisation/integration
-8. Explanation and AI safety
-9. Evaluation and dissertation evidence
-10. Release and defence
+- [ ] Add a versioned labelled scenario pack for every supported signal type.
+- [ ] Publish repeatable confusion-matrix results and threshold rationale.
+- [ ] Run and document the 500-record/five-minute target.
+- [ ] Conduct the three-task usability study and accessibility review.
+- [ ] Capture reproducible, redacted dashboard evidence for the dissertation.
 
-Work must proceed in vertical slices. Do not start with a large frontend, an external AI integration, or live OAuth before the deterministic core and test harness exist.
+## Priority 2: platform hardening
+
+- [ ] Add production-grade identity and bind tenant IDs to authenticated claims.
+- [ ] Add role-based access control and security tests.
+- [ ] Add reviewed schema migrations and validate PostgreSQL.
+- [ ] Implement rate limits, structured redacted logs, metrics, and alerts.
+- [ ] Implement retention/deletion and backup-restore procedures.
+- [ ] Supply and test a supported one-host deployment definition.
+
+## Priority 3: live provider integration
+
+- [ ] Register a controlled Google application and finalise minimum scopes.
+- [ ] Implement OAuth state validation, callback, encrypted token storage,
+  refresh, revocation, and disconnect.
+- [ ] Implement Gmail collection for permitted message metadata.
+- [ ] Implement Workspace capability detection and permitted admin telemetry.
+- [ ] Implement worker/scheduler execution, retry, partial-failure, and
+  observability behaviour.
+
+## Priority 4: optional AI explanation
+
+- [ ] Define the redacted structured prompt boundary.
+- [ ] Validate model output against the four-part explanation schema.
+- [ ] Enforce the approved action catalogue.
+- [ ] Test prompt injection, unavailable telemetry, refusal, timeout, and
+  malformed output paths.
+- [ ] Compare explanation clarity and safety with the implemented templates.
+
+## Out of scope
+
+- endpoint detection or network packet capture;
+- malware execution or detonation;
+- credential collection or offensive testing;
+- autonomous password, mailbox, OAuth, or account changes;
+- claims of regulatory certification or complete threat prevention.
 
