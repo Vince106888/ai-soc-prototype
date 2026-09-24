@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 jobs:
-  backend:
+  test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -51,7 +51,7 @@ jobs:
   container:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [backend, dashboard]
+    needs: [test, dashboard]
     steps:
       - uses: actions/checkout@v7
       - run: docker build --tag sentinelsme:test .
