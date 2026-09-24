@@ -12,7 +12,7 @@ design decisions.
 | 4. Authorised cloud integration | Least-privilege Gmail/Workspace OAuth and collection | Not started; schemas only |
 | 5. Bounded explanation layer | Template first; optional constrained AI | Template complete; external AI intentionally absent |
 | 6. Evaluation and dissertation evidence | Metrics, benchmark, usability results, screenshots, appendices | Evaluation API implemented; study evidence remains |
-| 7. Defence and release | Reproducible demo, tagged release, archive package | Not started |
+| 7. Defence and release | Reproducible demo, container path, tagged release, archive package | Demo/container implemented; release packaging remains |
 
 ## Next release priorities
 
@@ -23,7 +23,7 @@ design decisions.
   probability.
 - Add the documented 500-record benchmark and preserve reproducible output.
 - Complete keyboard/accessibility checks and the three-minute usability study.
-- Add reviewed schema migrations and validate PostgreSQL explicitly.
+- Validate the checked-in migration and backup/restore flow against the target PostgreSQL host.
 
 ### 2. Harden identity and operations
 
@@ -32,7 +32,7 @@ design decisions.
 - Add rate limiting, structured redacted logging, metrics, and operational
   alerts.
 - Implement retention/deletion and backup-restore tests.
-- Supply a supported one-host deployment definition and TLS/proxy guidance.
+- Add TLS/reverse-proxy guidance around the checked-in one-host Compose deployment.
 
 ### 3. Add one live provider safely
 
@@ -63,7 +63,6 @@ measured comparison against templates.
 - No secret, token, private message, generated database, or temporary artifact
   is present in the repository.
 
-Production launch has a higher gate: identity, migrations, encryption, TLS,
-rate limiting, retention, monitoring, backups, live-connector safety, and
-security testing must all be complete.
-
+Production launch has a higher gate: identity, target-host migration testing,
+encryption, TLS, rate limiting, retention, monitoring, backups, live-connector
+safety, and security testing must all be complete.

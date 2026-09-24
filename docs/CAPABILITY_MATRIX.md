@@ -16,7 +16,7 @@ companion to this page.
 | Scanning | User or schedule-labelled scan-job records | Implemented | Scan jobs can be created, listed, and inspected |
 | Scanning | Mailbox fetch performed by a worker | Not implemented | Creating a job does not collect or process remote data |
 | Scanning | Periodic scheduler process | Not implemented | `schedule` is a supported trigger value only |
-| Detection | Eight deterministic email/account rules | Implemented | Seeded rule catalogue and evidence-backed findings |
+| Detection | Eleven deterministic email/account rules | Implemented | Seeded rule catalogue and evidence-backed findings |
 | Detection | Configurable stored rules | Partial | Stored configuration can be overridden; supported matcher types remain code-defined |
 | Scoring | Bounded combined incident score and severity | Implemented | `1 - product(1 - weight)`, score in `0..1` |
 | Correlation | Same account/key, 30-minute window | Implemented | Related findings update one incident |
@@ -33,12 +33,12 @@ companion to this page.
 | Evaluation | Labelled-case confusion matrix and metrics | Implemented | `/api/v1/evaluation` |
 | Evaluation | Representative calibrated research dataset | Not implemented | Current examples and tests are controlled, not representative |
 | Storage | SQLite zero-configuration persistence | Implemented | Default `data/sentinelsme.db` |
-| Storage | PostgreSQL-compatible SQLAlchemy URL | Supported, unverified for production | Set `AI_SOC_DATABASE_URL`; no production migration release yet |
+| Storage | PostgreSQL-compatible SQLAlchemy URL and migration | Implemented, production hardening pending | Set `AI_SOC_DATABASE_URL`; Alembic owns the versioned schema |
 | Access | Tenant-scoped platform queries | Implemented prototype control | Caller supplies `X-Tenant-ID`; no identity binding |
 | Access | Optional shared API key | Implemented prototype control | `AI_SOC_API_KEY` and `X-API-Key` |
 | Cloud | Gmail OAuth 2.0 consent and token exchange | Not implemented | Report design only; no token table or live connector |
 | Cloud | Google Workspace admin telemetry | Not implemented | Controlled equivalents can be ingested |
-| Operations | One-command container deployment | Not implemented | Run API and dashboard separately |
+| Operations | API/dashboard/PostgreSQL container deployment | Implemented | `docker compose up --build`; ingestion remains synchronous |
 | Operations | Automated retention/deletion | Not implemented | Operator-managed database lifecycle |
 
 ## Input profiles

@@ -7,13 +7,16 @@ The frontend is a responsive React and TypeScript operations console for the Sen
 Requires Node.js 20.19+ or 22.12+.
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-Vite serves the console at `http://localhost:5173` and proxies `/api` to `http://127.0.0.1:8000`. Copy `.env.example` to `.env.local` and set `VITE_API_BASE_URL` when the API is hosted elsewhere.
+Vite serves the console at `http://localhost:5173` and proxies `/api` to `http://127.0.0.1:8000`. In production, serve the compiled dashboard and API from the same origin (the root Dockerfile does this). `VITE_API_BASE_URL` may point at another same-origin base path; cross-origin hosting needs an explicitly reviewed CORS policy at the API gateway.
 
-On first use, enter the workspace ID and API key in the secure connection screen. Both values are stored in `sessionStorage` only and are sent as `X-Tenant-ID` and `X-API-Key`. They are never compiled into the application or persisted to local storage.
+On first use, enter the workspace ID and, when the API has `AI_SOC_API_KEY`
+configured, its deployment key. The values are stored in `sessionStorage` only
+and sent as `X-Tenant-ID` and optional `X-API-Key`; they are never compiled into
+the application or persisted to local storage.
 
 ## Available commands
 

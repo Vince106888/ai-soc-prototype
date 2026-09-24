@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from email.utils import parseaddr
 from typing import Annotated, Literal
 
@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from .models import EMAIL_PATTERN
 
+CanonicalSignalType = Literal["email", "forwarding", "signin", "mfa", "oauth_grant"]
 SignalType = Literal["email", "forwarding", "signin", "sign_in", "mfa", "oauth_grant"]
 Severity = Literal["low", "medium", "high", "critical"]
 IncidentStatus = Literal["new", "under_review", "resolved", "false_positive"]
@@ -47,7 +48,7 @@ class SourceCreate(APIModel):
     source_type: Literal["controlled", "gmail", "workspace"] = "controlled"
     name: Annotated[str, Field(min_length=1, max_length=200)]
     external_id: Annotated[str, Field(min_length=1, max_length=255)]
-    capabilities: list[SignalType] = Field(default_factory=list, max_length=10)
+    capabilities: list[CanonicalSignalType] = Field(min_length=1, max_length=5)
 
 
 class SourceView(SourceCreate):
@@ -96,6 +97,20 @@ class SignalInput(APIModel):
     occurred_at: datetime | None = None
     correlation_key: Annotated[str | None, Field(max_length=255)] = None
     features: dict = Field(default_factory=dict)
+
+    @field_validator("occurred_at")
+    @classmethod
+    def validate_occurred_at(cls, value: datetime | None) -> datetime | None:
+        """Keep correlation arithmetic inside a sane, overflow-safe window."""
+
+        if value is None:
+            return None
+        normalised = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+        earliest = datetime(2000, 1, 1, tzinfo=UTC)
+        latest = datetime.now(UTC) + timedelta(days=1)
+        if not earliest <= normalised <= latest:
+            raise ValueError("occurred_at must be between 2000-01-01 and 24 hours from now")
+        return normalised
 
     @field_validator("features")
     @classmethod
@@ -170,13 +185,31 @@ class SignalInput(APIModel):
             if field in self.features and not isinstance(self.features[field], str):
                 raise ValueError(f"{field} must be a string")
             if field in self.features:
-                maximum = 100_000 if field == "body" else 2_048
+                string_limits = {
+                    "sender": 320,
+                    "reply_to": 320,
+                    "display_name": 200,
+                    "subject": 998,
+                    "body": 100_000,
+                    "spf": 20,
+                    "dkim": 20,
+                    "dmarc": 20,
+                    "target": 320,
+                    "account_domain": 253,
+                    "source_ip": 64,
+                    "source_country": 100,
+                    "risk_level": 20,
+                    "app_name": 200,
+                    "app_id": 255,
+                }
+                maximum = string_limits[field]
                 if len(self.features[field]) > maximum:
                     raise ValueError(f"{field} exceeds the {maximum}-character limit")
         for field in boolean_fields[self.signal_type]:
             if field in self.features and type(self.features[field]) is not bool:
                 raise ValueError(f"{field} must be a boolean")
         list_limits = {"urls": 50, "labels": 50, "claimed_domains": 20, "scopes": 100}
+        item_limits = {"urls": 2_048, "labels": 100, "claimed_domains": 253, "scopes": 500}
         for field in list_fields[self.signal_type]:
             if field in self.features and (
                 not isinstance(self.features[field], list)
@@ -185,7 +218,7 @@ class SignalInput(APIModel):
                 raise ValueError(f"{field} must be a list of strings")
             if field in self.features and (
                 len(self.features[field]) > list_limits[field]
-                or any(len(item) > 2_048 for item in self.features[field])
+                or any(len(item) > item_limits[field] for item in self.features[field])
             ):
                 raise ValueError(f"{field} exceeds the bounded input limit")
         if "authentication" in self.features and (

@@ -16,10 +16,12 @@ target architecture.
 
 - [ ] Add production-grade identity and bind tenant IDs to authenticated claims.
 - [ ] Add role-based access control and security tests.
-- [ ] Add reviewed schema migrations and validate PostgreSQL.
+- [x] Add an initial schema migration and PostgreSQL driver/container path.
+- [ ] Validate migration, backup, and restore procedures against the target PostgreSQL host.
 - [ ] Implement rate limits, structured redacted logs, metrics, and alerts.
 - [ ] Implement retention/deletion and backup-restore procedures.
-- [ ] Supply and test a supported one-host deployment definition.
+- [x] Supply a supported one-host deployment definition.
+- [ ] Exercise the container and PostgreSQL path on a Docker-capable target host.
 
 ## Priority 3: live provider integration
 
@@ -47,4 +49,3 @@ target architecture.
 - credential collection or offensive testing;
 - autonomous password, mailbox, OAuth, or account changes;
 - claims of regulatory certification or complete threat prevention.
-

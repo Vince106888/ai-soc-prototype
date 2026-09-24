@@ -11,7 +11,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from .database import SessionLocal, configure_database, create_schema
+from .database import SessionLocal, configure_database, migrate_schema
 from .entities import Account, Source
 from .platform import create_account, create_scan_job, create_source, ingest_signals, run_evaluation
 from .platform_schemas import (
@@ -34,7 +34,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.database_url:
         configure_database(args.database_url)
-    create_schema()
+    migrate_schema()
     fixture = EvaluationRequest.model_validate_json(args.fixture.read_text(encoding="utf-8"))
 
     with SessionLocal() as session:

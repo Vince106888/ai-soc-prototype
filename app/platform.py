@@ -161,6 +161,52 @@ def get_scan_job(session: Session, tenant_id: str, job_id: str) -> ScanJob:
     return job
 
 
+def retry_scan_job(session: Session, tenant_id: str, job_id: str) -> ScanJob:
+    """Move a failed job back to the queue for one explicit retry attempt."""
+
+    job = get_scan_job(session, tenant_id, job_id)
+    if job.status != "failed":
+        raise ConflictError("Only failed scan jobs can be retried.")
+    source = get_source(session, tenant_id, job.source_id)
+    if source.status != "active":
+        raise ConflictError("Reconnect the source before retrying its scan job.")
+    job.status = "queued"
+    job.error = None
+    job.completed_at = None
+    _commit(session)
+    return job
+
+
+def mark_scan_job_failed(
+    session: Session,
+    tenant_id: str,
+    job_id: str | None,
+    source_id: str,
+    error: Exception,
+) -> None:
+    """Persist a safe terminal failure after rolling back partial ingestion."""
+
+    if not job_id:
+        return
+    session.rollback()
+    job = session.scalar(
+        select(ScanJob).where(
+            ScanJob.id == job_id,
+            ScanJob.tenant_id == tenant_id,
+            ScanJob.source_id == source_id,
+            ScanJob.status.in_(("queued", "running")),
+        )
+    )
+    if job is None:
+        return
+    job.status = "failed"
+    job.attempts += 1
+    job.started_at = job.started_at or utcnow()
+    job.completed_at = utcnow()
+    job.error = f"{type(error).__name__}: signal ingestion failed"[:500]
+    _commit(session)
+
+
 def _as_utc(value: datetime | None) -> datetime:
     if value is None:
         return utcnow()
@@ -313,6 +359,8 @@ def ingest_signals(
     if job and job.source_id != source.id:
         raise ConflictError("The scan job belongs to a different source.")
     if job:
+        if job.status != "queued":
+            raise ConflictError("Only queued scan jobs can ingest signals.")
         job.status = "running"
         job.attempts += 1
         job.started_at = job.started_at or utcnow()
@@ -323,7 +371,7 @@ def ingest_signals(
     imported_count = duplicate_count = finding_count = 0
     for raw_signal in batch.signals:
         canonical_type = "signin" if raw_signal.signal_type == "sign_in" else raw_signal.signal_type
-        if source.capabilities and canonical_type not in source.capabilities:
+        if canonical_type not in source.capabilities:
             raise ConflictError(f"Source is not configured for {canonical_type} signals.")
         existing = session.scalar(
             select(Signal).where(

@@ -35,7 +35,7 @@ async function request<T>(path: string, credentials: Credentials, options: Reque
       ...options,
       headers: {
         Accept: 'application/json',
-        'X-API-Key': credentials.apiKey,
+        ...(credentials.apiKey ? { 'X-API-Key': credentials.apiKey } : {}),
         'X-Tenant-ID': credentials.tenantId,
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
         ...options.headers,

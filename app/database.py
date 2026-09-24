@@ -11,8 +11,11 @@ import os
 from collections.abc import Generator
 from pathlib import Path
 
+from alembic.config import Config
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
+from alembic import command
 
 
 class Base(DeclarativeBase):
@@ -65,10 +68,22 @@ def create_schema() -> None:
     Base.metadata.create_all(engine)
 
 
+def migrate_schema() -> None:
+    """Upgrade the configured database through the repository migration history."""
+
+    project_root = Path(__file__).parents[1]
+    config = Config(str(project_root / "alembic.ini"))
+    config.attributes["database_url_configured_by_app"] = True
+    config.set_main_option(
+        "sqlalchemy.url",
+        engine.url.render_as_string(hide_password=False).replace("%", "%%"),
+    )
+    command.upgrade(config, "head")
+
+
 def get_session() -> Generator[Session]:
     """Yield one transaction-capable request session."""
 
-    create_schema()
     session = SessionLocal()
     try:
         yield session

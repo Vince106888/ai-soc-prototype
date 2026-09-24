@@ -13,3 +13,6 @@ htmlcov/
 .vscode/
 dist/
 build/
+node_modules/
+data/
+.DS_Store

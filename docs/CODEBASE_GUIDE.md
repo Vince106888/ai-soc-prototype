@@ -24,9 +24,9 @@ uv.lock                  Reproducible Python dependency resolution
 | `app/main.py` | Application creation, schema startup, HTTP guards, `/health`, legacy `/analyze`, router registration |
 | `app/api.py` | `/api/v1` routes, tenant/API-key context, safe HTTP error mapping |
 | `app/platform_schemas.py` | Strict account, source, scan, signal, incident, rule, audit, and evaluation contracts |
-| `app/database.py` | SQLite default, configurable SQLAlchemy engine, sessions, schema creation |
+| `app/database.py` | SQLite default, configurable SQLAlchemy engine, sessions, schema migration |
 | `app/entities.py` | Persistent evidence and operational entities/indexes/constraints |
-| `app/rules.py` | Data minimisation, eight default rules, evidence extraction, scoring, fingerprints |
+| `app/rules.py` | Data minimisation, eleven default rules, evidence extraction, scoring, fingerprints |
 | `app/platform.py` | Application services for registry, ingestion, correlation, lifecycle, detail, evaluation |
 | `app/models.py` | Legacy `/analyze` request/finding/result contracts |
 | `app/detection.py` | Legacy four-rule stateless analyser |

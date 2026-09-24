@@ -243,25 +243,30 @@ def _matched_terms(text: str) -> list[str]:
 
 
 def _edit_distance(left: str, right: str, maximum: int = 2) -> int:
-    """Return an exact small distance or ``maximum + 1`` with bounded work."""
+    """Return a small Levenshtein distance using a threshold-banded matrix."""
 
     if abs(len(left) - len(right)) > maximum:
         return maximum + 1
-    previous = list(range(len(right) + 1))
+    if len(left) > len(right):
+        left, right = right, left
+
+    sentinel = maximum + 1
+    previous = {index: index for index in range(min(len(right), maximum) + 1)}
     for left_index, left_character in enumerate(left, start=1):
-        current = [left_index]
-        for right_index, right_character in enumerate(right, start=1):
-            current.append(
-                min(
-                    current[-1] + 1,
-                    previous[right_index] + 1,
-                    previous[right_index - 1] + (left_character != right_character),
-                )
+        start = max(1, left_index - maximum)
+        end = min(len(right), left_index + maximum)
+        current: dict[int, int] = {0: left_index} if left_index <= maximum else {}
+        for right_index in range(start, end + 1):
+            current[right_index] = min(
+                current.get(right_index - 1, sentinel) + 1,
+                previous.get(right_index, sentinel) + 1,
+                previous.get(right_index - 1, sentinel)
+                + (left_character != right[right_index - 1]),
             )
         previous = current
-        if min(current) > maximum:
+        if not current or min(current.values()) > maximum:
             return maximum + 1
-    return previous[-1]
+    return min(previous.get(len(right), sentinel), sentinel)
 
 
 def _is_same_or_subdomain(host: str, trusted: str) -> bool:

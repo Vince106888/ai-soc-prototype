@@ -17,7 +17,7 @@ uv run pytest --cov=app --cov-report=term-missing
 Run dashboard checks from `frontend/`:
 
 ```bash
-npm install
+npm ci
 npm run lint
 npm test
 npm run build

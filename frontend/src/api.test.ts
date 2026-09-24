@@ -22,6 +22,21 @@ describe('API client', () => {
     expect(init?.headers).toMatchObject({ 'X-API-Key': 'secret', 'X-Tenant-ID': 'acme' })
   })
 
+  it('omits the optional API-key header in local mode', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify([]), { status: 200 }),
+    )
+
+    await api.incidents(
+      { apiKey: '', tenantId: 'local' },
+      { severity: '', status: '', q: '' },
+    )
+
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init?.headers).toMatchObject({ 'X-Tenant-ID': 'local' })
+    expect(init?.headers).not.toHaveProperty('X-API-Key')
+  })
+
   it('uses the auditable lifecycle contract', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ id: '1', status: 'under_review' }), { status: 200 }),

@@ -12,6 +12,9 @@ evidence. Rules create review indicators, not verdicts.
 | `EMAIL-002` | `email` | At least one configured social-engineering phrase appears at word boundaries | `matched_terms` | 0.30 | 0.85 |
 | `URL-001` | `email` | A canonical host equals or is a subdomain of a configured shortener | `url_hosts` | 0.30 | 0.98 |
 | `URL-002` | `email` | A hostname label is `account`, `login`, `secure`, or `verify` | `url_hosts` | 0.45 | 0.80 |
+| `EMAIL-003` | `email` | Sender domain is within edit distance two of a caller-declared trusted domain | sender and claimed domains | 0.65 | 0.85 |
+| `EMAIL-004` | `email` | Recognised brand wording conflicts with the sender domain | display name, sender domain, claimed brand | 0.55 | 0.85 |
+| `EMAIL-005` | `email` | SPF, DKIM, or DMARC reports fail/softfail | failed authentication checks | 0.55 | 0.95 |
 | `FORWARD-001` | `forwarding` | Forwarding is enabled, external, and not authorised | target domain and three flags | 0.70 | 0.95 |
 | `SIGNIN-001` | `signin` | Any of unusual, new device, impossible travel, or high risk is true | country/device/travel/risk fields | 0.65 | 0.80 |
 | `MFA-001` | `mfa` | MFA is disabled | enabled flag, method count | 0.60 | 0.99 |
@@ -35,6 +38,11 @@ Known shorteners: `bit.ly`, `tinyurl.com`, `t.co`, `ow.ly`, and `is.gd`.
 Suffix matching is label-aware: `go.bit.ly` matches, while
 `bit.ly.evil.example` does not.
 
+Credential-themed labels are ignored on the small built-in trusted-host list
+(`accounts.google.com`, Microsoft sign-in hosts, and `appleid.apple.com`).
+Lookalike checks use DNS-sized inputs and a threshold-banded edit-distance
+algorithm so adversarial strings cannot trigger unbounded quadratic work.
+
 Broad OAuth categories currently recognise scope strings containing
 `mail.google.com`, `gmail.modify`, `gmail.readonly`, `drive`, or
 `admin.directory.user`. The stored signal contains categories, not a token.
@@ -49,8 +57,8 @@ All configured rules operate on normalised features:
 - `sign_in` is canonicalised to `signin`;
 - forwarding status and OAuth scope data are converted to bounded flags and
   categories;
-- unknown fields are discarded by normalisation and persistence stores only the
-  defined feature set.
+- unknown fields are rejected; persistence stores only the defined, bounded
+  feature set.
 
 The minimum finding threshold is `0.10`. All seeded rules exceed it.
 

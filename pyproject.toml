@@ -1,7 +1,7 @@
 [project]
 name = "ai-soc-prototype"
-version = "0.2.0"
-description = "Defensive AI-assisted cybersecurity monitoring prototype for small cloud-email environments"
+version = "1.0.0"
+description = "Evidence-backed cybersecurity monitoring prototype for small cloud-email environments"
 requires-python = ">=3.13,<3.14"
 dependencies = [
   "alembic>=1.16,<2",

@@ -42,7 +42,7 @@ uv run ruff check .
 uv run pytest --cov=app --cov-report=term-missing
 
 cd frontend
-npm install
+npm ci
 npm run lint
 npm test
 npm run build

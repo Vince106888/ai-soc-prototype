@@ -30,6 +30,8 @@ from .platform import (
     list_rules,
     list_scan_jobs,
     list_sources,
+    mark_scan_job_failed,
+    retry_scan_job,
     run_evaluation,
     transition_incident,
     update_source_status,
@@ -199,6 +201,14 @@ def scan_jobs_get(job_id: str, db: DB, context: Context) -> ScanJobView:
         raise _http_error(exc) from exc
 
 
+@router.post("/scan-jobs/{job_id}/retry", response_model=ScanJobView, status_code=202)
+def scan_jobs_retry(job_id: str, db: DB, context: Context) -> ScanJobView:
+    try:
+        return ScanJobView.model_validate(retry_scan_job(db, context.tenant_id, job_id))
+    except (ConflictError, NotFoundError) as exc:
+        raise _http_error(exc) from exc
+
+
 @router.post("/scans", response_model=ScanJobView, status_code=202)
 def dashboard_scan_create(
     payload: CompatibilityScanCreate, db: DB, context: Context
@@ -245,7 +255,23 @@ def signals_ingest(
     try:
         return ingest_signals(db, context.tenant_id, source_id, payload)
     except (ConflictError, NotFoundError) as exc:
+        mark_scan_job_failed(
+            db,
+            context.tenant_id,
+            payload.scan_job_id,
+            source_id,
+            exc,
+        )
         raise _http_error(exc) from exc
+    except Exception as exc:
+        mark_scan_job_failed(
+            db,
+            context.tenant_id,
+            payload.scan_job_id,
+            source_id,
+            exc,
+        )
+        raise
 
 
 @router.get("/incidents", response_model=list[IncidentListItem])

@@ -10,7 +10,9 @@ from app.database import Base
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-if database_url := os.getenv("AI_SOC_DATABASE_URL"):
+if not config.attributes.get("database_url_configured_by_app") and (
+    database_url := os.getenv("AI_SOC_DATABASE_URL")
+):
     config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.

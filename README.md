@@ -89,9 +89,9 @@ SentinelSME is a modular monolith with explicit service boundaries:
 ![SentinelSME ingestion and incident sequence](docs/assets/sequence.png)
 
 The default SQLite database is created at `data/sentinelsme.db`. Set
-`AI_SOC_DATABASE_URL` to use another SQLAlchemy database URL. PostgreSQL is the
-target deployment store from the report, but this repository does not yet ship
-production migrations or a container stack.
+`AI_SOC_DATABASE_URL` to use another SQLAlchemy database URL. The repository
+ships an Alembic migration and a Docker Compose deployment that builds the
+dashboard and API and runs them with PostgreSQL.
 
 See [DATA_MODEL.md](docs/DATA_MODEL.md) for the persisted evidence chain and
 [OPERATIONS.md](docs/OPERATIONS.md) for deployment boundaries.
@@ -110,12 +110,14 @@ See [DATA_MODEL.md](docs/DATA_MODEL.md) for the persisted evidence chain and
 git clone https://github.com/Vince106888/ai-soc-prototype.git
 cd ai-soc-prototype
 uv sync --dev --frozen
+uv run alembic upgrade head
 uv run uvicorn app.main:app --reload
 ```
 
 Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for the generated
-OpenAPI interface. Health is available at
-[http://127.0.0.1:8000/health](http://127.0.0.1:8000/health).
+OpenAPI interface. Liveness is available at
+[http://127.0.0.1:8000/health](http://127.0.0.1:8000/health), while
+`/health/ready` also verifies database reachability.
 
 ### 2. Start the dashboard
 
@@ -123,13 +125,23 @@ In a second terminal:
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173). The development server
 proxies `/api` to `http://127.0.0.1:8000`. Set `VITE_API_BASE_URL` when the API
-is hosted elsewhere.
+is exposed through a same-origin reverse proxy at another base path.
+
+To seed the labelled controlled scenario pack into the local database:
+
+```bash
+uv run python -m app.demo
+```
+
+For a containerised PostgreSQL deployment, copy `.env.example` to `.env`, set
+both secrets, then run `docker compose up --build`. The console and API are
+served together at [http://localhost:8000](http://localhost:8000).
 
 ### 3. Create controlled data
 
@@ -155,7 +167,7 @@ Full request examples and endpoint semantics are in [API.md](docs/API.md).
 
 ## Detection catalogue
 
-The persistent pipeline seeds eight versioned deterministic rules:
+The persistent pipeline seeds eleven versioned deterministic rules:
 
 | Rule | Signal | Indicator | Weight | Confidence |
 |---|---|---|---:|---:|
@@ -163,6 +175,9 @@ The persistent pipeline seeds eight versioned deterministic rules:
 | `EMAIL-002` | email | Urgent or credential-seeking language | 0.30 | 0.85 |
 | `URL-001` | email | Known URL-shortening host | 0.30 | 0.98 |
 | `URL-002` | email | Credential-themed hostname label | 0.45 | 0.80 |
+| `EMAIL-003` | email | Sender domain resembles a declared trusted domain | 0.65 | 0.85 |
+| `EMAIL-004` | email | Recognised brand name conflicts with the sender domain | 0.55 | 0.85 |
+| `EMAIL-005` | email | SPF, DKIM, or DMARC authentication failure | 0.55 | 0.95 |
 | `FORWARD-001` | forwarding | Enabled, external, unauthorised forwarding | 0.70 | 0.95 |
 | `SIGNIN-001` | sign-in | Unusual, new-device, impossible-travel, or high-risk sign-in | 0.65 | 0.80 |
 | `MFA-001` | MFA | Multi-factor authentication disabled | 0.60 | 0.99 |
@@ -262,7 +277,7 @@ uv run ruff check .
 uv run pytest --cov=app --cov-report=term-missing
 
 cd frontend
-npm install
+npm ci
 npm run lint
 npm test
 npm run build

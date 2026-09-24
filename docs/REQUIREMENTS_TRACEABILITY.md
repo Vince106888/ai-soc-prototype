@@ -14,7 +14,7 @@ external integration.
 | FR-03 | Collect account-posture signals | Implemented for controlled data | Forwarding, sign-in, MFA, and OAuth-grant inputs; live Workspace admin source absent |
 | FR-04 | Normalise collected data | Implemented | Common persisted signal model with type-specific derived features |
 | FR-05 | Run user and scheduled scans | Partial | Both trigger values and job records exist; no scheduler/worker executes remote collection |
-| FR-06 | Detect suspicious email and links | Implemented | `EMAIL-001/002`, `URL-001/002`, deterministic tests |
+| FR-06 | Detect suspicious email and links | Implemented | `EMAIL-001` through `EMAIL-005`, `URL-001/002`, deterministic tests |
 | FR-07 | Detect posture/compromise indicators | Implemented for controlled data | `FORWARD-001`, `SIGNIN-001`, `MFA-001`, `OAUTH-001` |
 | FR-08 | Score findings | Implemented | Stored rule/evidence/weight/confidence; bounded score `0..1` |
 | FR-09 | Correlate related findings | Implemented | Same tenant/account/key and 30-minute window; unrelated keys remain separate |
@@ -33,10 +33,10 @@ external integration.
 | NFR-03 | Restrict users to their resources | Partial | Tenant-scoped queries and optional shared key; no authenticated identity binding or roles |
 | NFR-04 | 80% of users identify priority/reason/action within 3 minutes | Unverified target | Dashboard supports the tasks; formal usability study remains |
 | NFR-05 | Trace severity to evidence and rules | Implemented | Incident detail exposes signals, findings, copied weights/confidence, score, explanation source |
-| NFR-06 | No corruption on duplicate processing or temporary failures | Partial | Idempotent source IDs and transactions; template fallback; no live external retry/worker implementation |
+| NFR-06 | No corruption on duplicate processing or temporary failures | Partial | Idempotent source IDs, transactions, persisted job failures, and explicit failed-job retry; no live external retry/worker implementation |
 | NFR-07 | Up to 500 records visible within 5 minutes | Unverified target | API accepts 500-signal batches; benchmark evidence remains |
 | NFR-08 | Modular, separately testable, configuration-driven design | Implemented with limits | Modules and stored rule configuration are separate; new matcher families still require code |
-| NFR-09 | Documented one-host container startup and end-to-end scan | Partial | Local API/dashboard runbooks exist; no supported container stack or executing collector |
+| NFR-09 | Documented one-host container startup and end-to-end scan | Partial | Compose builds the API/dashboard with PostgreSQL; no executing scheduler/collector |
 
 ## Evidence locations
 
@@ -55,10 +55,9 @@ external integration.
 - live Gmail/Workspace consent, capability, collection, expiry, revocation, and
   retry evidence;
 - production identity and tenant-isolation penetration tests;
-- PostgreSQL deployment and migration evidence;
+- PostgreSQL migration, backup, and restore evidence on the target host;
 - worker/scheduler execution and failure recovery;
 - 500-record timed benchmark;
 - representative labelled dataset and calibration report;
 - formal non-specialist usability study;
 - automated retention/deletion and backup restoration.
-

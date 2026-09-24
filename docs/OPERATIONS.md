@@ -37,6 +37,7 @@ API:
 
 ```bash
 uv sync --dev --frozen
+uv run alembic upgrade head
 uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
@@ -44,7 +45,7 @@ Dashboard:
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -55,6 +56,7 @@ at `http://127.0.0.1:8000` and `http://127.0.0.1:8000/docs`.
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/health/ready
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/capabilities
 ```
 
@@ -69,9 +71,22 @@ copying the database for backup or moving it between machines. Protect a backup
 as sensitive evidence even though message bodies and attachments are excluded.
 
 For PostgreSQL, use a least-privilege application role, TLS, encrypted storage,
-private network access, and a separately managed backup policy. SQLAlchemy URL
-support is not a substitute for deployment validation. The repository currently
-creates schema directly and does not ship a production migration history.
+private network access, and a separately managed backup policy. The checked-in
+Alembic migration owns schema creation; deployment-specific backup and restore
+testing is still required.
+
+## Container startup
+
+Copy `.env.example` to `.env`, replace both example secrets, and run:
+
+```bash
+docker compose up --build
+```
+
+The multi-stage image builds the React console, installs the locked Python
+runtime, applies Alembic migrations, and serves the console and API on port
+`8000`. PostgreSQL is private to the Compose network and stores data in the
+named `sentinelsme-data` volume.
 
 Automated retention is not available. Plan and document deletion before using
 real data; see `PRIVACY_AND_RETENTION.md`.
@@ -81,7 +96,9 @@ real data; see `PRIVACY_AND_RETENTION.md`.
 Scan jobs use `queued`, `running`, `completed`, or `failed`. Controlled ingestion
 with a matching job moves it to running and then completed and updates import,
 duplicate, and finding counts. With no worker, an unconsumed queued job remains
-queued.
+queued. A failed controlled ingestion marks its matching job `failed`; after
+correcting the source or payload, explicitly queue it again with
+`POST /api/v1/scan-jobs/{job_id}/retry`.
 
 Sources use `active` or `disconnected`. A disconnected source cannot start a new
 job or ingest signals. Re-activating a record changes local eligibility only; it

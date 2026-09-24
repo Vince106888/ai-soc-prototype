@@ -98,13 +98,22 @@ async def test_end_to_end_ingestion_is_idempotent_and_privacy_minimised(
     first = await platform_client.post(
         f"/api/v1/sources/{source_id}/signals", headers=headers, json=payload
     )
-    second = await platform_client.post(
+    completed_job_reuse = await platform_client.post(
         f"/api/v1/sources/{source_id}/signals", headers=headers, json=payload
+    )
+    duplicate_payload = {"signals": payload["signals"]}
+    second = await platform_client.post(
+        f"/api/v1/sources/{source_id}/signals", headers=headers, json=duplicate_payload
     )
 
     assert first.status_code == 201
     assert first.json()["imported_count"] == 1
     assert first.json()["finding_count"] >= 6
+    assert completed_job_reuse.status_code == 409
+    completed_job = await platform_client.get(
+        f"/api/v1/scan-jobs/{job.json()['id']}", headers=headers
+    )
+    assert completed_job.json()["status"] == "completed"
     assert second.json()["duplicate_count"] == 1
     incidents = await platform_client.get("/api/v1/incidents", headers=headers)
     assert len(incidents.json()) == 1
@@ -300,7 +309,7 @@ async def test_correlation_filters_and_cross_source_job_rejection(platform_clien
     second_source = await platform_client.post(
         f"/api/v1/accounts/{account_id}/sources",
         headers=headers,
-        json={"name": "second", "external_id": "second-source"},
+        json={"name": "second", "external_id": "second-source", "capabilities": ["mfa"]},
     )
     job = await platform_client.post(
         "/api/v1/scan-jobs", headers=headers, json={"source_id": source_id}
@@ -320,6 +329,10 @@ async def test_correlation_filters_and_cross_source_job_rejection(platform_clien
         },
     )
     assert rejected.status_code == 409
+    # A job cannot be mutated through a different source's failed request.
+    assert (
+        await platform_client.get(f"/api/v1/scan-jobs/{job.json()['id']}", headers=headers)
+    ).json()["status"] == "queued"
     created = await platform_client.post(
         f"/api/v1/sources/{source_id}/signals",
         headers=headers,
@@ -396,6 +409,68 @@ async def test_signal_feature_types_and_source_capabilities_are_enforced(
         },
     )
     assert unsupported.status_code == 409
+    missing_capabilities = await platform_client.post(
+        f"/api/v1/accounts/{account_id}/sources",
+        headers=headers,
+        json={"name": "unspecified", "external_id": "unspecified"},
+    )
+    assert missing_capabilities.status_code == 422
+
+
+async def test_valid_scan_job_records_ingestion_failure(platform_client: AsyncClient):
+    _account_id, source_id = await _account_and_source(platform_client, "failed-job")
+    headers = {"X-Tenant-ID": "failed-job"}
+    source = await platform_client.patch(
+        f"/api/v1/sources/{source_id}",
+        headers=headers,
+        json={"status": "disconnected"},
+    )
+    assert source.status_code == 200
+    # Create the job before disconnecting would be the normal race/failure path.
+    await platform_client.patch(
+        f"/api/v1/sources/{source_id}", headers=headers, json={"status": "active"}
+    )
+    job = await platform_client.post(
+        "/api/v1/scan-jobs", headers=headers, json={"source_id": source_id}
+    )
+    await platform_client.patch(
+        f"/api/v1/sources/{source_id}",
+        headers=headers,
+        json={"status": "disconnected"},
+    )
+    failed = await platform_client.post(
+        f"/api/v1/sources/{source_id}/signals",
+        headers=headers,
+        json={
+            "scan_job_id": job.json()["id"],
+            "signals": [
+                {
+                    "external_id": "not-imported",
+                    "signal_type": "email",
+                    "features": {"sender": "sender@example.com"},
+                }
+            ],
+        },
+    )
+    assert failed.status_code == 409
+    job_state = await platform_client.get(f"/api/v1/scan-jobs/{job.json()['id']}", headers=headers)
+    assert job_state.json()["status"] == "failed"
+    assert job_state.json()["attempts"] == 1
+    assert job_state.json()["error"] == "ConflictError: signal ingestion failed"
+    retry_while_disconnected = await platform_client.post(
+        f"/api/v1/scan-jobs/{job.json()['id']}/retry", headers=headers
+    )
+    assert retry_while_disconnected.status_code == 409
+
+    await platform_client.patch(
+        f"/api/v1/sources/{source_id}", headers=headers, json={"status": "active"}
+    )
+    retried = await platform_client.post(
+        f"/api/v1/scan-jobs/{job.json()['id']}/retry",
+        headers=headers,
+    )
+    assert retried.status_code == 202
+    assert retried.json()["status"] == "queued"
 
 
 def test_demo_cli_runs_clean_install_flow(tmp_path: Path, monkeypatch, capsys):
@@ -430,6 +505,24 @@ def test_scoring_boundaries_and_legitimate_login_host_safeguard():
     assert "URL-002" not in {match.code for match in evaluate_rules("email", features, rule_models)}
 
 
+def test_migration_bootstraps_and_records_schema_version(tmp_path: Path, monkeypatch):
+    from sqlalchemy import inspect
+
+    from app import database
+
+    configured_path = tmp_path / "migrated.db"
+    monkeypatch.setenv(
+        "AI_SOC_DATABASE_URL", f"sqlite:///{(tmp_path / 'environment.db').as_posix()}"
+    )
+    database.configure_database(f"sqlite:///{configured_path.as_posix()}")
+    database.migrate_schema()
+    tables = set(inspect(database.engine).get_table_names())
+
+    assert configured_path.exists()
+    assert "alembic_version" in tables
+    assert {"signals", "findings", "incidents", "audit_log"} <= tables
+
+
 def test_adversarial_signal_features_are_bounded_before_detection():
     with pytest.raises(ValueError):
         SignalInput(
@@ -443,4 +536,22 @@ def test_adversarial_signal_features_are_bounded_before_detection():
             signal_type="email",
             features={"sender": "sender@example.com", "payload": {"deep": "x" * 500_000}},
         )
+    with pytest.raises(ValueError):
+        SignalInput(
+            external_id="oversized-domain",
+            signal_type="email",
+            features={
+                "sender": "sender@example.com",
+                "claimed_domains": ["a" * 254],
+            },
+        )
+    with pytest.raises(ValueError):
+        SignalInput(
+            external_id="overflow-date",
+            signal_type="signin",
+            occurred_at="9999-12-31T23:59:59Z",
+            features={},
+        )
     assert _edit_distance("a" * 10_000, "short") == 3
+    assert _edit_distance("kitten", "sitting") == 3
+    assert _edit_distance("google.com", "go0gle.com") == 1

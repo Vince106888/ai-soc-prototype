@@ -84,9 +84,9 @@ sqlite:///data/sentinelsme.db
 ```
 
 Override it with `AI_SOC_DATABASE_URL`. Foreign-key enforcement is enabled for
-SQLite connections. `create_schema()` creates local/demo tables at startup;
-production deployments should add reviewed migrations, backups, encryption,
-and retention automation before accepting live data.
+SQLite connections. Application startup and the container entrypoint apply the
+checked-in Alembic migration. Production operators must still add backups,
+storage encryption, and retention automation before accepting live data.
 
 ## Target model not yet implemented
 

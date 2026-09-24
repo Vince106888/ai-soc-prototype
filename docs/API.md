@@ -25,7 +25,8 @@ authentication before exposing it to untrusted users.
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/health` | Process health |
+| `GET` | `/health` or `/health/live` | Process liveness |
+| `GET` | `/health/ready` | API and database readiness |
 | `POST` | `/analyze` | Stateless legacy single-email analysis |
 | `GET` | `/api/v1/capabilities` | Machine-readable runtime boundary |
 
@@ -48,12 +49,15 @@ authentication before exposing it to untrusted users.
 | `POST` | `/api/v1/scan-jobs` | Create a `user` or `schedule`-labelled job |
 | `GET` | `/api/v1/scan-jobs` | List jobs, optionally by `source_id` |
 | `GET` | `/api/v1/scan-jobs/{job_id}` | Inspect one job |
+| `POST` | `/api/v1/scan-jobs/{job_id}/retry` | Requeue one failed job after its source is active |
 | `POST` | `/api/v1/scans` | Dashboard convenience route that creates/reuses a controlled source and queues a job |
 | `GET` | `/api/v1/scans/{job_id}` | Dashboard-compatible job lookup |
 | `POST` | `/api/v1/sources/{source_id}/signals` | Ingest, detect, and correlate a controlled batch |
 
-A scan job does not fetch mail. When a batch references the job, ingestion moves
-it through `running` to `completed` and updates its counts.
+A scan job does not fetch mail. When a batch references a queued job, ingestion
+moves it through `running` to `completed` and updates its counts. Failed jobs
+record a redacted error and require the explicit retry endpoint before another
+ingestion attempt; completed jobs cannot be reused.
 
 ### Incidents, rules, audit, and evaluation
 
