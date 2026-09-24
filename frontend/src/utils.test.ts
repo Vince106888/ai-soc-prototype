@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Incident } from './types'
-import { accountLabel, incidentTitle, prioritizeIncidents, relativeTime, scorePercent } from './utils'
+import { accountLabel, incidentTitle, prioritizeIncidents, relativeTime, scorePercent, telemetryCoverage } from './utils'
 
 const incident = (id: string, severity: Incident['severity'], detectedAt: string): Incident => ({
   id,
@@ -45,5 +45,39 @@ describe('incident presentation helpers', () => {
     expect(accountLabel({ id: '1', display_name: 'Acme Ops', email: 'ops@acme.test' })).toBe('Acme Ops')
     expect(accountLabel({ id: '2', email: 'owner@acme.test' })).toBe('owner@acme.test')
     expect(accountLabel({ id: '3' })).toBe('Account 3')
+  })
+
+  it('does not claim active monitoring from engine support alone', () => {
+    const coverage = telemetryCoverage([], {
+      service: 'SentinelSME', signal_types: ['email', 'signin'], source_types: ['controlled'],
+      live_connectors: [], controlled_ingestion: true, template_explanations: true,
+      ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500,
+      privacy: { stores_full_bodies: false, stores_attachments: false },
+    })
+
+    expect(coverage).toEqual({
+      activeSourceCount: 0,
+      activeCapabilities: [],
+      supportedCapabilityCount: 2,
+      percent: 0,
+      mode: 'none',
+    })
+  })
+
+  it('derives telemetry coverage from active source capabilities only', () => {
+    const profile = {
+      service: 'SentinelSME', signal_types: ['email', 'signin', 'mfa'], source_types: ['controlled'],
+      live_connectors: [] as string[], controlled_ingestion: true, template_explanations: true,
+      ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500,
+      privacy: { stores_full_bodies: false, stores_attachments: false },
+    }
+    const coverage = telemetryCoverage([
+      { id: 'a', name: 'active', status: 'active', source_type: 'controlled', capabilities: ['email', 'mfa'] },
+      { id: 'b', name: 'offline', status: 'disconnected', source_type: 'controlled', capabilities: ['signin'] },
+    ], profile)
+
+    expect(coverage.activeCapabilities).toEqual(['email', 'mfa'])
+    expect(coverage.percent).toBe(67)
+    expect(coverage.mode).toBe('controlled')
   })
 })

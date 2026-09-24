@@ -1,4 +1,4 @@
-import type { Incident, Severity } from './types'
+import type { CapabilityProfile, Incident, Severity, Source } from './types'
 
 export const severityOrder: Record<Severity, number> = {
   critical: 4,
@@ -32,6 +32,37 @@ export function scorePercent(score?: number): number | undefined {
 
 export function accountLabel(account: { display_name?: string; email?: string; id: string }): string {
   return account.display_name?.trim() || account.email?.trim() || `Account ${account.id}`
+}
+
+export interface TelemetryCoverage {
+  activeSourceCount: number
+  activeCapabilities: string[]
+  supportedCapabilityCount: number
+  percent: number
+  mode: 'none' | 'controlled' | 'live'
+}
+
+export function telemetryCoverage(
+  sources: Source[],
+  profile: CapabilityProfile | null,
+): TelemetryCoverage {
+  const activeSources = sources.filter((source) => source.status === 'active')
+  const supported = new Set(profile?.signal_types ?? [])
+  const activeCapabilities = [
+    ...new Set(activeSources.flatMap((source) => source.capabilities ?? [])),
+  ].filter((capability) => supported.has(capability))
+  const liveSourceTypes = new Set(profile?.live_connectors ?? [])
+  const hasLiveSource = activeSources.some((source) =>
+    source.source_type ? liveSourceTypes.has(source.source_type) : false,
+  )
+
+  return {
+    activeSourceCount: activeSources.length,
+    activeCapabilities,
+    supportedCapabilityCount: supported.size,
+    percent: supported.size ? Math.round((activeCapabilities.length / supported.size) * 100) : 0,
+    mode: activeSources.length === 0 ? 'none' : hasLiveSource ? 'live' : 'controlled',
+  }
 }
 
 export function relativeTime(value?: string): string {

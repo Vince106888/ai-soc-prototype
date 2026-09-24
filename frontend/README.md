@@ -31,7 +31,8 @@ npm test       # Vitest contract and prioritization tests
 - Incident detail explaining what happened, why it matters, severity, and the next action
 - Evidence table, response recommendations, and an audit timeline
 - Auditable, transition-safe incident lifecycle controls (`new`, `under_review`, `resolved`, and `false_positive`) with an optional handoff note
-- Account, connected-source, and capability-aware coverage views
+- Telemetry coverage derived from active sources and their capabilities, kept distinct from engine support
+- Explicit no-monitoring and controlled-data-only states when no live connector is active
 - User-triggered controlled scan jobs against an existing source
 - Loading, empty, partial-data, network-error, and disconnected states
 - Keyboard-visible focus, semantic controls, accessible dialogs, reduced-motion handling, and responsive layouts
