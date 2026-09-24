@@ -1,6 +1,6 @@
 import type {
   Account,
-  Capability,
+  CapabilityProfile,
   Credentials,
   Incident,
   IncidentFilters,
@@ -89,13 +89,12 @@ export const api = {
     return arrayFrom(body)
   },
 
-  async capabilities(credentials: Credentials, signal?: AbortSignal): Promise<Capability[]> {
-    const body = await request<Capability[] | { items: Capability[] }>(
+  capabilities(credentials: Credentials, signal?: AbortSignal): Promise<CapabilityProfile> {
+    return request<CapabilityProfile>(
       '/api/v1/capabilities',
       credentials,
       { signal },
     )
-    return arrayFrom(body)
   },
 
   async sources(credentials: Credentials, accountId: string, signal?: AbortSignal): Promise<Source[]> {

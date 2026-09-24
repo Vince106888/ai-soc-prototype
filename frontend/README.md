@@ -25,12 +25,12 @@ npm test       # Vitest contract and prioritization tests
 
 ## What is implemented
 
-- Overview with critical, active, investigating, and resolved indicators
+- Overview with critical, active, under-review, and resolved indicators
 - Incident queue prioritized by severity and recency
 - Server-side severity, status, and text search filters
 - Incident detail explaining what happened, why it matters, severity, and the next action
 - Evidence table, response recommendations, and an audit timeline
-- Auditable incident status transitions with an optional handoff note
+- Auditable, transition-safe incident lifecycle controls (`new`, `under_review`, `resolved`, and `false_positive`) with an optional handoff note
 - Account, connected-source, and capability-aware coverage views
 - User-triggered controlled scan jobs against an existing source
 - Loading, empty, partial-data, network-error, and disconnected states

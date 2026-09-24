@@ -11,14 +11,27 @@ export function prioritizeIncidents(incidents: Incident[]): Incident[] {
   return [...incidents].sort((a, b) => {
     const severityDifference = severityOrder[b.severity] - severityOrder[a.severity]
     if (severityDifference) return severityDifference
-    const aTime = Date.parse(a.detected_at ?? a.created_at ?? '') || 0
-    const bTime = Date.parse(b.detected_at ?? b.created_at ?? '') || 0
+    const aTime = Date.parse(a.detected_at ?? a.last_seen_at ?? a.created_at ?? '') || 0
+    const bTime = Date.parse(b.detected_at ?? b.last_seen_at ?? b.created_at ?? '') || 0
     return bTime - aTime
   })
 }
 
 export function incidentTitle(incident: Incident): string {
   return incident.title?.trim() || incident.summary?.trim() || `Incident ${incident.id}`
+}
+
+export function humanize(value: string): string {
+  return value.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase())
+}
+
+export function scorePercent(score?: number): number | undefined {
+  if (typeof score !== 'number' || !Number.isFinite(score)) return undefined
+  return Math.max(0, Math.min(100, Math.round(score <= 1 ? score * 100 : score)))
+}
+
+export function accountLabel(account: { display_name?: string; email?: string; id: string }): string {
+  return account.display_name?.trim() || account.email?.trim() || `Account ${account.id}`
 }
 
 export function relativeTime(value?: string): string {
