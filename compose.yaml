@@ -1,0 +1,39 @@
+services:
+  api:
+    build: .
+    environment:
+      AI_SOC_API_KEY: ${AI_SOC_API_KEY:?set AI_SOC_API_KEY in .env}
+      AI_SOC_ALLOWED_HOSTS: localhost,127.0.0.1,api
+      AI_SOC_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sentinelsme}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-sentinelsme}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sentinelsme}
+      POSTGRES_USER: ${POSTGRES_USER:-sentinelsme}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - sentinelsme-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  sentinelsme-data:

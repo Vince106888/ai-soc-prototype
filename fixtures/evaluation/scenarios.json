@@ -1,0 +1,76 @@
+{
+  "threshold": 0.3,
+  "cases": [
+    {
+      "case_id": "phishing-lookalike",
+      "expected_suspicious": true,
+      "signal": {
+        "external_id": "demo-email-001",
+        "signal_type": "email",
+        "correlation_key": "campaign:account-review",
+        "features": {
+          "sender": "Microsoft Security <notice@micros0ft.com>",
+          "display_name": "Microsoft Security",
+          "reply_to": "collect@unknown.test",
+          "subject": "Urgent: verify your account",
+          "body": "Confirm your identity at https://secure-account.test/login immediately.",
+          "urls": ["https://bit.ly/account-review"],
+          "claimed_domains": ["microsoft.com"],
+          "authentication": {"spf": "fail", "dkim": "fail"}
+        }
+      }
+    },
+    {
+      "case_id": "risky-forwarding",
+      "expected_suspicious": true,
+      "signal": {
+        "external_id": "demo-forwarding-001",
+        "signal_type": "forwarding",
+        "features": {
+          "target": "archive@outside.test",
+          "account_domain": "smallbusiness.test",
+          "enabled": true,
+          "authorized": false
+        }
+      }
+    },
+    {
+      "case_id": "unusual-signin",
+      "expected_suspicious": true,
+      "signal": {
+        "external_id": "demo-signin-001",
+        "signal_type": "signin",
+        "features": {
+          "source_ip": "203.0.113.42",
+          "source_country": "Unknown",
+          "new_device": true,
+          "unusual": true,
+          "risk_level": "high"
+        }
+      }
+    },
+    {
+      "case_id": "broad-oauth-grant",
+      "expected_suspicious": true,
+      "signal": {
+        "external_id": "demo-oauth-001",
+        "signal_type": "oauth_grant",
+        "features": {
+          "app_name": "Mailbox Export Utility",
+          "app_id": "unverified-exporter",
+          "verified": false,
+          "scopes": ["https://mail.google.com/"]
+        }
+      }
+    },
+    {
+      "case_id": "healthy-mfa",
+      "expected_suspicious": false,
+      "signal": {
+        "external_id": "demo-mfa-healthy-001",
+        "signal_type": "mfa",
+        "features": {"enabled": true, "method_count": 2}
+      }
+    }
+  ]
+}
