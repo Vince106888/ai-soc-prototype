@@ -36,8 +36,11 @@ npm test       # Vitest contract and prioritization tests
 - Auditable, transition-safe incident lifecycle controls (`new`, `under_review`, `resolved`, and `false_positive`) with an optional handoff note
 - Telemetry coverage derived from active sources and their capabilities, kept distinct from engine support
 - Explicit no-monitoring and controlled-data-only states when no live connector is active
+- Controlled account/source setup with an explicit authorization acknowledgement
+- Source activation and disconnection controls
 - User-triggered controlled scan jobs against an existing source
+- Tenant-scoped scan history with counts, redacted failure detail, and explicit failed-job retry
 - Loading, empty, partial-data, network-error, and disconnected states
 - Keyboard-visible focus, semantic controls, accessible dialogs, reduced-motion handling, and responsive layouts
 
-The client accepts either plain JSON arrays or `{ "items": [...] }` list envelopes. Optional account/source creation and signal-ingestion methods are typed in `src/api.ts` for future import workflows; the UI does not silently create or ingest data.
+The client accepts either plain JSON arrays or `{ "items": [...] }` list envelopes. Source setup records metadata and allowed normalized signal types only. It does not connect a live mailbox, upload message bodies, or imply that a queued job has executed; controlled signal ingestion remains an explicit API operation.

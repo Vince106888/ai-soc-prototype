@@ -66,4 +66,30 @@ describe('API client', () => {
 
     await expect(api.capabilities(credentials)).resolves.toEqual(capabilityResponse)
   })
+
+  it('lists scan jobs with tenant scope', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify([{ id: 'job-1', status: 'queued' }]), { status: 200 }),
+    )
+
+    await api.scanJobs(credentials)
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/scan-jobs')
+    expect(fetchMock.mock.calls[0][1]?.headers).toMatchObject({ 'X-Tenant-ID': 'acme' })
+  })
+
+  it('uses the source lifecycle and explicit retry contracts', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ id: 'source-1', status: 'active' }), { status: 200 }),
+    )
+
+    await api.updateSourceStatus(credentials, 'source/1', 'disconnected')
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/v1/sources/source%2F1')
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('PATCH')
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ status: 'disconnected' })
+
+    await api.retryScan(credentials, 'job/1')
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/v1/scan-jobs/job%2F1/retry')
+    expect(fetchMock.mock.calls[1][1]?.method).toBe('POST')
+  })
 })

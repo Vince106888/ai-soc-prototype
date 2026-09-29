@@ -1,5 +1,6 @@
 export type Severity = 'critical' | 'high' | 'medium' | 'low'
 export type IncidentStatus = 'new' | 'under_review' | 'resolved' | 'false_positive'
+export type SignalType = 'email' | 'forwarding' | 'signin' | 'mfa' | 'oauth_grant'
 
 export interface Finding {
   rule_id?: string
@@ -94,6 +95,21 @@ export interface Source {
   status?: string
   capabilities?: string[]
   last_scan_at?: string
+}
+
+export interface ScanJob {
+  id: string
+  source_id: string
+  trigger: 'user' | 'schedule'
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  attempts: number
+  imported_count: number
+  duplicate_count: number
+  finding_count: number
+  error?: string | null
+  created_at: string
+  started_at?: string | null
+  completed_at?: string | null
 }
 
 export interface Credentials {

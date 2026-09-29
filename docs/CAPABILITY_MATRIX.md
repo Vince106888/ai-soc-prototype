@@ -29,7 +29,8 @@ companion to this page.
 | Dashboard | Overview, priority queue, incident detail | Implemented | React/Vite SPA |
 | Dashboard | Severity, status, and search filters | Implemented | Incident list controls |
 | Dashboard | Account and signal coverage view | Implemented | API-backed coverage screen |
-| Dashboard | Scan request form | Interface only | Creates a queued controlled scan job; no collector runs it |
+| Dashboard | Controlled account/source setup and source lifecycle | Implemented | Creates minimized source metadata and activates/disconnects sources through the tenant-scoped API |
+| Dashboard | Scan request and job history | Interface only | Creates, lists, and explicitly retries persisted jobs; no collector or worker runs them |
 | Evaluation | Labelled-case confusion matrix and metrics | Implemented | `/api/v1/evaluation` |
 | Evaluation | Representative calibrated research dataset | Not implemented | Current examples and tests are controlled, not representative |
 | Storage | SQLite zero-configuration persistence | Implemented | Default `data/sentinelsme.db` |

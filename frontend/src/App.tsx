@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { api } from './api'
 import { Icons } from './icons'
-import type { Account, CapabilityProfile, Credentials, Incident, IncidentFilters, IncidentStatus, ScanRequest, Severity, Source } from './types'
+import type { Account, CapabilityProfile, Credentials, Incident, IncidentFilters, IncidentStatus, ScanJob, ScanRequest, Severity, SignalType, Source } from './types'
 import { accountLabel, formatDateTime, humanize, incidentTitle, prioritizeIncidents, relativeTime, scorePercent, telemetryCoverage } from './utils'
 
 const KEY_STORAGE = 'sentinelsme.apiKey'
@@ -14,6 +14,7 @@ const transitions: Record<IncidentStatus, IncidentStatus[]> = {
   false_positive: [],
 }
 const severities: Severity[] = ['critical', 'high', 'medium', 'low']
+const signalTypes: SignalType[] = ['email', 'forwarding', 'signin', 'mfa', 'oauth_grant']
 
 function readKey() {
   try {
@@ -146,11 +147,46 @@ function SettingsModal({ currentTenant, currentKey, onClose, onSave, onClear }: 
 
 function ScanModal({ accounts, sources, onClose, onScan }: { accounts: Account[]; sources: Source[]; onClose: () => void; onScan: (payload: ScanRequest) => Promise<void> }) {
   const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
-  const matchingSources = sources.filter((source) => !source.account_id || source.account_id === accountId)
+  const matchingSources = sources.filter((source) => source.status === 'active' && (!source.account_id || source.account_id === accountId))
   const [sourceId, setSourceId] = useState(matchingSources[0]?.id ?? '')
   const [confirmed, setConfirmed] = useState(false)
   const [busy, setBusy] = useState(false)
-  return <Modal description="Run a bounded scan only against a source you are authorized to assess." onClose={onClose} title="Start a controlled scan"><form className="modal-form" onSubmit={(event) => { event.preventDefault(); setBusy(true); void onScan({ source_id: sourceId, trigger: 'user' }).then(onClose).finally(() => setBusy(false)) }}><label htmlFor="scan-account">Protected account</label><select id="scan-account" onChange={(event) => { const nextAccount = event.target.value; setAccountId(nextAccount); setSourceId(sources.find((source) => !source.account_id || source.account_id === nextAccount)?.id ?? '') }} required value={accountId}><option disabled value="">Select an account</option>{accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)}</option>)}</select><label htmlFor="scan-source">Data source</label><select id="scan-source" onChange={(event) => setSourceId(event.target.value)} required value={sourceId}><option disabled value="">{matchingSources.length ? 'Select a source' : 'No sources connected'}</option>{matchingSources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}</select>{!matchingSources.length && <p className="field-help">Connect a source to this account through the API before starting a scan.</p>}<label className="check-field"><input checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} type="checkbox" /><span>I confirm this is an authorized, controlled assessment.</span></label><footer className="modal-actions"><span /><button className="button button-secondary" onClick={onClose} type="button">Cancel</button><button className="button button-primary" disabled={!sourceId || !confirmed || busy} type="submit"><Icons.scan />{busy ? 'Starting…' : 'Start scan'}</button></footer></form></Modal>
+  return <Modal description="Run a bounded scan only against a source you are authorized to assess." onClose={onClose} title="Start a controlled scan"><form className="modal-form" onSubmit={(event) => { event.preventDefault(); setBusy(true); void onScan({ source_id: sourceId, trigger: 'user' }).then(onClose).finally(() => setBusy(false)) }}><label htmlFor="scan-account">Protected account</label><select id="scan-account" onChange={(event) => { const nextAccount = event.target.value; setAccountId(nextAccount); setSourceId(sources.find((source) => source.status === 'active' && (!source.account_id || source.account_id === nextAccount))?.id ?? '') }} required value={accountId}><option disabled value="">Select an account</option>{accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)}</option>)}</select><label htmlFor="scan-source">Active data source</label><select id="scan-source" onChange={(event) => setSourceId(event.target.value)} required value={sourceId}><option disabled value="">{matchingSources.length ? 'Select a source' : 'No active sources connected'}</option>{matchingSources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}</select>{!matchingSources.length && <p className="field-help">Activate a controlled source before starting a scan.</p>}<label className="check-field"><input checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} type="checkbox" /><span>I confirm this is an authorized, controlled assessment.</span></label><footer className="modal-actions"><span /><button className="button button-secondary" onClick={onClose} type="button">Cancel</button><button className="button button-primary" disabled={!sourceId || !confirmed || busy} type="submit"><Icons.scan />{busy ? 'Starting…' : 'Start scan'}</button></footer></form></Modal>
+}
+
+interface SourceDraft {
+  accountId?: string
+  email?: string
+  displayName?: string
+  name: string
+  externalId: string
+  capabilities: SignalType[]
+}
+
+function AddSourceModal({ accounts, profile, onClose, onCreate }: { accounts: Account[]; profile: CapabilityProfile | null; onClose: () => void; onCreate: (draft: SourceDraft) => Promise<void> }) {
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '__new__')
+  const [email, setEmail] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [name, setName] = useState('Controlled signal source')
+  const [externalId, setExternalId] = useState('')
+  const supported = signalTypes.filter((item) => profile?.signal_types.includes(item) ?? true)
+  const [selected, setSelected] = useState<SignalType[]>(supported)
+  const [confirmed, setConfirmed] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [formError, setFormError] = useState('')
+  const creatingAccount = accountId === '__new__'
+  const valid = Boolean(name.trim() && externalId.trim() && selected.length && confirmed && (!creatingAccount || email.trim()))
+  const toggle = (capability: SignalType) => setSelected((current) => current.includes(capability) ? current.filter((item) => item !== capability) : [...current, capability])
+  return <Modal description="Register a minimal, authorized source for controlled ingestion. Live Google connections are not enabled in this prototype." onClose={onClose} title="Add a controlled source"><form className="modal-form" onSubmit={(event) => { event.preventDefault(); if (!valid) return; setBusy(true); setFormError(''); void onCreate({ accountId: creatingAccount ? undefined : accountId, email: email.trim(), displayName: displayName.trim(), name: name.trim(), externalId: externalId.trim(), capabilities: selected }).then(onClose).catch((reason: unknown) => setFormError(reason instanceof Error ? reason.message : 'Could not add the source.')).finally(() => setBusy(false)) }}>
+    <div className="scope-note"><Icons.shield /><div><strong>Controlled data only</strong><p>This records source metadata and accepted signal types. It does not authorize or create a live mailbox connection.</p></div></div>
+    <label htmlFor="source-account">Protected account</label><select id="source-account" onChange={(event) => setAccountId(event.target.value)} value={accountId}>{accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)}</option>)}<option value="__new__">Create a new account</option></select>
+    {creatingAccount && <div className="form-grid"><label htmlFor="account-name">Display name <span>(optional)</span><input id="account-name" onChange={(event) => setDisplayName(event.target.value)} placeholder="Finance team" value={displayName} /></label><label htmlFor="account-email">Account email<input id="account-email" onChange={(event) => setEmail(event.target.value)} placeholder="security@example.test" required type="email" value={email} /></label></div>}
+    <div className="form-grid"><label htmlFor="source-name">Source name<input id="source-name" onChange={(event) => setName(event.target.value)} required value={name} /></label><label htmlFor="source-external-id">External ID<input id="source-external-id" onChange={(event) => setExternalId(event.target.value)} placeholder="controlled-demo-01" required value={externalId} /></label></div>
+    <fieldset className="capability-picker"><legend>Accepted signal types</legend>{supported.map((capability) => <label className="capability-check" key={capability}><input checked={selected.includes(capability)} onChange={() => toggle(capability)} type="checkbox" /><span><strong>{humanize(capability)}</strong><small>Normalized metadata only</small></span></label>)}</fieldset>
+    <label className="check-field"><input checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} type="checkbox" /><span>I confirm this source contains only synthetic, controlled, or explicitly authorized data.</span></label>
+    {formError && <p className="form-error" role="alert">{formError}</p>}
+    <footer className="modal-actions"><span /><button className="button button-secondary" onClick={onClose} type="button">Cancel</button><button className="button button-primary" disabled={!valid || busy} type="submit">{busy ? 'Adding…' : 'Add source'}</button></footer>
+  </form></Modal>
 }
 
 export default function App() {
@@ -162,6 +198,7 @@ export default function App() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [capabilities, setCapabilities] = useState<CapabilityProfile | null>(null)
   const [sources, setSources] = useState<Source[]>([])
+  const [scanJobs, setScanJobs] = useState<ScanJob[]>([])
   const [selectedId, setSelectedId] = useState<string>('')
   const [detail, setDetail] = useState<Incident | null>(null)
   const [loading, setLoading] = useState(false)
@@ -171,6 +208,8 @@ export default function App() {
   const [statusBusy, setStatusBusy] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
+  const [sourceOpen, setSourceOpen] = useState(false)
+  const [operationBusy, setOperationBusy] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const [toast, setToast] = useState('')
   const credentials = useMemo(() => ({ apiKey, tenantId }), [apiKey, tenantId])
@@ -180,10 +219,11 @@ export default function App() {
     setLoading(true)
     setError('')
     setSupportError('')
-    const [incidentResult, accountResult, capabilityResult] = await Promise.allSettled([
+    const [incidentResult, accountResult, capabilityResult, scanResult] = await Promise.allSettled([
       api.incidents(credentials, filters, signal),
       api.accounts(credentials, signal),
       api.capabilities(credentials, signal),
+      api.scanJobs(credentials, signal),
     ])
     if (incidentResult.status === 'fulfilled') {
       const sorted = prioritizeIncidents(incidentResult.value)
@@ -200,6 +240,8 @@ export default function App() {
     else if (accountResult.reason?.name !== 'AbortError') setSupportError('Some account coverage data is unavailable.')
     if (capabilityResult.status === 'fulfilled') setCapabilities(capabilityResult.value)
     else if (capabilityResult.reason?.name !== 'AbortError') setSupportError('Some account and capability data is unavailable.')
+    if (scanResult.status === 'fulfilled') setScanJobs(scanResult.value)
+    else if (scanResult.reason?.name !== 'AbortError') setSupportError('Some source or scan-history data is unavailable.')
     if (!signal?.aborted) setLoading(false)
   }, [credentials, filters, tenantId])
 
@@ -247,6 +289,7 @@ export default function App() {
     setAccounts([])
     setCapabilities(null)
     setSources([])
+    setScanJobs([])
     setSettingsOpen(false)
   }
   const updateStatus = async (status: IncidentStatus, note: string) => {
@@ -273,6 +316,51 @@ export default function App() {
       throw reason
     }
   }
+  const createControlledSource = async (draft: SourceDraft) => {
+    let accountId = draft.accountId
+    if (!accountId) {
+      const account = await api.createAccount(credentials, {
+        email: draft.email || '',
+        display_name: draft.displayName,
+        provider: 'controlled',
+        profile: 'controlled',
+      })
+      accountId = account.id
+    }
+    await api.createSource(credentials, accountId, {
+      source_type: 'controlled',
+      name: draft.name,
+      external_id: draft.externalId,
+      capabilities: draft.capabilities,
+    })
+    setToast('Controlled source added')
+    await fetchData()
+  }
+  const changeSourceStatus = async (source: Source) => {
+    const next = source.status === 'active' ? 'disconnected' : 'active'
+    setOperationBusy(`source-${source.id}`)
+    try {
+      const updated = await api.updateSourceStatus(credentials, source.id, next)
+      setSources((current) => current.map((item) => item.id === updated.id ? { ...item, ...updated } : item))
+      setToast(`${source.name} ${next === 'active' ? 'activated' : 'disconnected'}`)
+    } catch (reason) {
+      setToast(reason instanceof Error ? reason.message : 'Could not update the source.')
+    } finally {
+      setOperationBusy('')
+    }
+  }
+  const retryScan = async (job: ScanJob) => {
+    setOperationBusy(`job-${job.id}`)
+    try {
+      const updated = await api.retryScan(credentials, job.id)
+      setScanJobs((current) => current.map((item) => item.id === updated.id ? updated : item))
+      setToast('Failed scan queued for retry')
+    } catch (reason) {
+      setToast(reason instanceof Error ? reason.message : 'Could not retry the scan.')
+    } finally {
+      setOperationBusy('')
+    }
+  }
   const navigate = (next: typeof section) => { setSection(next); setMenuOpen(false) }
   const selected = detail?.id === selectedId ? detail : incidents.find((incident) => incident.id === selectedId) ?? null
   const counts = useMemo(() => ({
@@ -290,17 +378,27 @@ export default function App() {
     {menuOpen && <button aria-label="Close navigation" className="sidebar-scrim" onClick={() => setMenuOpen(false)} />}
     <div className="app-main"><header className="topbar"><button aria-label="Open navigation" className="icon-button menu-button" onClick={() => setMenuOpen(true)}><Icons.menu /></button><form className="global-search" onSubmit={(event) => { event.preventDefault(); setSection('incidents') }}><Icons.search /><label className="sr-only" htmlFor="global-search">Search incidents</label><input id="global-search" onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))} placeholder="Search incidents, signals, or accounts" value={filters.q} /></form><div className="top-actions"><button className="button button-primary scan-button" disabled={!tenantId || !sources.some((source) => source.status === 'active')} onClick={() => setScanOpen(true)}><Icons.scan /><span>New scan</span></button><button aria-label="API settings" className="avatar-button" onClick={() => setSettingsOpen(true)}><span>{tenantId ? 'SO' : '?'}</span><i className={tenantId ? 'online' : ''} /></button></div></header>
 
+      {tenantId && <div className="data-scope-bar"><span><Icons.lock />Workspace <strong>{tenantId}</strong></span><span>Controlled data boundary</span><span>{capabilities?.live_connectors.length ?? 0} live connectors</span></div>}
       <main id="main-content">{!tenantId ? <ConnectionCard onConnect={connect} /> : <>
         {supportError && <div className="support-warning" role="status"><Icons.alert />{supportError}</div>}
         {section === 'overview' && <div className="page page-overview"><header className="page-header"><div><p className="eyebrow">Security posture</p><h1>Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}</h1><p>Here’s what needs your attention across the business.</p></div><button aria-label="Refresh dashboard" className="button button-secondary" disabled={loading} onClick={() => void fetchData()}><Icons.refresh className={loading ? 'spinning' : ''} />Refresh</button></header><div className="stats-grid"><StatCard detail="Require immediate review" icon={<Icons.alert />} label="Critical" tone="red" value={counts.critical} /><StatCard detail="Open response work" icon={<Icons.clock />} label="Active incidents" tone="orange" value={counts.active} /><StatCard detail="Being investigated" icon={<Icons.search />} label="Under review" tone="blue" value={counts.investigating} /><StatCard detail="Closed in this view" icon={<Icons.check />} label="Resolved" tone="green" value={counts.resolved} /></div><div className="dashboard-grid"><Panel className="queue-panel"><div className="panel-heading"><div><p className="eyebrow">Priority queue</p><h2>Incidents needing attention</h2></div><button className="link-button" onClick={() => setSection('incidents')}>View all <Icons.arrow /></button></div>{loading ? <LoadingRows count={4} /> : error ? <ErrorState message={error} retry={() => void fetchData()} /> : incidents.length ? <div className="incident-list">{incidents.slice(0, 5).map((incident) => <IncidentRow incident={incident} key={incident.id} onSelect={() => { setSelectedId(incident.id); setSection('incidents') }} />)}</div> : <EmptyState />}</Panel><div className="side-stack"><Panel className="posture-card"><div className="panel-heading"><div><p className="eyebrow">Telemetry</p><h2>Connected coverage</h2></div><span className={`telemetry-state telemetry-${telemetry.mode}`}>{telemetry.mode === 'live' ? 'Live telemetry' : telemetry.mode === 'controlled' ? 'Controlled data' : 'Not monitoring'}</span></div><div className="coverage-score"><div className="coverage-ring" style={{ '--coverage': `${telemetry.percent}%` } as React.CSSProperties}><strong>{telemetry.percent}%</strong><span>covered</span></div><div><strong>{telemetry.activeSourceCount} active {telemetry.activeSourceCount === 1 ? 'source' : 'sources'}</strong><span>{telemetry.activeCapabilities.length} of {telemetry.supportedCapabilityCount} supported signal types connected</span></div></div>{telemetry.mode !== 'live' && <p className="telemetry-note"><Icons.alert />{telemetry.mode === 'controlled' ? 'Active sources provide controlled data; no live connector is available.' : 'No active source is providing telemetry. Engine support alone does not monitor your environment.'}</p>}<button className="button button-secondary button-full" onClick={() => setSection('coverage')}>Review coverage</button></Panel><Panel className="capability-mini"><div className="panel-heading"><div><p className="eyebrow">Detection engine</p><h2>Supported capabilities</h2></div></div>{capabilityItems.length ? <ul>{capabilityItems.slice(0, 4).map((capability) => <li key={capability.id}><span className={!capability.enabled ? 'off' : ''}><Icons.check /></span><div><strong>{capability.name}</strong><small>{capability.description}</small></div></li>)}</ul> : <p className="muted-copy">No engine capabilities have been reported by the API.</p>}</Panel></div></div></div>}
 
         {section === 'incidents' && <div className="page page-incidents"><header className="page-header compact"><div><p className="eyebrow">Response workspace</p><h1>Incidents</h1><p>Prioritized by risk, then recency.</p></div><button className="button button-primary" onClick={() => setScanOpen(true)}><Icons.scan />New scan</button></header><Panel className="filter-bar"><label><span>Severity</span><select onChange={(event) => setFilters((current) => ({ ...current, severity: event.target.value }))} value={filters.severity}><option value="">All severities</option>{severities.map((severity) => <option key={severity}>{humanize(severity)}</option>)}</select></label><label><span>Status</span><select onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} value={filters.status}><option value="">All statuses</option>{statuses.map((status) => <option key={status} value={status}>{humanize(status)}</option>)}</select></label><span className="result-count">{incidents.length} {incidents.length === 1 ? 'incident' : 'incidents'}</span></Panel><div className="incident-workspace"><Panel className="incident-rail">{loading ? <LoadingRows count={6} /> : error ? <ErrorState message={error} retry={() => void fetchData()} /> : incidents.length ? <div className="incident-list">{incidents.map((incident) => <IncidentRow incident={incident} key={incident.id} onSelect={() => setSelectedId(incident.id)} selected={incident.id === selectedId} />)}</div> : <EmptyState filtered={Boolean(filters.q || filters.severity || filters.status)} />}</Panel><Panel className="detail-panel">{selected ? <IncidentDetail incident={selected} loading={detailLoading} onStatus={updateStatus} statusBusy={statusBusy} /> : <div className="state-card detail-placeholder"><span className="state-icon"><Icons.alert /></span><h3>Select an incident</h3><p>Choose a record to review evidence and response guidance.</p></div>}</Panel></div></div>}
 
-        {section === 'coverage' && <div className="page"><header className="page-header"><div><p className="eyebrow">Connected environment</p><h1>Coverage</h1><p>Connected telemetry is shown separately from engine support.</p></div><button className="button button-primary" onClick={() => setScanOpen(true)}><Icons.scan />New scan</button></header>{!loading && telemetry.mode === 'none' && <div className="coverage-alert" role="status"><Icons.alert /><div><strong>No active monitoring</strong><p>{capabilities?.controlled_ingestion ? 'This workspace currently supports controlled-data ingestion only. Connect and activate a source to establish telemetry coverage.' : 'Connect and activate a source to establish telemetry coverage.'}</p></div></div>}<div className="coverage-layout"><Panel><div className="panel-heading"><div><p className="eyebrow">Telemetry sources</p><h2>Connected accounts</h2></div><span>{telemetry.activeSourceCount} active</span></div>{loading ? <LoadingRows /> : accounts.length ? <div className="account-list">{accounts.map((account) => { const label = accountLabel(account); const accountSources = sources.filter((source) => source.account_id === account.id); const activeAccountSources = accountSources.filter((source) => source.status === 'active'); return <article key={account.id}><span className="account-avatar">{label.slice(0, 2).toUpperCase()}</span><div><strong>{label}</strong><span>{account.email || account.provider || account.id}</span><small>{activeAccountSources.length} of {accountSources.length} sources active</small></div><StatusBadge status={activeAccountSources.length ? 'telemetry active' : 'not monitoring'} /></article> })}</div> : <EmptyState />}</Panel><Panel><div className="panel-heading"><div><p className="eyebrow">Engine support</p><h2>{capabilities?.service || 'SentinelSME'} capabilities</h2></div><span>{enabledEngineCapabilities} supported</span></div>{loading ? <LoadingRows /> : capabilityItems.length ? <><div className="capability-grid">{capabilityItems.map((capability) => { const connected = capability.id.startsWith('signal-') && telemetry.activeCapabilities.includes(capability.id.replace('signal-', '')); return <article key={capability.id}><span className={`capability-icon ${!capability.enabled ? 'disabled' : ''}`}><Icons.shield /></span><div><strong>{capability.name}</strong><p>{capability.description}</p><span className={connected ? 'control-on' : 'control-off'}>{connected ? 'Telemetry connected' : capability.enabled ? 'Supported · not connected' : 'Unavailable'}</span></div></article> })}</div>{capabilities && <div className="capability-facts"><span>{capabilities.correlation_window_minutes} min correlation</span><span>{capabilities.source_types.length} source types</span><span>{capabilities.live_connectors.length} live connectors</span><span>{capabilities.privacy.stores_full_bodies || capabilities.privacy.stores_attachments ? 'Content retention enabled' : 'No full bodies or attachments stored'}</span></div>}</> : <EmptyState />}</Panel></div></div>}
+        {section === 'coverage' && <div className="page">
+          <header className="page-header"><div><p className="eyebrow">Connected environment</p><h1>Coverage</h1><p>Manage authorized sources, bounded scans, and supported detection signals.</p></div><div className="page-actions"><button className="button button-secondary" onClick={() => setSourceOpen(true)}>Add source</button><button className="button button-primary" disabled={!sources.some((source) => source.status === 'active')} onClick={() => setScanOpen(true)}><Icons.scan />New scan</button></div></header>
+          {!loading && telemetry.mode === 'none' && <div className="coverage-alert" role="status"><Icons.alert /><div><strong>No active monitoring</strong><p>{capabilities?.controlled_ingestion ? 'This workspace currently supports controlled-data ingestion only. Add or activate a source to establish telemetry coverage.' : 'Add and activate a source to establish telemetry coverage.'}</p></div><button className="button button-secondary" onClick={() => setSourceOpen(true)}>Add source</button></div>}
+          <div className="coverage-layout">
+            <Panel><div className="panel-heading"><div><p className="eyebrow">Telemetry sources</p><h2>Protected accounts</h2></div><span>{telemetry.activeSourceCount} active</span></div>{loading ? <LoadingRows /> : accounts.length ? <div className="source-groups">{accounts.map((account) => { const label = accountLabel(account); const accountSources = sources.filter((source) => source.account_id === account.id); return <section className="source-group" key={account.id}><header><span className="account-avatar">{label.slice(0, 2).toUpperCase()}</span><div><strong>{label}</strong><small>{account.email || account.provider || account.id}</small></div></header>{accountSources.length ? <div className="source-list">{accountSources.map((source) => <article className="source-card" key={source.id}><div><strong>{source.name}</strong><span>{humanize(source.source_type || 'controlled')} · {source.capabilities?.length ?? 0} signal types</span><small>ID {source.id}</small></div><div className="source-actions"><StatusBadge status={source.status || 'unknown'} /><button className="link-button" disabled={operationBusy === `source-${source.id}`} onClick={() => void changeSourceStatus(source)}>{operationBusy === `source-${source.id}` ? 'Updating…' : source.status === 'active' ? 'Disconnect' : 'Activate'}</button></div></article>)}</div> : <p className="inline-note">No source registered for this account.</p>}</section>})}</div> : <div className="state-card compact-state"><span className="state-icon"><Icons.building /></span><h3>Add your first controlled source</h3><p>Create an account and define the normalized signal types SentinelSME may accept.</p><button className="button button-primary" onClick={() => setSourceOpen(true)}>Add source</button></div>}</Panel>
+            <Panel><div className="panel-heading"><div><p className="eyebrow">Engine support</p><h2>{capabilities?.service || 'SentinelSME'} capabilities</h2></div><span>{enabledEngineCapabilities} supported</span></div>{loading ? <LoadingRows /> : capabilityItems.length ? <><div className="capability-grid">{capabilityItems.map((capability) => { const connected = capability.id.startsWith('signal-') && telemetry.activeCapabilities.includes(capability.id.replace('signal-', '')); return <article key={capability.id}><span className={`capability-icon ${!capability.enabled ? 'disabled' : ''}`}><Icons.shield /></span><div><strong>{capability.name}</strong><p>{capability.description}</p><span className={connected ? 'control-on' : 'control-off'}>{connected ? 'Telemetry connected' : capability.enabled ? 'Supported · not connected' : 'Unavailable'}</span></div></article> })}</div>{capabilities && <div className="capability-facts"><span>{capabilities.correlation_window_minutes} min correlation</span><span>{capabilities.source_types.length} source types</span><span>{capabilities.live_connectors.length} live connectors</span><span>{capabilities.privacy.stores_full_bodies || capabilities.privacy.stores_attachments ? 'Content retention enabled' : 'No full bodies or attachments stored'}</span></div>}</> : <div className="state-card compact-state"><h3>No capability profile</h3><p>The API did not report its supported detection contract.</p></div>}</Panel>
+          </div>
+          <Panel className="operations-panel"><div className="panel-heading"><div><p className="eyebrow">Operations</p><h2>Scan history</h2></div><span>{scanJobs.length} {scanJobs.length === 1 ? 'job' : 'jobs'}</span></div>{loading ? <LoadingRows /> : scanJobs.length ? <div className="scan-history">{scanJobs.slice(0, 12).map((job) => { const source = sources.find((item) => item.id === job.source_id); return <article className="scan-row" key={job.id}><span className={`scan-status scan-status-${job.status}`}><Icons.scan /></span><div className="scan-main"><strong>{source?.name || 'Controlled source'}</strong><span>{humanize(job.trigger)} scan · {formatDateTime(job.created_at)}</span>{job.error && <small className="scan-error">{job.error}</small>}</div><div className="scan-counts"><span><strong>{job.imported_count}</strong> imported</span><span><strong>{job.finding_count}</strong> findings</span><span><strong>{job.duplicate_count}</strong> duplicates</span></div><StatusBadge status={job.status} />{job.status === 'failed' && <button className="button button-secondary button-small" disabled={operationBusy === `job-${job.id}`} onClick={() => void retryScan(job)}>{operationBusy === `job-${job.id}` ? 'Retrying…' : 'Retry'}</button>}</article>})}</div> : <div className="state-card compact-state"><span className="state-icon"><Icons.scan /></span><h3>No scans yet</h3><p>Start a bounded scan after an authorized source is active.</p></div>}</Panel>
+        </div>}
       </>}</main>
     </div>
     {settingsOpen && <SettingsModal currentKey={apiKey} currentTenant={tenantId} onClear={disconnect} onClose={() => setSettingsOpen(false)} onSave={connect} />}
     {scanOpen && <ScanModal accounts={accounts} onClose={() => setScanOpen(false)} onScan={startScan} sources={sources} />}
+    {sourceOpen && <AddSourceModal accounts={accounts} onClose={() => setSourceOpen(false)} onCreate={createControlledSource} profile={capabilities} />}
     {toast && <div aria-live="polite" className="toast" role="status"><Icons.check />{toast}<button aria-label="Dismiss notification" onClick={() => setToast('')}><Icons.close /></button></div>}
   </div>
 }

@@ -26,7 +26,7 @@ This repository now contains an end-to-end **controlled-data** workflow:
   incident lifecycle controls, and tenant-scoped retrieval;
 - a versioned FastAPI surface plus the original single-message analysis route;
 - a React dashboard for overview, incident triage, evidence review, lifecycle
-  changes, and coverage visibility;
+  changes, controlled source setup, coverage, and persisted scan-job history;
 - template explanations and safe advisory actions;
 - a labelled-case evaluation endpoint that reports a confusion matrix and
   accuracy, precision, recall, specificity, and F1 score.
