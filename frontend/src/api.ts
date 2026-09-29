@@ -6,6 +6,7 @@ import type {
   IncidentFilters,
   IncidentStatus,
   ScanRequest,
+  ScanJob,
   Source,
 } from './types'
 import { ApiError } from './types'
@@ -106,6 +107,13 @@ export const api = {
     return arrayFrom(body).map((source) => ({ ...source, account_id: source.account_id ?? accountId }))
   },
 
+  updateSourceStatus(credentials: Credentials, sourceId: string, status: 'active' | 'disconnected'): Promise<Source> {
+    return request(`/api/v1/sources/${encodeURIComponent(sourceId)}`, credentials, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    })
+  },
+
   createAccount(credentials: Credentials, payload: { email: string; display_name?: string; provider: 'controlled' | 'google'; profile: 'controlled' | 'personal_gmail' | 'workspace_admin' }): Promise<Account> {
     return request('/api/v1/accounts', credentials, { method: 'POST', body: JSON.stringify(payload) })
   },
@@ -119,6 +127,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     })
+  },
+
+  async scanJobs(credentials: Credentials, signal?: AbortSignal): Promise<ScanJob[]> {
+    const body = await request<ScanJob[] | { items: ScanJob[] }>('/api/v1/scan-jobs', credentials, { signal })
+    return arrayFrom(body)
+  },
+
+  retryScan(credentials: Credentials, jobId: string): Promise<ScanJob> {
+    return request(`/api/v1/scan-jobs/${encodeURIComponent(jobId)}/retry`, credentials, { method: 'POST' })
   },
 
   ingestSignals(credentials: Credentials, sourceId: string, payload: { scan_job_id?: string; signals: Array<{ external_id: string; signal_type: 'email' | 'forwarding' | 'signin' | 'mfa' | 'oauth_grant'; occurred_at?: string; correlation_key?: string; features: Record<string, unknown> }> }): Promise<{ items?: unknown[] }> {
