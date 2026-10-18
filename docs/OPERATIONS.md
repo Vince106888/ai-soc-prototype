@@ -14,9 +14,11 @@ Browser -> Vite dashboard (development) -> FastAPI -> SQLite/PostgreSQL
                                       \-> deterministic processing in-process
 ```
 
-There is no live Google connector, OAuth handler/token vault, external LLM
-adapter, scheduler process, or background worker. Scan-job rows are orchestration
-records consumed when controlled signals are submitted.
+The personal Gmail adapter executes bounded on-demand inbox collection inside
+FastAPI and encrypts consent tokens. Operator credentials and live validation
+are required; see [Gmail setup](GMAIL_SETUP.md). Workspace admin collection and external LLM remain absent. An opt-in polling
+worker executes bounded schedules; see [scheduling](SCHEDULING.md). Generic jobs
+are consumed through explicit controlled ingestion.
 
 ## Configuration
 
@@ -24,12 +26,27 @@ records consumed when controlled signals are submitted.
 |---|---|---|
 | `AI_SOC_DATABASE_URL` | `sqlite:///data/sentinelsme.db` | SQLAlchemy database URL |
 | `AI_SOC_ALLOWED_HOSTS` | `localhost,127.0.0.1,testserver` | Comma-separated accepted Host headers |
-| `AI_SOC_API_KEY` | unset | When set, required as `X-API-Key` on `/api/v1` |
+| `AI_SOC_API_KEY` | unset | Shared `X-API-Key` for local data routes; not used in Google mode |
+| `AI_SOC_AUTH_MODE` | `local` | `google` enables invited app sessions; invalid values fail closed |
+| `AI_SOC_INVITED_EMAILS` | unset | Comma-separated exact Google email invitation list |
+| `AI_SOC_GOOGLE_LOGIN_REDIRECT_URI` | Gmail origin + `/api/v1/auth/callback` | Registered localhost app sign-in callback; same origin as Gmail |
 | `VITE_API_BASE_URL` | empty | Browser API origin; empty uses Vite proxy/same origin |
+| `AI_SOC_GOOGLE_CLIENT_ID` | unset | Local Gmail Web OAuth client ID |
+| `AI_SOC_GOOGLE_CLIENT_SECRET` | unset | Server-only OAuth secret; use hidden local input |
+| `AI_SOC_GOOGLE_REDIRECT_URI` | `http://127.0.0.1:5173/api/v1/gmail/callback` | Must match the registered localhost callback |
+| `AI_SOC_TOKEN_KEY_FILE` | unset | External file containing the Fernet key |
+| `AI_SOC_TOKEN_KEY` | unset | Alternative direct key, primarily for isolated tests |
 
 Do not place secrets in committed `.env` files. The dashboard keeps a configured
 API key in the browser session only; that still exposes it to anyone who can
 inspect that browser session and is not a production authentication design.
+Google mode replaces the user-facing shared key and tenant entry with verified
+app identity and server-assigned workspaces. It reuses the server Google client
+and external encryption key; participants do no Cloud Console setup. See
+[operator onboarding](ONBOARDING.md) for callbacks, invitations, startup and
+the necessary remote/public release gates. Run both UI and API through exactly
+the configured origin, usually `http://127.0.0.1:5173`, rather than switching
+between `localhost` and `127.0.0.1`.
 
 ## Local startup
 
@@ -38,7 +55,7 @@ API:
 ```bash
 uv sync --dev --frozen
 uv run alembic upgrade head
-uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
 Dashboard:
@@ -84,11 +101,11 @@ docker compose up --build
 ```
 
 The multi-stage image builds the React console, installs the locked Python
-runtime, applies Alembic migrations, and serves the console and API on port
-`8000`. PostgreSQL is private to the Compose network and stores data in the
+runtime, applies Alembic migrations, and serves the console and API on localhost
+port `8000`. Compose starts a separate opt-in scan worker after API readiness. PostgreSQL is private to the Compose network and stores data in the
 named `sentinelsme-data` volume.
 
-Automated retention is not available. Plan and document deletion before using
+Local Gmail trial expiry is enforced at startup/platform requests; general production retention remains pending. Plan and document deletion before using
 real data; see `PRIVACY_AND_RETENTION.md`.
 
 ## Operational states
@@ -120,9 +137,18 @@ does not establish a remote provider connection.
 Failed external calls must never be represented as a clean scan when live
 connectors are added. Bound and sanitise stored error text.
 
+## Isolated local benchmark
+
+Run `uv run python -m app.benchmark --runs 3` from the repository root. It creates
+fresh temporary SQLite databases, restores the original database configuration
+and emits counts/timings as JSON. It does not populate the running workspace.
+See [recorded results](BENCHMARK.md) for the input mix and measurement boundary.
+Use the dashboard evidence workspace to inspect retained samples; no-match
+records are searchable and do not imply safety.
+
 ## Production-readiness gate
 
-Before any internet-facing or live-mail deployment, add and verify:
+Before production live-mail deployment or internet exposure, add and verify:
 
 - real user authentication and server-derived tenant identity;
 - role-based authorisation;
@@ -138,3 +164,32 @@ Before any internet-facing or live-mail deployment, add and verify:
 
 Until then, bind services to localhost or a controlled lab network and use only
 synthetic or explicitly authorised data.
+
+
+## October analyst-console update
+
+See [PRODUCT_SCOPE.md](PRODUCT_SCOPE.md) for the product comparison and necessary
+completion milestones. Email normalisation now retains bounded payment phrase
+groups and whitelisted supplied authentication observations. `EMAIL-006` requires
+both payment-change and payment-action groups (weight 0.50, confidence 0.75).
+Findings remain deterministic and traceable; existing signals are not re-scored.
+No database migration or new connector scope is required. Shared screenshots and
+evaluation exports must use controlled data; unit tests do not establish accuracy.
+
+
+The Windows Gmail helper applies an access DACL using the .NET ACL API for the
+current PowerShell edition, without requiring an audit-policy privilege. Both the
+private directory and token-key DACL are protected and restricted to the current
+user. Credentials stay in process environment; a local configuration is not proof
+of mailbox consent or successful collection. Restart using the existing local
+credential file without printing its contents.
+
+## Controlled acceptance and deployment record — 5 October
+
+Native PostgreSQL 17.6 migration, user/scheduled scans, custom-format backup and restore passed on this Windows development computer. The temporary localhost server was stopped afterwards. See `evidence/postgresql-acceptance-2026-10-05.json`. Docker was unavailable, so Compose runtime verification remains pending.
+
+Compose now starts the API/dashboard, database and polling worker. It publishes the API only on `127.0.0.1:8000`. Both app processes load the same protected server environment. Gmail requires the token-key file to be mounted read-only at its container path; the Windows setup file path is not automatically available inside a container. Set Gmail and login callbacks to the actual localhost port/origin and register both with Google. Controlled operation requires no Google variables.
+
+After building/starting the stack, execute `docker compose exec -T api python -m app.demo --tenant container-acceptance`, then `docker compose exec -T api python -m app.worker --once --enable-demo --tenant container-acceptance`. The CI smoke uses `scripts/verify_container.py` to check served dashboard, readiness, actual completed user/scheduled jobs, duplicates and incidents. The database volume remains sensitive; backup/delete using the documented operator policy.
+
+Start a local opt-in worker in the same configured terminal with `uv run python -m app.worker`. A stopped worker means no recurring collection; see `SCHEDULING.md`.

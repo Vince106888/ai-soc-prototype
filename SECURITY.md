@@ -41,8 +41,12 @@ The persistent `/api/v1` platform also:
 
 These controls reduce risk but do not make the prototype production-ready. The
 tenant header is caller-supplied and the optional API key is shared; there is no
-production identity provider, role model, database field encryption, rate
-limiting, OAuth token management, or automated retention. Deploy it only with
-controlled data and behind a properly configured reverse proxy. See
+production deployment, role model, evidence field encryption or per-user rate
+limiting. Opt-in invited Google sign-in verifies identity and derives the
+workspace from opaque server sessions, with invitation and CSRF checks. Gmail
+tokens and temporary OAuth parameters are encrypted; trial evidence expires
+after seven days. The authenticated pilot supports localhost callbacks only.
+Keep it on trusted loopback until the documented HTTPS, identity lifecycle,
+Google production and operations gates are complete. See `docs/ONBOARDING.md`,
 `docs/PRIVACY_AND_RETENTION.md` and `docs/OPERATIONS.md`.
 

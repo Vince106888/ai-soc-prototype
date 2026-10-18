@@ -1,5 +1,12 @@
 # Privacy and Retention
 
+Scheduled collection requires separate acknowledgement, defaults to disabled
+and keeps the same minimal evidence boundary. Worker/API must share the protected
+token key. Sign-out leaves a separately authorised schedule in effect; pause,
+disconnect, invitation withdrawal and account deletion stop future collection.
+Deletion/expiry also removes schedule/job audit references. An in-flight read may
+finish, but ingestion requires the source still to be active. See [scheduling](SCHEDULING.md).
+
 SentinelSME is designed around data minimisation. Its safe default is controlled
 synthetic data, not live mail. A deployment must have an explicit lawful basis,
 user or administrator authorisation, and a documented retention period before
@@ -32,12 +39,19 @@ processing real organisational data.
 - raw email messages;
 - complete message bodies in persistent ingestion;
 - URL page content or results from visiting submitted links;
-- passwords, cookies, access tokens, and refresh tokens;
+- passwords and arbitrary submitted credentials; Gmail tokens enter through OAuth only and are stored encrypted;
 - automatic account changes or destructive response actions.
 
 Email bodies may be present in an ingestion request long enough to derive the
-configured phrase matches. The stored signal contains only `matched_terms`.
+configured phrase matches. The stored signal contains `matched_terms`, `payment_change_terms` and `payment_action_terms`; bank account numbers and the full body are excluded. Known supplied authentication results are whitelisted as observations.
 URLs are parsed locally and reduced to hostnames; the service never opens them.
+
+The evidence workspace exposes these existing minimised fields, including
+no-match signals, through tenant-scoped paged reads. Search uses only retained
+sender/subject metadata. Detail links existing findings and incidents without
+creating a second mailbox archive or re-scoring old inputs. These fields can
+still be private; use controlled examples for shared screenshots. Other-tenant
+detail identifiers return `404` and cross-tenant filters cannot reveal records.
 
 ## Explanation boundary
 
@@ -49,15 +63,23 @@ identifiers, validate structured output, and fall back safely.
 
 ## Access boundary
 
-All `/api/v1` resources are scoped by `X-Tenant-ID`. When `AI_SOC_API_KEY` is
-set, a matching `X-API-Key` is also required. These are useful prototype
-controls, but they are not sufficient for production:
+In default local mode, data routes use caller-supplied `X-Tenant-ID` and an
+optional shared `X-API-Key`; these provide no authenticated user isolation.
+Opt-in Google mode derives the workspace from a verified identity and opaque
+server session, checks invitations on every request and requires CSRF for
+mutations. Login uses `openid email`, separate from optional Gmail consent.
+Google subject and verified email are persisted as app identity; login access
+and ID tokens are discarded. Session and CSRF secrets are stored as hashes;
+temporary login verifier/nonce and Gmail tokens are encrypted. App cookies are
+HttpOnly/SameSite=Lax on loopback and must become Secure for an HTTPS release.
 
-- the tenant identifier is asserted by the caller rather than derived from an
-  authenticated identity;
-- the API key is shared rather than user-specific;
-- there are no roles, sessions, password controls, or identity-provider claims;
-- there is no application-level field encryption in the current store.
+Identity records outlive seven-day mailbox evidence unless removed by the
+operator. Sign-out invalidates its session but does not delete identity,
+evidence, other sessions or the Google grant. Expired login/session rows are
+cleaned at startup/new login. General identity/backup retention, self-service
+identity deletion, organisation roles and public hosting remain pending; see
+[onboarding](ONBOARDING.md). Normalised evidence and backups need separate
+storage protection.
 
 Do not expose the API to untrusted networks until real authentication,
 authorisation, TLS termination, rate limiting, secret rotation, and security
@@ -65,8 +87,12 @@ logging are deployed and tested.
 
 ## Retention status
 
-Automated retention and deletion are not implemented. Data remains in the
-configured database until the operator removes it. Consequently:
+Personal Gmail trial accounts expire seven days after first connection. The
+complete local account chain and tokens are purged at startup and before API
+requests; no timer runs while the app is stopped. Reconnect does not extend the
+expiry. Selected data on the same account is included. Manual account deletion
+is available. Disconnect first for Google revocation; local deletion/expiry does
+not revoke the provider grant. General non-trial retention remains operator-managed. Consequently:
 
 1. Use a disposable database for demonstrations and automated tests.
 2. Define an owner and deletion date for every real evaluation dataset.
@@ -75,10 +101,10 @@ configured database until the operator removes it. Consequently:
 5. Record deletion or anonymisation as evaluation evidence.
 6. Do not repurpose stored signals for unrelated analysis.
 
-Before a live pilot, implement and test policy-driven deletion for signals,
-findings, incidents, explanations, recommendations, scan jobs, and audit data.
-Decide separately whether a minimal non-sensitive audit receipt must survive
-evidence deletion.
+The local seven-day trial deletes signals, findings, incidents, explanations,
+recommendations, jobs, consent, and related audit data, preserving an anonymous
+receipt. A broader organisational pilot still needs configurable retention,
+backup deletion/restoration, and operational policy tests.
 
 ## Logging and screenshots
 
@@ -100,8 +126,11 @@ does not revoke it.
 
 ## Live-integration gate
 
-Gmail or Workspace integration must not be marked implemented until all of the
-following exist:
+The personal Gmail adapter implements the following controls with mocked provider
+tests. An authorised local consent/scan trial on 4 October 2026 verified token
+encryption, seven-day expiry metadata and normalised storage without full bodies
+or attachments; see `EVALUATION.md`. Live expiry/revocation observations and
+public deployment hardening remain pending:
 
 - least-privilege OAuth scope inventory and consent copy;
 - encrypted token storage with keys outside source code and the database;
@@ -111,3 +140,27 @@ following exist:
 - retention/deletion implementation;
 - tests proving token and tenant isolation;
 - updated threat model and operator runbook.
+
+Personal Gmail requests read-only mail permission; the scope grants broad read
+access while the adapter limits requests to a triggered inbox sample. Custom
+labels are dropped, HTML is not rendered, bodies are reduced to matched phrases,
+URLs to hosts, and no external AI sees content. Seven-day account expiry also
+removes local consent. The evidence database and backups are not encrypted by
+the token cipher; protect storage separately.
+
+The analyst-console update retains only catalogue-matched payment-change/action
+phrases and whitelisted supplied SPF/DKIM/DMARC outcomes. Unrecognised authentication
+values, full text, payment-account numbers and arbitrary text are not copied into
+these features. Supplied header outcomes are observations, not independent sender
+verification. Trusted-domain input is explicitly declared, bounded and normalised;
+it does not establish a trustworthy sender or expand the Gmail permission scope.
+
+
+## Trusted senders, sender history and posture answers
+
+Sender history stores no readable address: only an account-salted SHA-256
+digest, a first-seen time and a count, removed with the account and its trial
+expiry. Trusted-sender entries are deliberate user configuration; audit records
+reference them by ID, not by address. Posture self-check answers become ordinary
+minimised signals (MFA flag, forwarding domain, app name and two flags) under a
+source named "self-reported"; nothing is read from the provider.

@@ -31,12 +31,26 @@ This repository now contains an end-to-end **controlled-data** workflow:
 - a labelled-case evaluation endpoint that reports a confusion matrix and
   accuracy, precision, recall, specificity, and F1 score.
 
-Some interfaces intentionally stop short of live operations. Gmail/Google
-Workspace OAuth and collection, a running scheduler/worker, external AI
-explanations, automatic remediation, and production identity management are
-**not implemented**. Creating a scan job records work; it does not fetch a
-mailbox. See the [capability matrix](docs/CAPABILITY_MATRIX.md) for the exact
-boundary.
+A read-only personal Gmail adapter now implements OAuth consent, encrypted
+tokens, refresh, bounded on-demand inbox scans, separately acknowledged scheduled samples, and disconnect. It requires your
+Google Web OAuth client. Mocked provider tests cover its contracts, and an
+authorised local consent-and-scan trial succeeded on 4 October 2026. That trial
+validates the integration, not threat-detection accuracy. See [Gmail setup](docs/GMAIL_SETUP.md).
+
+The dashboard supports selected-email analysis, database-backed workspace totals,
+seven-day activity, readable evidence, and local account deletion. Gmail trial
+accounts expire after seven days, with purge at startup/API requests/worker polls.
+Opt-in scheduled sampling now executes through a leased worker; see [scheduling](docs/SCHEDULING.md).
+Workspace admin telemetry, external AI, automatic remediation,
+and production deployment hardening remain absent. Generic jobs record work; selected-email
+submission and the Gmail scan route actually execute analysis.
+
+Invited Google app sign-in is now implemented behind `AI_SOC_AUTH_MODE=google`,
+with verified identity, private server-assigned workspaces, eight-hour sessions
+and CSRF protection. A guided welcome page separates sign-in from optional
+Gmail consent; local demos remain available. Synthetic tests cover access and
+isolation; live Google sign-in and remote/public deployment are not yet
+validated. Configure the extra callback once using [onboarding](docs/ONBOARDING.md).
 
 ## Why it exists
 
@@ -84,7 +98,7 @@ SentinelSME is a modular monolith with explicit service boundaries:
 | HTTP/API | FastAPI health, compatibility analysis, and `/api/v1` platform routes |
 | Processing | Normalisation, configurable rules, scoring, correlation, lifecycle, templates, evaluation |
 | Persistence | SQLAlchemy; SQLite by default and PostgreSQL-compatible configuration |
-| External integrations | Modelled as capabilities; live Google and LLM connectors are not included |
+| External integrations | Read-only personal Gmail adapter; authorised local consent/sample validated; per-installation setup required; Workspace admin and LLM absent |
 
 ![SentinelSME ingestion and incident sequence](docs/assets/sequence.png)
 
@@ -111,7 +125,7 @@ git clone https://github.com/Vince106888/ai-soc-prototype.git
 cd ai-soc-prototype
 uv sync --dev --frozen
 uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload --no-access-log
 ```
 
 Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for the generated
@@ -145,7 +159,7 @@ served together at [http://localhost:8000](http://localhost:8000).
 
 ### 3. Create controlled data
 
-The fastest guided path is the API documentation. A minimal sequence is:
+The Email analysis dashboard provides selected-message submission; [Gmail setup](docs/GMAIL_SETUP.md) covers live personal Gmail. The API batch path follows. A minimal sequence is:
 
 1. `POST /api/v1/accounts`
 2. `POST /api/v1/accounts/{account_id}/sources`
@@ -167,7 +181,7 @@ Full request examples and endpoint semantics are in [API.md](docs/API.md).
 
 ## Detection catalogue
 
-The persistent pipeline seeds eleven versioned deterministic rules:
+The persistent pipeline seeds fourteen versioned deterministic rules:
 
 | Rule | Signal | Indicator | Weight | Confidence |
 |---|---|---|---:|---:|
@@ -178,10 +192,17 @@ The persistent pipeline seeds eleven versioned deterministic rules:
 | `EMAIL-003` | email | Sender domain resembles a declared trusted domain | 0.65 | 0.85 |
 | `EMAIL-004` | email | Recognised brand name conflicts with the sender domain | 0.55 | 0.85 |
 | `EMAIL-005` | email | SPF, DKIM, or DMARC authentication failure | 0.55 | 0.95 |
+| `EMAIL-006` | email | Payment-change phrase plus payment instruction (bank or mobile money) | 0.50 | 0.75 |
+| `EMAIL-007` | email | First message from a sender already asks for a payment change | 0.35 | 0.80 |
+| `EMAIL-008` | email | Mobile-money reversal or tax-penalty pressure wording | 0.30 | 0.70 |
 | `FORWARD-001` | forwarding | Enabled, external, unauthorised forwarding | 0.70 | 0.95 |
 | `SIGNIN-001` | sign-in | Unusual, new-device, impossible-travel, or high-risk sign-in | 0.65 | 0.80 |
 | `MFA-001` | MFA | Multi-factor authentication disabled | 0.60 | 0.99 |
 | `OAUTH-001` | OAuth grant | Broad or unverified third-party grant | 0.80 | 0.90 |
+
+`EMAIL-001`, `EMAIL-002`, `URL-001`, `URL-002` and `EMAIL-008` are skipped for a
+workspace-trusted sender whose authentication did not fail; see
+[RULE_CATALOG.md](docs/RULE_CATALOG.md#trusted-senders-and-first-contact).
 
 Rules persist only the evidence fields they need. For email signals, the body is
 reduced to matched phrases; URLs are reduced to canonical hostnames. Submitted
@@ -246,8 +267,7 @@ Implemented safeguards include:
 
 Important limitations remain: `X-Tenant-ID` is caller-supplied, the API key is a
 shared deployment secret, database encryption and TLS depend on the operator,
-and there is no production identity provider, rate limiter, automated retention
-job, or OAuth token vault. Read [PRIVACY_AND_RETENTION.md](docs/PRIVACY_AND_RETENTION.md)
+and there is no production identity provider or rate limiter. Gmail tokens are encrypted; seven-day local trial expiry is enforced when the app runs. General production retention remains pending. Read [PRIVACY_AND_RETENTION.md](docs/PRIVACY_AND_RETENTION.md)
 and [SECURITY.md](SECURITY.md) before deployment.
 
 ## Evaluation
@@ -301,6 +321,8 @@ or screenshots containing private data. Read [AGENTS.md](AGENTS.md) and
 | [Threat model](docs/THREAT_MODEL.md) | Assets, trust boundaries, threats, and mitigations |
 | [Requirements traceability](docs/REQUIREMENTS_TRACEABILITY.md) | Chapter 4 requirements mapped to implementation evidence |
 | [Roadmap](docs/ROADMAP.md) | Completed work and remaining delivery phases |
+| [Competitive readiness](docs/COMPETITIVE_READINESS.md) | Frontend/backend upgrades, INKY/Proofpoint comparison and necessary remaining work |
+| [Local benchmark](docs/BENCHMARK.md) | Reproducible 500-signal results and performance limits |
 
 ## Scope and limitations
 
@@ -309,13 +331,13 @@ sensor, malware sandbox, phishing simulator, compliance product, or substitute
 for professional incident response. A rule match is an indicator for human
 review, not proof of malicious activity. Recommendations remain advisory.
 
-The design supports three input profiles, but only the controlled profile is
-operational today:
+Controlled data works without external services. Personal Gmail requires operator
+setup; the authorised local trial is documented in [EVALUATION.md](docs/EVALUATION.md):
 
 | Input profile | Status | Intended signals |
 |---|---|---|
 | Controlled evaluation data | Implemented | Email, link, forwarding, sign-in, MFA, and OAuth-grant scenarios |
-| Personal Gmail | Not connected | Authorised message metadata, sender data, links, labels |
+| Personal Gmail | Adapter implemented; local consent/sample validated; operator setup required | Read-only bounded inbox sample; email signals only |
 | Workspace administrator | Not connected | Mailbox plus permitted login, forwarding, grant, and posture data |
 
 ## Research provenance
@@ -330,3 +352,20 @@ paths and integrity hashes.
 
 Research diagrams describe the intended architecture. This README and the
 capability matrix are the authority for what the repository actually executes.
+
+The dashboard also provides an **Evidence workspace** for paged sender/subject
+search, account/type/result filters, no-match records and linked incidents, plus
+a read-only **Detection catalogue** of the current backend rules. Incident
+pages show server totals and the overview priority queue remains independent
+of list filters. The isolated local benchmark is reproducible with
+`uv run python -m app.benchmark --runs 3`; see the results and limits above.
+
+
+## Analyst-console and product coverage review
+
+The console now has incident investigation tabs, compact rule/evidence rows,
+separate selected-message and Gmail workflows, declared trusted-domain input,
+and an explicit protection coverage screen. `EMAIL-006` adds a deterministic
+payment-redirection indicator with phrase-only evidence and advisory guidance.
+See [product coverage and completion milestones](docs/PRODUCT_SCOPE.md) for the
+full INKY product/use-case/platform mapping and remaining research requirements.

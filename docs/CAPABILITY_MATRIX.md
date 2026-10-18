@@ -14,48 +14,69 @@ companion to this page.
 | Input | Email, forwarding, sign-in, MFA, OAuth-grant schemas | Implemented | Strict `SignalInput` validation and normalisation |
 | Input | Duplicate prevention | Implemented | Unique source/external ID plus signal fingerprint |
 | Scanning | User or schedule-labelled scan-job records | Implemented | Scan jobs can be created, listed, and inspected |
-| Scanning | Mailbox fetch performed by a worker | Not implemented | Creating a job does not collect or process remote data |
-| Scanning | Periodic scheduler process | Not implemented | `schedule` is a supported trigger value only |
-| Detection | Eleven deterministic email/account rules | Implemented | Seeded rule catalogue and evidence-backed findings |
-| Detection | Configurable stored rules | Partial | Stored configuration can be overridden; supported matcher types remain code-defined |
+| Scanning | Bounded Gmail fetch performed by a worker | Implemented; mocked worker/provider contract | Opt-in recurring sample; no real-time interception; `app/worker.py`, `SCHEDULING.md` |
+| Scanning | Periodic scheduler process | Implemented and controlled execution verified | Atomic lease, bounded retry/backoff, pause after three failures; controlled CLI fallback |
+| Detection | Fourteen deterministic email/account rules | Implemented | Seeded rule catalogue and evidence-backed findings |
+| Detection | Workspace trusted senders (address or domain) | Implemented | `/api/v1/trusted-senders`, false-positive "trust this sender"; silences content-only rules for authenticated senders, never authentication/lookalike/brand/payment rules; new evidence only |
+| Detection | Lookalike checks against trusted domains | Implemented | Trusted domains become `claimed_domains`, so `EMAIL-003` works for Gmail samples |
+| Detection | First-contact sender history | Implemented | Account-salted SHA-256 sender digests; earliest-time logic; `EMAIL-007` only with a payment-change phrase |
+| Detection | Kenya-localised indicators | Implemented with limits | Safaricom/M-PESA, KRA, eCitizen, Equity, KCB, Co-op brand domains; paybill/till changes in `EMAIL-006`; `EMAIL-008` wording. Synthetic tests only; real-world accuracy unknown |
+| Input | Self-reported posture check (MFA, forwarding, app access) | Implemented | `/api/v1/accounts/{id}/posture-check`; labelled self-reported source; "not sure" answers skipped; not provider telemetry |
+| Detection | Payment-change plus payment-instruction indicator | Implemented | `EMAIL-006`; bounded phrase evidence, normal/boundary/privacy/isolation tests; BEC accuracy unknown |
+| Detection | Validated stored-rule extension | Implemented with limits | Operator-only `app.rule_config` import; approved minimised fields, immutable existing codes; new matcher families require code |
 | Scoring | Bounded combined incident score and severity | Implemented | `1 - product(1 - weight)`, score in `0..1` |
 | Correlation | Same account/key, 30-minute window | Implemented | Related findings update one incident |
 | Lifecycle | Review, resolve, false-positive, reopen | Implemented | Validated transitions and automatic reopen on new evidence |
 | Evidence | Persistent signal-to-rule-to-incident chain | Implemented | SQLAlchemy entities and detail API |
-| Guidance | Plain-language template explanation | Implemented | Four-part explanation and advisory action catalogue |
-| Guidance | External generative-AI explanation | Not implemented | Capability response reports `ai_explanations: false` |
+| Evidence | Searchable retained signals including no-match records | Implemented | Tenant-scoped `/signals` page/detail; stored features only, no re-scoring |
+| Guidance | Plain-language template explanation | Implemented | Four-part explanation, per-indicator reasons with a "could be legitimate if" counterfactual, warning-sign count, advisory action catalogue |
+| Guidance | Local-model explanation (Ollama, loopback only) | Implemented; off by default | `AI_SOC_EXPLAINER=ollama`; redacted findings, validated output, template fallback; see `LOCAL_MODEL.md`. Run on the target laptop pending |
 | Response | Human review and lifecycle decisions | Implemented | Dashboard/API status change with audit record |
 | Response | Password reset, grant revocation, or mailbox change | Not implemented | Recommendations are advisory only |
 | Dashboard | Overview, priority queue, incident detail | Implemented | React/Vite SPA |
 | Dashboard | Severity, status, and search filters | Implemented | Incident list controls |
+| Dashboard | Server pagination and account/result/type filters | Implemented | Counted incident/evidence pages; open priority queue independent of list filters |
+| Dashboard | Read-only detection catalogue | Implemented | API-backed rule codes, versions, configuration, weights and confidence |
+| Dashboard | Incident tabs and product coverage map | Implemented | Keyboard-accessible Overview/Evidence/Activity; explicit sample/controlled/absent capabilities, see `PRODUCT_SCOPE.md` |
 | Dashboard | Account and signal coverage view | Implemented | API-backed coverage screen |
 | Dashboard | Controlled account/source setup and source lifecycle | Implemented | Creates minimized source metadata and activates/disconnects sources through the tenant-scoped API |
-| Dashboard | Scan request and job history | Interface only | Creates, lists, and explicitly retries persisted jobs; no collector or worker runs them |
+| Dashboard | Selected-email analysis and history | Implemented | Selected-email form executes existing jobs/ingestion; indicators, no-match, failure and duplicates shown |
 | Evaluation | Labelled-case confusion matrix and metrics | Implemented | `/api/v1/evaluation` |
 | Evaluation | Representative calibrated research dataset | Not implemented | Current examples and tests are controlled, not representative |
+| Evaluation | Isolated 500-signal local service benchmark | Implemented and measured | Three fresh SQLite runs; median 4.572 s; HTTP/dashboard/Gmail/concurrency excluded; see `BENCHMARK.md` |
 | Storage | SQLite zero-configuration persistence | Implemented | Default `data/sentinelsme.db` |
 | Storage | PostgreSQL-compatible SQLAlchemy URL and migration | Implemented, production hardening pending | Set `AI_SOC_DATABASE_URL`; Alembic owns the versioned schema |
-| Access | Tenant-scoped platform queries | Implemented prototype control | Caller supplies `X-Tenant-ID`; no identity binding |
-| Access | Optional shared API key | Implemented prototype control | `AI_SOC_API_KEY` and `X-API-Key` |
-| Cloud | Gmail OAuth 2.0 consent and token exchange | Not implemented | Report design only; no token table or live connector |
+| Access | Tenant-scoped platform queries | Implemented | Google mode derives workspace from a verified server session; local mode uses caller-supplied `X-Tenant-ID` |
+| Access | Optional shared API key | Local prototype control | `AI_SOC_API_KEY` and `X-API-Key` in local mode only |
+| Access | Invited Google sign-in and app sessions | Implemented; live sign-in validation pending | Separate `openid email` login, eight-hour opaque cookies, CSRF, exact invite list and private workspaces; synthetic identity/isolation tests; localhost only |
+| Dashboard | Guided entry and account sign-out | Implemented | Google welcome screen, automatic workspace, prefilled Gmail account, local-demo alternative; see `ONBOARDING.md` |
+| Access | Remote/public registration and organisation roles | Not implemented | Requires HTTPS deployment, Google production setup and operations hardening |
+| Cloud | Personal Gmail OAuth and bounded collection | Implemented; local consent/sample validated | Read-only scope, single-use browser-bound state/PKCE, encrypted tokens; refresh/disconnect covered by mocked tests; per-installation credentials required |
 | Cloud | Google Workspace admin telemetry | Not implemented | Controlled equivalents can be ingested |
-| Operations | API/dashboard/PostgreSQL container deployment | Implemented | `docker compose up --build`; ingestion remains synchronous |
-| Operations | Automated retention/deletion | Not implemented | Operator-managed database lifecycle |
+| Operations | API/dashboard/worker/PostgreSQL Compose deployment | Prepared; container runtime pending | Native PostgreSQL migration/scan/restore verified; Docker unavailable on this host; CI smoke path added |
+| Operations | Local trial retention/deletion | Implemented locally | Seven-day Gmail account expiry, purge at startup/API requests/worker polls and manual account deletion; general production retention pending |
 
 ## Input profiles
 
 | Profile | Operational now | Signal coverage | Constraint |
 |---|---|---|---|
 | Controlled evaluation | Yes | All five supported signal types | Caller must supply synthetic or authorised scenarios |
-| Personal Gmail | No | Intended: message metadata, sender, links, labels | Requires OAuth connector and approved scopes |
+| Personal Gmail | Authorised local consent/sample succeeded on 4 October 2026 | Bounded read-only inbox samples, email only | Own Google client and consent required; trial is integration evidence, not accuracy validation |
 | Workspace administrator | No | Intended: mailbox, login, forwarding, grants, posture | Requires managed domain, administrator consent, and supported APIs |
 
 ## Interpretation rules
 
 - A schema accepting `gmail` or `workspace` identifies the source profile; it
-  does not mean live collection exists.
+  does not establish that a connector is configured or validated. Gmail has an
+  executable adapter; Workspace administrator collection remains absent.
 - A queued scan job is an operational record; it is not evidence that a mailbox
   was scanned.
 - “AI-assisted” describes the bounded architecture. The current executable
   explanation source is `template`.
 - The dashboard is a client of the API. It does not make detection decisions.
+
+Dashboard additions: tenant-scoped workspace totals independent of filters,
+seven-day retained activity, observed signals, copied weight/confidence, processed
+source counts, Gmail consent/sample scan controls, and local deletion. The opt-in
+scheduler/worker added on 5 October executes recurring bounded samples; generic
+queued jobs still require explicit ingestion.

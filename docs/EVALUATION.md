@@ -1,5 +1,32 @@
 # Evaluation Guide
 
+## Current controlled evidence — 5 October 2026
+
+`uv run python -m scripts.evaluate_research --output data/synthetic-evaluation.json`
+uses a fresh temporary database, versioned fixture checksums, a rule snapshot
+and detector-source checksum. It never opens the operator's private dataset.
+The 24 development probes cover positive/benign checks for all twelve rules.
+They produced TP=12, TN=12, FP=0, FN=0. The separate 32-case challenge file
+includes those same probes as controls plus eight difficult intent-labelled
+scenarios: TP=12, TN=12, FP=5, FN=3; accuracy/F1=0.75, precision/specificity=0.7059,
+recall=0.8 at threshold 0.30.
+
+These are stipulated synthetic labels authored with knowledge of the rules.
+The file named `heldout-v1` is a challenge file, not an independent blind
+evaluation or statistically representative held-out dataset. No threshold or
+weight tuning was performed. False positives include approved urgency, link
+shorteners, routing, new devices and broad grants. Misses include unfamiliar
+BEC/phishing wording and a stipulated attachment-only threat with no available
+attachment telemetry. Report these limits; do not present the development
+probe's perfect score as detection accuracy. [Exact report](evidence/synthetic-evaluation-2026-10-05.json).
+
+The email-only HTTP/dashboard target passed in one controlled run at 113.963
+seconds; [benchmark details](BENCHMARK.md). Native PostgreSQL migration, user and
+scheduled scans, backup and restore passed; [record](evidence/postgresql-acceptance-2026-10-05.json).
+The prepared Compose smoke test still needs execution on a Docker host.
+The [usability study protocol](USABILITY_STUDY.md) and anonymous sheet are ready;
+participants are unavailable and NFR-04 remains unverified.
+
 SentinelSME evaluation has three distinct layers. Automated tests prove code
 behaviour, labelled scenarios measure detector behaviour, and a user study
 measures whether alerts help non-specialists. None substitutes for the others.
@@ -35,6 +62,9 @@ The backend coverage gate is 90%. Tests should cover:
 - tenant isolation and optional API-key enforcement;
 - privacy minimisation and redacted failures;
 - list filtering, audit records, and template fallback behaviour.
+- paged signal/incident counts, literal search, no-match evidence, linked
+  details, cross-tenant reads/deletion and body/URL minimisation;
+- dashboard filter independence and stale response handling on workspace change.
 
 Coverage measures exercised code, not detector quality.
 
@@ -75,7 +105,7 @@ clearly labelling the result as training/development evidence.
 The revised Chapter 4 report defines these platform-level checks:
 
 - a connected controlled source can be activated/disconnected;
-- both user and schedule-labelled jobs can be recorded;
+- both user and scheduled jobs execute against the controlled fixture;
 - duplicate source records are not re-imported;
 - each enabled scenario produces the expected finding and a benign comparison
   does not produce that finding;
@@ -85,14 +115,46 @@ The revised Chapter 4 report defines these platform-level checks:
 - template guidance is available without external AI;
 - the documented development setup completes an end-to-end controlled scan.
 
-Because no collector executes queued jobs, the current end-to-end path requires
-an explicit call to the signal-ingestion endpoint after job creation.
+The dashboard selected-email form performs job creation and ingestion directly.
+Personal Gmail collection has mocked acceptance tests for consent/state/PKCE,
+account matching, encrypted tokens, refresh, privacy, duplicates, failure and
+deletion. The authorised local provider trial below supplements these tests.
+Generic queued jobs still require explicit ingestion.
+
+### Authorised local Gmail trial — 4 October 2026
+
+The operator completed Google consent for a Web OAuth client in Testing with
+`gmail.readonly`. A localhost dashboard request examined a bounded sample of 20
+inbox messages from the last seven days: 20 imported, zero duplicates, two
+findings and two medium-severity incidents. A repeat request examined the same
+20 messages, importing zero, recognising 20 duplicates and creating zero new
+findings. Both original findings matched `EMAIL-001`
+(reply-to domain mismatch), with a deterministic score of 0.45 each. Their
+normalised authentication evidence contained no failures. No manual malicious
+or benign labels have been assigned; these are review indicators.
+
+Read-only inspection of the local database verified the expected account,
+encrypted access/refresh token material, consumed consent state, a seven-day
+account expiry, and absence of full bodies, HTML, attachments and full URLs in
+the stored feature objects. Trial data and the token key were held in a
+user-restricted local application-data directory outside the repository and
+OneDrive. No message content, addresses, identifiers, tokens or private trial
+exports are included in this report.
+
+This is evidence that consent, collection and minimisation execute against the
+real provider. It does not establish precision, recall, successful live refresh
+or revocation, observed expiry, or the 500-record performance target. The
+reply-to rule compares full hostnames and can flag legitimate routing or
+subdomain differences. Registered-domain-aware calibration with labelled benign
+and malicious cases is still needed; a shared parent domain alone must not
+automatically establish trust.
 
 ## Performance target
 
 The report target is to process up to 500 prepared message records and make the
 result visible within five minutes on the development computer. This is a
-target, not a published benchmark result. A valid benchmark report must state:
+target verified in one controlled email-only HTTP-to-dashboard run on 5 October 2026. A valid benchmark report
+must state:
 
 - machine and operating system;
 - database engine and state;
@@ -100,6 +162,13 @@ target, not a published benchmark result. A valid benchmark report must state:
 - warm-up and run count;
 - elapsed ingestion and dashboard-visible times;
 - failures, retries, and duplicate counts.
+
+The new [local benchmark](BENCHMARK.md) records three isolated 500-signal runs
+with median ingestion 4.572 seconds, 300 findings, 50 incidents and 500
+duplicates on repeat. Reproduce with `uv run python -m app.benchmark --runs 3`.
+It supplies partial performance evidence: the mix includes all five signal
+types and calls services directly. The email-only HTTP-to-dashboard timing
+required by NFR-07 was verified on 5 October 2026; see the current record in `BENCHMARK.md`.
 
 ## Usability target
 
@@ -122,3 +191,36 @@ data handling must follow the applicable university research requirements.
 - A clean scan means only that no configured rule matched the supplied signals.
 - API availability and Gmail/Workspace telemetry limits must be reported rather
   than silently treated as negative evidence.
+
+
+## October analyst-console update
+
+See [PRODUCT_SCOPE.md](PRODUCT_SCOPE.md) for the product comparison and necessary
+completion milestones. Email normalisation now retains bounded payment phrase
+groups and whitelisted supplied authentication observations. `EMAIL-006` requires
+both payment-change and payment-action groups (weight 0.50, confidence 0.75).
+Findings remain deterministic and traceable; existing signals are not re-scored.
+No database migration or new connector scope is required. Shared screenshots and
+evaluation exports must use controlled data; unit tests do not establish accuracy.
+
+## Invited onboarding validation
+
+The app sign-in implementation adds synthetic Google identity/session tests,
+including signature/claims, invite rejection, browser-bound state replay,
+CSRF, stable server-assigned workspaces, account switching, sign-out and
+cross-user denial. The complete backend suite passed 91 tests at 93.22% coverage
+on 4 October 2026. This is implementation evidence; it does not establish live
+Google app sign-in, remote deployment or usability-study success. The earlier
+real Gmail trial used local-header access and cannot substitute for sign-in
+validation. Record participant onboarding time/errors and the first real OIDC
+callback after operator setup; see `ONBOARDING.md`.
+
+Shared-client scope compatibility passed a further 36 focused Gmail/auth tests
+and one prior-Gmail-grant sign-in test. The final frontend full run passed 43
+tests and the production build; an intervening rerun exhausted the local
+worker timeout during memory pressure. The session UI also guards against a
+late session-check response restoring a signed-out workspace.
+
+## Final regression checkpoint
+
+On 5 October 2026, all 131 backend tests passed at 93.66% application coverage; Ruff lint/format passed. A clean frontend install, security audit with zero reported vulnerabilities, ESLint, all 47 tests and production build passed. These establish implementation behavior, not detection generalisation or participant success. The final template list condenses repeated finding titles without dropping evidence; 29 focused regression tests also passed.

@@ -25,8 +25,10 @@ uv.lock                  Reproducible Python dependency resolution
 | `app/api.py` | `/api/v1` routes, tenant/API-key context, safe HTTP error mapping |
 | `app/platform_schemas.py` | Strict account, source, scan, signal, incident, rule, audit, and evaluation contracts |
 | `app/database.py` | SQLite default, configurable SQLAlchemy engine, sessions, schema migration |
+| `app/auth.py`, `app/auth_api.py` | Invited Google identity verification, browser-bound login, app sessions, CSRF and server-derived private workspaces |
+| `frontend/src/AuthGate.tsx` | Server-first welcome, Google sign-in, local-demo entry and session expiry/sign-out boundary |
 | `app/entities.py` | Persistent evidence and operational entities/indexes/constraints |
-| `app/rules.py` | Data minimisation, eleven default rules, evidence extraction, scoring, fingerprints |
+| `app/rules.py` | Data minimisation, twelve default rules, evidence extraction, scoring, fingerprints |
 | `app/platform.py` | Application services for registry, ingestion, correlation, lifecycle, detail, evaluation |
 | `app/models.py` | Legacy `/analyze` request/finding/result contracts |
 | `app/detection.py` | Legacy four-rule stateless analyser |
@@ -83,3 +85,12 @@ a deliberate versioned removal is approved.
 - Capability completion: `CAPABILITY_MATRIX.md`, `ROADMAP.md`, and
   `REQUIREMENTS_TRACEABILITY.md`.
 - Research measurement change: `EVALUATION.md`.
+
+## Completion modules
+
+- `app/scheduling.py`, `app/worker.py`: tenant/source leases, bounded retries, opt-in recurring samples and controlled fallback.
+- `app/rule_config.py`: validated operator-only new rule import.
+- `scripts/evaluate_research.py`: isolated controlled fixture evaluation/checksums.
+- `scripts/benchmark_dashboard.py`: email-only HTTP run and manual visible-time confirmation.
+- `scripts/verify_container.py`: read-only controlled deployment smoke assertions.
+- `docs/COMPLETION_REVIEW.md`: final scope, verified evidence and outstanding gates.
