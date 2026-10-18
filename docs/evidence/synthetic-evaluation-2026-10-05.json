@@ -1,0 +1,955 @@
+{
+  "measured_at": "2026-10-05T12:49:24.713738+00:00",
+  "os": "Windows-11-10.0.26300-SP0",
+  "python": "3.13.7",
+  "detector_sha256": "579da06c880ecb127ba27fe5a94c87ca889dbf6a955eb5bd2480887c1e514459",
+  "splits": [
+    {
+      "dataset": "development-v1.json",
+      "dataset_sha256": "fb9d1d54d8ea806b0e5603ca8e57203f809d0922d090acb0e91f26595ef65972",
+      "label_basis": "Stipulated synthetic scenario intent; authored with knowledge of the detector. Positive/negative rule probes are development evidence. Challenge cases explicitly model approved workflows or threat content outside the heuristic coverage. No human or live-message labels.",
+      "metrics": {
+        "total": 24,
+        "threshold": 0.3,
+        "confusion_matrix": {
+          "true_positive": 12,
+          "false_positive": 0,
+          "true_negative": 12,
+          "false_negative": 0
+        },
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "specificity": 1.0,
+        "f1_score": 1.0
+      },
+      "cases": [
+        {
+          "case_id": "development-v1-reply-routing-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.45,
+          "rules": [
+            "EMAIL-001"
+          ]
+        },
+        {
+          "case_id": "development-v1-credential-pressure-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.3,
+          "rules": [
+            "EMAIL-002"
+          ]
+        },
+        {
+          "case_id": "development-v1-shortener-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.3,
+          "rules": [
+            "URL-001"
+          ]
+        },
+        {
+          "case_id": "development-v1-credential-host-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.45,
+          "rules": [
+            "URL-002"
+          ]
+        },
+        {
+          "case_id": "development-v1-lookalike-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.65,
+          "rules": [
+            "EMAIL-003"
+          ]
+        },
+        {
+          "case_id": "development-v1-brand-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.55,
+          "rules": [
+            "EMAIL-004"
+          ]
+        },
+        {
+          "case_id": "development-v1-auth-failure-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.55,
+          "rules": [
+            "EMAIL-005"
+          ]
+        },
+        {
+          "case_id": "development-v1-payment-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.5,
+          "rules": [
+            "EMAIL-006"
+          ]
+        },
+        {
+          "case_id": "development-v1-forwarding-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.7,
+          "rules": [
+            "FORWARD-001"
+          ]
+        },
+        {
+          "case_id": "development-v1-signin-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.65,
+          "rules": [
+            "SIGNIN-001"
+          ]
+        },
+        {
+          "case_id": "development-v1-mfa-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.6,
+          "rules": [
+            "MFA-001"
+          ]
+        },
+        {
+          "case_id": "development-v1-grant-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.8,
+          "rules": [
+            "OAUTH-001"
+          ]
+        },
+        {
+          "case_id": "development-v1-reply-routing-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-routine-language-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-normal-link-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-trusted-credential-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-same-domain-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-brand-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-auth-pass-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-payment-no-action-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-approved-forwarding-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-known-signin-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-enabled-mfa-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "development-v1-approved-grant-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        }
+      ],
+      "rule_snapshot_sha256": "23da2a394304639a8549273259cd6cb7f6861a91f6ad4a389b3239a955dc11dd",
+      "rule_snapshot": [
+        {
+          "code": "EMAIL-001",
+          "version": 1,
+          "weight": 0.45,
+          "confidence": 0.95,
+          "configuration": {
+            "matcher": "different_nonempty",
+            "fields": [
+              "sender_domain",
+              "reply_to_domain"
+            ],
+            "evidence": [
+              "sender_domain",
+              "reply_to_domain"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-002",
+          "version": 1,
+          "weight": 0.3,
+          "confidence": 0.85,
+          "configuration": {
+            "matcher": "nonempty",
+            "field": "matched_terms",
+            "evidence": [
+              "matched_terms"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-003",
+          "version": 1,
+          "weight": 0.65,
+          "confidence": 0.85,
+          "configuration": {
+            "matcher": "equals",
+            "field": "lookalike_domain",
+            "value": true,
+            "evidence": [
+              "sender_domain",
+              "claimed_domains"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-004",
+          "version": 1,
+          "weight": 0.55,
+          "confidence": 0.85,
+          "configuration": {
+            "matcher": "equals",
+            "field": "brand_mismatch",
+            "value": true,
+            "evidence": [
+              "display_name",
+              "sender_domain",
+              "claimed_brand"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-005",
+          "version": 1,
+          "weight": 0.55,
+          "confidence": 0.95,
+          "configuration": {
+            "matcher": "nonempty",
+            "field": "authentication_failures",
+            "evidence": [
+              "authentication_failures"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-006",
+          "version": 1,
+          "weight": 0.5,
+          "confidence": 0.75,
+          "configuration": {
+            "matcher": "all_nonempty",
+            "fields": [
+              "payment_change_terms",
+              "payment_action_terms"
+            ],
+            "evidence": [
+              "payment_change_terms",
+              "payment_action_terms"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "FORWARD-001",
+          "version": 1,
+          "weight": 0.7,
+          "confidence": 0.95,
+          "configuration": {
+            "matcher": "all_equal",
+            "conditions": {
+              "enabled": true,
+              "external": true,
+              "authorized": false
+            },
+            "evidence": [
+              "target_domain",
+              "enabled",
+              "external",
+              "authorized"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "MFA-001",
+          "version": 1,
+          "weight": 0.6,
+          "confidence": 0.99,
+          "configuration": {
+            "matcher": "equals",
+            "field": "enabled",
+            "value": false,
+            "evidence": [
+              "enabled",
+              "method_count"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "OAUTH-001",
+          "version": 1,
+          "weight": 0.8,
+          "confidence": 0.9,
+          "configuration": {
+            "matcher": "any_equal",
+            "conditions": {
+              "broad_scope": true,
+              "verified": false
+            },
+            "evidence": [
+              "app_name",
+              "broad_scope",
+              "verified",
+              "scope_categories"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "SIGNIN-001",
+          "version": 1,
+          "weight": 0.65,
+          "confidence": 0.8,
+          "configuration": {
+            "matcher": "any_equal",
+            "conditions": {
+              "unusual": true,
+              "new_device": true,
+              "impossible_travel": true,
+              "risk_level": "high"
+            },
+            "evidence": [
+              "source_country",
+              "new_device",
+              "impossible_travel",
+              "risk_level"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "URL-001",
+          "version": 1,
+          "weight": 0.3,
+          "confidence": 0.98,
+          "configuration": {
+            "matcher": "host_suffix_in",
+            "field": "url_hosts",
+            "values": [
+              "bit.ly",
+              "tinyurl.com",
+              "t.co",
+              "ow.ly",
+              "is.gd"
+            ],
+            "evidence": [
+              "url_hosts"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "URL-002",
+          "version": 1,
+          "weight": 0.45,
+          "confidence": 0.8,
+          "configuration": {
+            "matcher": "host_label_untrusted",
+            "field": "url_hosts",
+            "values": [
+              "account",
+              "login",
+              "secure",
+              "verify"
+            ],
+            "trusted_hosts": [
+              "accounts.google.com",
+              "login.microsoftonline.com",
+              "login.live.com",
+              "appleid.apple.com"
+            ],
+            "evidence": [
+              "url_hosts"
+            ]
+          },
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "dataset": "heldout-v1.json",
+      "dataset_sha256": "b4588dd654a4d8898756af84e9d027228772e43bb701993d731f585c3e2c7135",
+      "label_basis": "Stipulated synthetic scenario intent; authored with knowledge of the detector. Positive/negative rule probes are development evidence. Challenge cases explicitly model approved workflows or threat content outside the heuristic coverage. No human or live-message labels.",
+      "metrics": {
+        "total": 32,
+        "threshold": 0.3,
+        "confusion_matrix": {
+          "true_positive": 12,
+          "false_positive": 5,
+          "true_negative": 12,
+          "false_negative": 3
+        },
+        "accuracy": 0.75,
+        "precision": 0.7059,
+        "recall": 0.8,
+        "specificity": 0.7059,
+        "f1_score": 0.75
+      },
+      "cases": [
+        {
+          "case_id": "heldout-v1-reply-routing-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.45,
+          "rules": [
+            "EMAIL-001"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-credential-pressure-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.3,
+          "rules": [
+            "EMAIL-002"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-shortener-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.3,
+          "rules": [
+            "URL-001"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-credential-host-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.45,
+          "rules": [
+            "URL-002"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-lookalike-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.65,
+          "rules": [
+            "EMAIL-003"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-brand-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.55,
+          "rules": [
+            "EMAIL-004"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-auth-failure-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.55,
+          "rules": [
+            "EMAIL-005"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-payment-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.5,
+          "rules": [
+            "EMAIL-006"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-forwarding-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.7,
+          "rules": [
+            "FORWARD-001"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-signin-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.65,
+          "rules": [
+            "SIGNIN-001"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-mfa-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.6,
+          "rules": [
+            "MFA-001"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-grant-True",
+          "expected": true,
+          "predicted": true,
+          "score": 0.8,
+          "rules": [
+            "OAUTH-001"
+          ]
+        },
+        {
+          "case_id": "heldout-v1-reply-routing-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-routine-language-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-normal-link-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-trusted-credential-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-same-domain-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-brand-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-auth-pass-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-payment-no-action-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-approved-forwarding-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-known-signin-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-enabled-mfa-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "heldout-v1-approved-grant-False",
+          "expected": false,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "legitimate-urgent",
+          "expected": false,
+          "predicted": true,
+          "score": 0.3,
+          "rules": [
+            "EMAIL-002"
+          ]
+        },
+        {
+          "case_id": "approved-shortener",
+          "expected": false,
+          "predicted": true,
+          "score": 0.3,
+          "rules": [
+            "URL-001"
+          ]
+        },
+        {
+          "case_id": "approved-new-device",
+          "expected": false,
+          "predicted": true,
+          "score": 0.65,
+          "rules": [
+            "SIGNIN-001"
+          ]
+        },
+        {
+          "case_id": "approved-full-grant",
+          "expected": false,
+          "predicted": true,
+          "score": 0.8,
+          "rules": [
+            "OAUTH-001"
+          ]
+        },
+        {
+          "case_id": "legitimate-routing",
+          "expected": false,
+          "predicted": true,
+          "score": 0.45,
+          "rules": [
+            "EMAIL-001"
+          ]
+        },
+        {
+          "case_id": "unseen-bec-language",
+          "expected": true,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "unseen-phish-language",
+          "expected": true,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        },
+        {
+          "case_id": "malware-attachment-only",
+          "expected": true,
+          "predicted": false,
+          "score": 0.0,
+          "rules": []
+        }
+      ],
+      "rule_snapshot_sha256": "23da2a394304639a8549273259cd6cb7f6861a91f6ad4a389b3239a955dc11dd",
+      "rule_snapshot": [
+        {
+          "code": "EMAIL-001",
+          "version": 1,
+          "weight": 0.45,
+          "confidence": 0.95,
+          "configuration": {
+            "matcher": "different_nonempty",
+            "fields": [
+              "sender_domain",
+              "reply_to_domain"
+            ],
+            "evidence": [
+              "sender_domain",
+              "reply_to_domain"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-002",
+          "version": 1,
+          "weight": 0.3,
+          "confidence": 0.85,
+          "configuration": {
+            "matcher": "nonempty",
+            "field": "matched_terms",
+            "evidence": [
+              "matched_terms"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-003",
+          "version": 1,
+          "weight": 0.65,
+          "confidence": 0.85,
+          "configuration": {
+            "matcher": "equals",
+            "field": "lookalike_domain",
+            "value": true,
+            "evidence": [
+              "sender_domain",
+              "claimed_domains"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-004",
+          "version": 1,
+          "weight": 0.55,
+          "confidence": 0.85,
+          "configuration": {
+            "matcher": "equals",
+            "field": "brand_mismatch",
+            "value": true,
+            "evidence": [
+              "display_name",
+              "sender_domain",
+              "claimed_brand"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-005",
+          "version": 1,
+          "weight": 0.55,
+          "confidence": 0.95,
+          "configuration": {
+            "matcher": "nonempty",
+            "field": "authentication_failures",
+            "evidence": [
+              "authentication_failures"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "EMAIL-006",
+          "version": 1,
+          "weight": 0.5,
+          "confidence": 0.75,
+          "configuration": {
+            "matcher": "all_nonempty",
+            "fields": [
+              "payment_change_terms",
+              "payment_action_terms"
+            ],
+            "evidence": [
+              "payment_change_terms",
+              "payment_action_terms"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "FORWARD-001",
+          "version": 1,
+          "weight": 0.7,
+          "confidence": 0.95,
+          "configuration": {
+            "matcher": "all_equal",
+            "conditions": {
+              "enabled": true,
+              "external": true,
+              "authorized": false
+            },
+            "evidence": [
+              "target_domain",
+              "enabled",
+              "external",
+              "authorized"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "MFA-001",
+          "version": 1,
+          "weight": 0.6,
+          "confidence": 0.99,
+          "configuration": {
+            "matcher": "equals",
+            "field": "enabled",
+            "value": false,
+            "evidence": [
+              "enabled",
+              "method_count"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "OAUTH-001",
+          "version": 1,
+          "weight": 0.8,
+          "confidence": 0.9,
+          "configuration": {
+            "matcher": "any_equal",
+            "conditions": {
+              "broad_scope": true,
+              "verified": false
+            },
+            "evidence": [
+              "app_name",
+              "broad_scope",
+              "verified",
+              "scope_categories"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "SIGNIN-001",
+          "version": 1,
+          "weight": 0.65,
+          "confidence": 0.8,
+          "configuration": {
+            "matcher": "any_equal",
+            "conditions": {
+              "unusual": true,
+              "new_device": true,
+              "impossible_travel": true,
+              "risk_level": "high"
+            },
+            "evidence": [
+              "source_country",
+              "new_device",
+              "impossible_travel",
+              "risk_level"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "URL-001",
+          "version": 1,
+          "weight": 0.3,
+          "confidence": 0.98,
+          "configuration": {
+            "matcher": "host_suffix_in",
+            "field": "url_hosts",
+            "values": [
+              "bit.ly",
+              "tinyurl.com",
+              "t.co",
+              "ow.ly",
+              "is.gd"
+            ],
+            "evidence": [
+              "url_hosts"
+            ]
+          },
+          "enabled": true
+        },
+        {
+          "code": "URL-002",
+          "version": 1,
+          "weight": 0.45,
+          "confidence": 0.8,
+          "configuration": {
+            "matcher": "host_label_untrusted",
+            "field": "url_hosts",
+            "values": [
+              "account",
+              "login",
+              "secure",
+              "verify"
+            ],
+            "trusted_hosts": [
+              "accounts.google.com",
+              "login.microsoftonline.com",
+              "login.live.com",
+              "appleid.apple.com"
+            ],
+            "evidence": [
+              "url_hosts"
+            ]
+          },
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "limitation": "Synthetic stipulated labels, authored with knowledge of the rules. Challenge cases include development probes as controls; this is not independent or representative accuracy validation. No calibration or threshold tuning was performed."
+}

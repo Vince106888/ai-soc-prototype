@@ -1,0 +1,323 @@
+{
+  "version": 1,
+  "split": "development-v1",
+  "label_basis": "Stipulated synthetic scenario intent; authored with knowledge of the detector. Positive/negative rule probes are development evidence. Challenge cases explicitly model approved workflows or threat content outside the heuristic coverage. No human or live-message labels.",
+  "evaluation": {
+    "threshold": 0.3,
+    "cases": [
+      {
+        "case_id": "development-v1-reply-routing-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-reply-routing-True",
+          "signal_type": "email",
+          "features": {
+            "sender": "owner@example.test",
+            "reply_to": "reply@other.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-credential-pressure-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-credential-pressure-True",
+          "signal_type": "email",
+          "features": {
+            "subject": "Verify your account immediately",
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-shortener-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-shortener-True",
+          "signal_type": "email",
+          "features": {
+            "urls": [
+              "https://bit.ly/controlled"
+            ],
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-credential-host-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-credential-host-True",
+          "signal_type": "email",
+          "features": {
+            "urls": [
+              "https://secure.example.test/controlled"
+            ],
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-lookalike-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-lookalike-True",
+          "signal_type": "email",
+          "features": {
+            "sender": "notice@micros0ft.com",
+            "claimed_domains": [
+              "microsoft.com"
+            ]
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-brand-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-brand-True",
+          "signal_type": "email",
+          "features": {
+            "sender": "notice@other.test",
+            "display_name": "Microsoft support"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-auth-failure-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-auth-failure-True",
+          "signal_type": "email",
+          "features": {
+            "authentication": {
+              "spf": "fail"
+            },
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-payment-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-payment-True",
+          "signal_type": "email",
+          "features": {
+            "body": "New bank details: send payment by wire transfer.",
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-forwarding-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-forwarding-True",
+          "signal_type": "forwarding",
+          "features": {
+            "enabled": true,
+            "external": true,
+            "authorized": false,
+            "target": "archive@other.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-signin-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-signin-True",
+          "signal_type": "signin",
+          "features": {
+            "new_device": true
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-mfa-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-mfa-True",
+          "signal_type": "mfa",
+          "features": {
+            "enabled": false
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-grant-True",
+        "expected_suspicious": true,
+        "signal": {
+          "external_id": "development-v1-grant-True",
+          "signal_type": "oauth_grant",
+          "features": {
+            "verified": false,
+            "scopes": [
+              "gmail.modify"
+            ],
+            "app_name": "Controlled application"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-reply-routing-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-reply-routing-False",
+          "signal_type": "email",
+          "features": {
+            "sender": "owner@example.test",
+            "reply_to": "team@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-routine-language-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-routine-language-False",
+          "signal_type": "email",
+          "features": {
+            "subject": "Meeting agenda for Friday",
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-normal-link-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-normal-link-False",
+          "signal_type": "email",
+          "features": {
+            "urls": [
+              "https://example.test/meeting"
+            ],
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-trusted-credential-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-trusted-credential-False",
+          "signal_type": "email",
+          "features": {
+            "urls": [
+              "https://accounts.google.com/controlled"
+            ],
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-same-domain-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-same-domain-False",
+          "signal_type": "email",
+          "features": {
+            "sender": "notice@microsoft.com",
+            "claimed_domains": [
+              "microsoft.com"
+            ]
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-brand-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-brand-False",
+          "signal_type": "email",
+          "features": {
+            "sender": "notice@microsoft.com",
+            "display_name": "Microsoft support"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-auth-pass-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-auth-pass-False",
+          "signal_type": "email",
+          "features": {
+            "authentication": {
+              "spf": "pass",
+              "dkim": "pass"
+            },
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-payment-no-action-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-payment-no-action-False",
+          "signal_type": "email",
+          "features": {
+            "body": "Document our new bank details for the archive.",
+            "sender": "owner@example.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-approved-forwarding-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-approved-forwarding-False",
+          "signal_type": "forwarding",
+          "features": {
+            "enabled": true,
+            "external": true,
+            "authorized": true,
+            "target": "archive@other.test"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-known-signin-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-known-signin-False",
+          "signal_type": "signin",
+          "features": {
+            "new_device": false,
+            "risk_level": "low"
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-enabled-mfa-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-enabled-mfa-False",
+          "signal_type": "mfa",
+          "features": {
+            "enabled": true,
+            "method_count": 2
+          }
+        }
+      },
+      {
+        "case_id": "development-v1-approved-grant-False",
+        "expected_suspicious": false,
+        "signal": {
+          "external_id": "development-v1-approved-grant-False",
+          "signal_type": "oauth_grant",
+          "features": {
+            "verified": true,
+            "scopes": [
+              "profile"
+            ],
+            "app_name": "Controlled application"
+          }
+        }
+      }
+    ]
+  }
+}
