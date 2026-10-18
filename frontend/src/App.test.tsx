@@ -4,7 +4,7 @@ import App from './App'
 import { api } from './api'
 import type { Incident } from './types'
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); sessionStorage.clear() })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); sessionStorage.clear(); window.history.replaceState(null, '', '/') })
 
 const incident: Incident = { id: 'case-a', title: 'Controlled critical case', summary: 'Synthetic evidence', severity: 'critical', status: 'new', score: 0.9, account_id: 'account-a' }
 

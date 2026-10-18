@@ -14,8 +14,13 @@ explanation in plain language. Detection is unchanged:
 - Its output is validated: JSON shape, length, no links or email addresses, no
   unknown rule codes, no numbers absent from the evidence. Any failure, timeout
   or outage keeps the template explanation and is written to the audit log.
-- The Ollama URL must be loopback (`127.0.0.1`, `localhost` or `::1`), so
-  incident data never leaves the computer.
+- The Ollama URL must be loopback (`127.0.0.1`, `localhost` or `::1`), and
+  Ollama cloud model names (`gemma4:cloud`, `gpt-oss:120b-cloud` and any tag
+  containing a `cloud` part, even with a pinned digest) are refused, and
+  `app.explain --check` also refuses a model that Ollama lists with a remote
+  host (for example a local alias copied from a cloud model). A signed-in local Ollama server forwards cloud
+  models to ollama.com, so the loopback rule alone would not keep incident data
+  on this computer.
 
 The model runs after evidence is committed (in the worker, or when a user
 presses **Explain in plain language**), so a slow model never delays
@@ -73,8 +78,17 @@ three incidents per pass. Alternatively, run
 |---|---|---|
 | `AI_SOC_EXPLAINER` | `off` | `ollama` enables the adapter |
 | `AI_SOC_OLLAMA_URL` | `http://127.0.0.1:11434` | Must be a loopback address |
-| `AI_SOC_OLLAMA_MODEL` | `qwen2.5:3b` | Any pulled Ollama model name |
+| `AI_SOC_OLLAMA_MODEL` | `qwen2.5:3b` | Any pulled local Ollama model; `:cloud` / `-cloud` tags disable the adapter |
 | `AI_SOC_EXPLAINER_TIMEOUT` | `120` | Seconds per call (5 to 600) |
+
+## Cloud models during development
+
+Ollama cloud models (for example `gemma4:cloud`, included in Ollama's free plan)
+are fast on any computer and can be useful for trying prompt wording with the
+built-in **synthetic** scenarios, from the Ollama CLI only. SentinelSME itself
+will not call them: the explainer is disabled whenever the configured model is a
+cloud model, and `app.explain --check` says so. Never send real mailbox evidence
+to a cloud model; it would contradict the privacy boundary in the report.
 
 ## Limits
 

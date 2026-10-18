@@ -35,7 +35,7 @@ npm test       # Vitest contract and prioritization tests
 ## What is implemented
 
 - Overview with critical, active, under-review, and resolved indicators
-- Incident queue prioritized by severity and recency
+- Incident queue prioritized by severity, score and recency
 - Server-side severity, status, and text search filters
 - Incident detail explaining what happened, why it matters, severity, and the next action
 - Evidence table, response recommendations, and an audit timeline
@@ -71,13 +71,29 @@ Gmail supplies email signals only; collection runs on demand.
 
 ## Analyst interface
 
-`console.css` implements the reviewed design in `design-system/sentinelsme/MASTER.md`.
-Incident details have keyboard-accessible Overview, Evidence and Activity tabs.
-The Email analysis screen separates selected messages from Gmail consent/sampling;
-Protection coverage documents current limits and missing provider integrations.
-Scores set priority, and detection/response remain server-side and advisory.
-Use synthetic data for screenshots. The `ui-review` local tenant is a controlled
-visual demonstration, not a production account or an accuracy dataset.
+The console follows `design-system/sentinelsme/MASTER.md`. Highlights:
+
+- **Addressable views.** Every page has a hash route (`#/overview`, `#/incidents`,
+  `#/incidents/<id>`, `#/evidence`, `#/analyse`, `#/sources`, `#/coverage`,
+  `#/rules`), so refresh, the back button and shared links keep their place.
+- **Evidence chain.** Each incident opens with five linked steps (observed
+  signals, matched rules, deterministic priority, who wrote the explanation, the
+  human decision); each step opens the tab that substantiates it. The decision
+  form stays beside the evidence on wide screens.
+- **Queue order.** Severity, then score, then recency. Severity is a segmented
+  filter; account and date filters sit under "More filters".
+- **Keyboard.** `/` search, `j`/`k` move through the incident queue, `g` then
+  `o`/`i`/`e`/`a`/`s`/`r`/`c` to jump between pages, `?` lists shortcuts.
+- **Themes.** Light, dark and "match system", stored per browser in
+  `localStorage` (a convenience only; no workspace data).
+- **Small screens.** Below 1080 px the incident queue and detail become two
+  steps with a "Back to queue" control; below 900 px navigation is a drawer.
+
+Code layout: `App.tsx` composes the shell; `useWorkspace.ts` loads workspace
+data and discards responses for an old tenant or filter set; `pages/`,
+`shell/`, `ui/` (router, theme, hooks, modal and primitives) and `modals.tsx`
+hold the parts; `styles/` holds tokens, base, components, shell and page CSS.
+Use synthetic data for screenshots.
 
 ## Completion controls
 

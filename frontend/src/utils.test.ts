@@ -25,6 +25,19 @@ describe('incident presentation helpers', () => {
     expect(input[0].id).toBe('low-new')
   })
 
+  it('orders by score within a severity band before recency', () => {
+    const input = [
+      { ...incident('critical-newer-lower', 'critical', '2026-09-24T12:00:00Z'), score: 0.8 },
+      { ...incident('critical-older-higher', 'critical', '2026-09-24T10:00:00Z'), score: 0.99 },
+      { ...incident('high-highest-score', 'high', '2026-09-25T10:00:00Z'), score: 1 },
+    ]
+    expect(prioritizeIncidents(input).map(({ id }) => id)).toEqual([
+      'critical-older-higher',
+      'critical-newer-lower',
+      'high-highest-score',
+    ])
+  })
+
   it('uses a safe incident title fallback', () => {
     expect(incidentTitle({ ...incident('abc', 'high', ''), title: '  ' })).toBe('Incident abc')
   })

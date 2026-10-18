@@ -1,21 +1,32 @@
-import { useEffect, useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { api } from './api'
-import type { Credentials, DetectionRule } from './types'
+import type { Credentials } from './types'
 import { humanize } from './utils'
 import { Icons } from './icons'
+import { useRequest } from './ui/hooks'
+import { ErrorState, LoadingRows, PageHeader } from './ui/primitives'
 
-export function RuleCatalogue({ credentials }: { credentials: Credentials }) {
-  const [rules, setRules] = useState<DetectionRule[]>([])
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+export function RuleCatalogue({ credentials, children }: { credentials: Credentials; children?: ReactNode }) {
   const [revision, setRevision] = useState(0)
   const [type, setType] = useState('')
-  const enabledLabel = loading ? 'Checking enabled rules…' : error ? 'Enabled rule count unavailable' : `${rules.filter(rule => rule.enabled).length} enabled rules`
-  useEffect(() => {
-    const controller = new AbortController()
-    setLoading(true); setError('')
-    api.rules(credentials, controller.signal).then(result => { if (!controller.signal.aborted) setRules(result) }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load rules.') }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
-    return () => controller.abort()
-  }, [credentials, revision])
-  return <div className="page rules-page"><header className="page-header"><div><p className="eyebrow">Detection engine</p><h1>Detection catalogue</h1><p>Inspect the rules that create findings in your workspace.</p></div><button className="button button-secondary" disabled={loading} onClick={() => setRevision(current => current + 1)}><Icons.refresh />Refresh</button></header><section className="panel rules-intro"><div><strong>{enabledLabel}</strong><p>The number of enabled rules does not establish detection accuracy. Weights set review priority; confidence is configured and uncalibrated.</p></div><label>Signal type<select value={type} onChange={event => setType(event.target.value)}><option value="">All signal types</option>{[...new Set(rules.map(rule => rule.signal_type))].map(signal => <option key={signal} value={signal}>{humanize(signal)}</option>)}</select></label></section>{loading ? <p role="status">Loading detection catalogue…</p> : error ? <p role="alert" className="form-error">{error}</p> : <section className="panel rule-catalogue"><div className="rule-columns" aria-hidden="true"><span>Rule / detection</span><span>Signal</span><span>Weight</span><span>Confidence</span><span>Status</span></div>{rules.filter(rule => !type || rule.signal_type === type).map(rule => <details className="rule-record" key={rule.code}><summary><span><code>{rule.code}</code><strong>{rule.title}</strong><small>version {rule.version}</small></span><span>{humanize(rule.signal_type)}</span><span>{rule.weight.toFixed(2)}</span><span>{rule.confidence.toFixed(2)}</span><span className={`badge status ${rule.enabled ? 'status-completed' : 'status-disconnected'}`}>{rule.enabled ? 'Enabled' : 'Disabled'}</span></summary><div className="matcher-detail"><h3>Matcher configuration</h3><pre>{JSON.stringify(rule.configuration,null,2)}</pre></div></details>)}</section>}</div>
+  const request = useRequest(JSON.stringify([credentials, revision]), signal => api.rules(credentials, signal), 'Could not load rules.')
+  const rules = request.data ?? []
+  const enabled = rules.filter(rule => rule.enabled).length
+  const enabledLabel = request.loading ? 'Checking enabled rules…' : request.error ? 'Enabled rule count unavailable' : `${enabled} enabled ${enabled === 1 ? 'rule' : 'rules'}`
+  const visible = rules.filter(rule => !type || rule.signal_type === type)
+  return <div className="page rules-page">
+    <PageHeader title="Detection rules" lead="The deterministic rules that create findings in this workspace, with their weights and matcher settings." actions={<button className="button button-secondary" disabled={request.loading} onClick={() => setRevision(current => current + 1)} type="button"><Icons.refresh />Refresh</button>} />
+    <section className="panel rules-intro">
+      <div><strong>{enabledLabel}</strong><p className="muted">The number of enabled rules does not establish detection accuracy. Weights set review priority; confidence is configured and uncalibrated.</p></div>
+      <div className="field"><label htmlFor="rule-signal">Signal type</label><select id="rule-signal" value={type} onChange={event => setType(event.target.value)}><option value="">All signal types</option>{[...new Set(rules.map(rule => rule.signal_type))].map(signal => <option key={signal} value={signal}>{humanize(signal)}</option>)}</select></div>
+    </section>
+    {request.loading ? <LoadingRows count={5} label="Loading detection rules" /> : request.error ? <ErrorState message={request.error} retry={() => setRevision(current => current + 1)} /> : <section className="panel rule-table" aria-label="Detection rules">
+      <div className="rule-columns" aria-hidden="true"><span>Rule</span><span>Signal</span><span className="num">Weight</span><span className="num">Confidence</span><span>Status</span></div>
+      {visible.map(rule => <details className="rule-record" key={rule.code}>
+        <summary><span className="rule-name"><code>{rule.code}</code><strong>{rule.title}</strong><small>version {rule.version}</small></span><span className="rule-signal">{humanize(rule.signal_type)}</span><span className="num">{rule.weight.toFixed(2)}</span><span className="num">{rule.confidence.toFixed(2)}</span><span className={`badge state ${rule.enabled ? 'state-completed' : 'state-disconnected'}`}>{rule.enabled ? 'Enabled' : 'Disabled'}</span></summary>
+        <div className="matcher-detail"><h3>Matcher configuration</h3><pre>{JSON.stringify(rule.configuration, null, 2)}</pre></div>
+      </details>)}
+    </section>}
+    {children}
+  </div>
 }

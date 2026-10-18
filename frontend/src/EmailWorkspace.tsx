@@ -2,8 +2,16 @@ import { useState } from 'react'
 import { EmailAnalysis, type EmailDraft } from './EmailAnalysis'
 import { GmailConnection } from './GmailConnection'
 import type { Account, Credentials, GmailConfiguration, IngestionResult, Source } from './types'
+import { PageHeader } from './ui/primitives'
 
-export function EmailWorkspace({credentials,configuration,accounts,sources,onRefresh,onAnalyze,onInspect}:{credentials:Credentials;configuration:GmailConfiguration|undefined;accounts:Account[];sources:Source[];onRefresh:()=>Promise<void>;onAnalyze:(draft:EmailDraft)=>Promise<IngestionResult & {accountId?:string}>;onInspect:(id:string)=>void}) {
-  const [mode,setMode]=useState(credentials.userEmail || new URLSearchParams(window.location.search).has('gmail') ? 'Gmail sample' : 'Selected message')
-  return <div className="page email-workspace"><header className="page-header"><div><p className="eyebrow">Email investigation</p><h1>Email analysis</h1><p>Inspect a selected message or collect a recent inbox sample.</p></div><span className="mode-tag">Read only · local evidence</span></header><div className="analysis-methods" role="group" aria-label="Analysis method">{[{name:'Selected message',caption:'Analyse the email you choose'},{name:'Gmail sample',caption:configuration?.configured?'Connect and collect on demand':'Google setup required'}].map(item=><button key={item.name} className={mode===item.name?'selected':''} aria-pressed={mode===item.name} onClick={()=>setMode(item.name)}><strong>{item.name}</strong><span>{item.caption}</span></button>)}</div>{mode==='Selected message'?<EmailAnalysis accounts={accounts} sources={sources} onAnalyze={onAnalyze} onInspect={onInspect}/>:<GmailConnection credentials={credentials} configuration={configuration} sources={sources} onRefresh={onRefresh}/>}</div>
+const methods = ['Selected message', 'Gmail sample'] as const
+
+export function EmailWorkspace({ credentials, configuration, accounts, sources, onRefresh, onAnalyze, onInspect, gmailCallback = false }: { gmailCallback?: boolean; credentials: Credentials; configuration: GmailConfiguration | undefined; accounts: Account[]; sources: Source[]; onRefresh: () => Promise<void>; onAnalyze: (draft: EmailDraft) => Promise<IngestionResult & { accountId?: string }>; onInspect: (id: string) => void }) {
+  const [mode, setMode] = useState<typeof methods[number]>(credentials.userEmail || gmailCallback ? 'Gmail sample' : 'Selected message')
+  const captions = { 'Selected message': 'Paste one email you choose. Processed locally.', 'Gmail sample': configuration?.configured ? 'Read a bounded recent inbox sample on demand.' : 'Needs Google setup before first use.' }
+  return <div className="page analysis-page">
+    <PageHeader title="Email analysis" lead="Check one message you select, or collect a read-only sample from Gmail. Links are never opened and attachments are never downloaded." />
+    <div className="method-switch" role="group" aria-label="Analysis method">{methods.map(name => <button key={name} aria-pressed={mode === name} onClick={() => setMode(name)} type="button"><strong>{name}</strong><span>{captions[name]}</span></button>)}</div>
+    {mode === 'Selected message' ? <EmailAnalysis accounts={accounts} sources={sources} onAnalyze={onAnalyze} onInspect={onInspect} /> : <GmailConnection credentials={credentials} configuration={configuration} sources={sources} onRefresh={onRefresh} />}
+  </div>
 }

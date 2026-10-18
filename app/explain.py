@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import statistics
 import tempfile
@@ -44,6 +45,8 @@ def _ollama_info(config: explainer.Settings) -> dict:
     info["model_present"] = config.model in names or f"{config.model}:latest" in names
     for item in tags:
         if item.get("name") in (config.model, f"{config.model}:latest"):
+            # Cloud-backed entries (including local aliases of them) carry a remote host.
+            info["remote"] = bool(item.get("remote_host") or item.get("remote_model"))
             details = item.get("details", {})
             info.update(
                 parameter_size=details.get("parameter_size"),
@@ -89,7 +92,18 @@ def check(runs: int, output: Path) -> dict:
         "data": "Built-in synthetic scenarios only (fixtures/evaluation/scenarios.json).",
         "runs": [],
     }
-    if not config.enabled:
+    requested = os.getenv("AI_SOC_EXPLAINER", "off").strip().lower() == "ollama"
+    if config.enabled and report["ollama"].get("remote"):
+        report["result"] = (
+            f"disabled: {config.model} runs on Ollama's cloud servers; choose a local model "
+            "such as qwen2.5:3b so incident data stays on this computer"
+        )
+    elif requested and explainer.is_cloud_model(config.model):
+        report["result"] = (
+            f"disabled: {config.model} is an Ollama cloud model; choose a local model "
+            "such as qwen2.5:3b so incident data stays on this computer"
+        )
+    elif not config.enabled:
         report["result"] = "disabled: set AI_SOC_EXPLAINER=ollama (loopback URL only)"
     elif not report["ollama"]["reachable"]:
         report["result"] = "Ollama is not reachable at the configured loopback URL"

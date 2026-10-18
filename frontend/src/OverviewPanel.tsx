@@ -1,30 +1,94 @@
 import type { Account, CapabilityProfile, Incident, Overview, ScanJob, Source } from './types'
-import { accountLabel, formatDateTime, incidentTitle, relativeTime, scorePercent } from './utils'
+import { accountLabel, formatDateTime, humanize, incidentTitle, relativeTime, scorePercent } from './utils'
 import { Icons } from './icons'
+import { EmptyState, Notice, PageHeader, Panel, PanelHeading, SeverityBadge, StatusBadge, severities } from './ui/primitives'
+
+type Destination = 'incidents' | 'sources' | 'analysis' | 'evidence' | 'protection'
+
+function ActivityChart({ activity }: { activity: Overview['activity'] }) {
+  const maximum = Math.max(1, ...activity.map(day => Math.max(day.signals, day.incidents)))
+  const weekday = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString('en', { weekday: 'short', timeZone: 'UTC' })
+  const total = activity.reduce((sum, day) => ({ signals: sum.signals + day.signals, incidents: sum.incidents + day.incidents }), { signals: 0, incidents: 0 })
+  return <>
+    <div className="chart-head"><p className="chart-total"><strong>{total.signals}</strong> signals and <strong>{total.incidents}</strong> incidents retained this week</p><ul className="legend" aria-label="Legend"><li><i className="swatch swatch-signals" />Signals</li><li><i className="swatch swatch-incidents" />Incidents</li></ul></div>
+    <div className="bar-chart" role="group" aria-label="Seven-day retained activity. Exact daily counts are in the table below.">
+      <div className="bar-grid" aria-hidden="true"><span /><span /><span /></div>
+      {activity.map(day => <div className="bar-day" key={day.day} tabIndex={0} role="img" aria-label={`${day.day}: ${day.signals} signals, ${day.incidents} incidents`}>
+        <div className="bar-pair">
+          <span className="bar bar-signals" style={{ height: `${(day.signals / maximum) * 100}%` }} />
+          <span className="bar bar-incidents" style={{ height: `${(day.incidents / maximum) * 100}%` }} />
+        </div>
+        <span className="bar-label">{weekday(day.day)}</span>
+        <span className="bar-tip" aria-hidden="true"><strong>{weekday(day.day)} {day.day.slice(5)}</strong><span><i className="swatch swatch-signals" />{day.signals} signals</span><span><i className="swatch swatch-incidents" />{day.incidents} incidents</span></span>
+      </div>)}
+    </div>
+    <details className="chart-data"><summary>Show daily counts as a table</summary><div className="table-wrap"><table className="data-table"><thead><tr><th scope="col">Date (UTC)</th><th scope="col" className="num">Signals</th><th scope="col" className="num">Incidents</th></tr></thead><tbody>{activity.map(day => <tr key={day.day}><td>{day.day}</td><td className="num">{day.signals}</td><td className="num">{day.incidents}</td></tr>)}</tbody></table></div></details>
+  </>
+}
 
 export function OverviewPanel({ overview, incidents, accounts, sources, profile, jobs, loading, error, onRefresh, onInspect, onNavigate }: {
   overview: Overview | null; incidents: Incident[]; accounts: Account[]; sources: Source[]; profile: CapabilityProfile | null; jobs: ScanJob[]
   loading: boolean; error: string; onRefresh: () => void; onInspect: (id: string) => void
-  onNavigate: (section: 'incidents' | 'coverage' | 'analysis' | 'evidence' | 'protection') => void
+  onNavigate: (section: Destination) => void
 }) {
   const active = incidents.filter(incident => ['new', 'under_review'].includes(incident.status))
-  const connected = sources.filter(source => source.source_type === 'gmail' && source.status === 'active')
-  const stats = [
-    { label: 'Open incidents', value: overview?.incidents.active, caption: 'Awaiting a decision', tone: 'orange' },
-    { label: 'Critical priority', value: overview?.incidents.critical, caption: 'Review first', tone: 'red' },
-    { label: 'Under review', value: overview?.incidents.under_review, caption: 'Investigation in progress', tone: 'blue' },
-    { label: 'Retained signals', value: overview?.retained_signals, caption: 'Collected evidence', tone: 'neutral' },
+  const gmail = sources.filter(source => source.source_type === 'gmail' && source.status === 'active')
+  const bySeverity = severities.map(severity => ({ severity, count: active.filter(incident => incident.severity === severity).length }))
+  const counted = bySeverity.reduce((sum, item) => sum + item.count, 0)
+  const ledger = [
+    { label: 'Open incidents', value: overview?.incidents.active, caption: 'Awaiting a decision', tone: 'open' },
+    { label: 'Critical', value: overview?.incidents.critical, caption: 'Review these first', tone: 'critical' },
+    { label: 'Under review', value: overview?.incidents.under_review, caption: 'Being investigated', tone: 'review' },
+    { label: 'Retained signals', value: overview?.retained_signals, caption: 'Evidence on file', tone: 'neutral' },
   ]
-  const maximum = Math.max(1, ...overview?.activity.map(day => Math.max(day.signals, day.incidents)) ?? [1])
-  return <div className="page page-overview">
-    <header className="page-header"><div><p className="eyebrow">Workspace intelligence</p><h1>Security overview</h1><p>Review priorities and understand the evidence collected in your workspace.</p></div><button className="button button-secondary" disabled={loading} onClick={onRefresh}><Icons.refresh />Refresh</button></header>
-    <section className={`coverage-banner ${connected.length ? 'connected' : ''}`}><Icons.shield /><div><strong>{connected.length ? 'Gmail sampling is connected' : 'Your workspace is using controlled data'}</strong><p>{connected.length ? 'Request an inbox sample to collect new evidence. Continuous monitoring is not enabled.' : profile?.gmail?.configured ? 'Google setup is ready. Connect your mailbox to run a read-only inbox sample.' : 'Analyse selected messages now. Connect Gmail after local Google setup.'}</p></div><button className="button button-secondary" onClick={() => onNavigate('analysis')}>{connected.length ? 'Run a sample' : 'Set up Gmail'}<Icons.arrow /></button></section>
-    <div className="stats-grid">{stats.map(stat => <section className={`panel stat-card stat-${stat.tone}`} key={stat.label}><div><p>{stat.label}</p><strong>{loading ? '…' : stat.value ?? '—'}</strong><span>{stat.caption}</span></div><span className="stat-indicator" aria-hidden="true" /></section>)}</div>
-    <div className="overview-primary"><section className="panel queue-panel"><div className="panel-heading"><div><p className="eyebrow">Incident triage</p><h2>Needs your attention</h2></div><button className="link-button" onClick={() => onNavigate('incidents')}>All incidents <Icons.arrow /></button></div>
-      {error ? <p className="form-error" role="alert">{error}</p> : loading ? <p className="muted-copy">Loading incident evidence…</p> : active.length ? <div className="triage-table"><div className="triage-columns" aria-hidden="true"><span>Incident / account</span><span>Priority</span><span>Status</span><span /></div>{active.slice(0, 5).map(incident => <button className="overview-incident" key={incident.id} onClick={() => onInspect(incident.id)}><span className="triage-identity"><strong>{incidentTitle(incident)}</strong><small>{accountLabel(accounts.find(account => account.id === incident.account_id) ?? {id: incident.account_id ?? ''})} · {relativeTime(incident.last_seen_at)}</small></span><span className="triage-priority"><span className={`severity-dot severity-bg-${incident.severity}`} /><strong>{scorePercent(incident.score)}</strong><small>{incident.severity}</small></span><span className={`badge status status-${incident.status}`}>{incident.status.replaceAll('_', ' ')}</span><Icons.arrow /></button>)}</div> : <div className="state-card"><span className="state-icon"><Icons.scan /></span><h3>{overview?.retained_signals ? 'No open incidents in this view' : 'Collect your first evidence'}</h3><p>{overview?.retained_signals ? 'Review the retained sample and detector limits. An empty queue does not establish safety.' : 'Analyse a selected email or connect Gmail for a recent inbox sample.'}</p><button className="button button-primary" onClick={() => onNavigate('analysis')}>Analyse email</button></div>}
-      <footer className="panel-footer"><Icons.lock /><span>Scores set review priority. Your decisions remain in the audit trail.</span></footer>
-    </section><section className="panel collection-panel"><div className="panel-heading"><div><p className="eyebrow">Collection status</p><h2>Evidence sources</h2></div><Icons.building /></div><dl className="collection-facts"><div><dt>Registered accounts</dt><dd>{overview?.accounts ?? '—'}</dd></div><div><dt>Active sources</dt><dd>{overview?.active_sources ?? '—'}</dd></div><div><dt>Gmail connections</dt><dd>{connected.length}</dd></div><div><dt>Latest job</dt><dd>{overview?.latest_job?.status ?? 'No analysis'}</dd></div></dl><button className="button button-secondary button-full" onClick={() => onNavigate('coverage')}>Manage accounts & sources</button><button className="link-button coverage-link" onClick={() => onNavigate('protection')}>See protection coverage <Icons.arrow /></button></section></div>
-    <div className="overview-secondary"><section className="panel activity-panel"><div className="panel-heading"><div><p className="eyebrow">Last 7 days · UTC</p><h2>Retained activity</h2></div><span className="chart-legend"><i className="legend-signal" />Signals<i className="legend-incident" />Incidents</span></div>{overview ? <><div className="activity-grid" role="img" aria-label="Seven-day retained activity. Exact daily counts are available in the data table below.">{overview.activity.map(day => <div className="activity-day" key={day.day}><div className="activity-bars"><span className="signal-bar" style={{height:`${day.signals / maximum * 100}px`}} /><span className="incident-bar" style={{height:`${day.incidents / maximum * 100}px`}} /></div><strong>{day.signals} / {day.incidents}</strong><span>{new Date(day.day + 'T12:00:00Z').toLocaleDateString('en', {weekday:'short',timeZone:'UTC'})}</span></div>)}</div><details className="chart-data"><summary>View daily counts</summary><table><thead><tr><th>Date (UTC)</th><th>Signals</th><th>Incidents</th></tr></thead><tbody>{overview.activity.map(day => <tr key={day.day}><td>{day.day}</td><td>{day.signals}</td><td>{day.incidents}</td></tr>)}</tbody></table></details></> : <p className="muted-copy">Activity is unavailable until workspace totals load.</p>}</section><section className="panel recent-activity"><div className="panel-heading"><div><p className="eyebrow">Processing history</p><h2>Recent analyses</h2></div><Icons.clock /></div>{jobs.length ? jobs.slice(0,3).map(job => <article key={job.id}><span className={`job-dot status-${job.status}`} /><div><strong>{sources.find(source => source.id === job.source_id)?.name ?? 'Registered source'}</strong><small>{formatDateTime(job.created_at)}</small><p>{job.imported_count} imported · {job.finding_count} findings · {job.duplicate_count} duplicates</p></div><span className={`badge status status-${job.status}`}>{job.status}</span></article>) : <p className="muted-copy">No analysis has been recorded.</p>}<button className="link-button" onClick={() => onNavigate('evidence')}>Browse retained evidence <Icons.arrow /></button></section></div>
-    {accounts.some(account => account.delete_after) && <p className="retention-note">{accounts.filter(account => account.delete_after).map(account => `${accountLabel(account)}: local trial ends ${formatDateTime(account.delete_after ?? undefined)}`).join(' · ')}</p>}
+  const show = (value?: number) => loading && value === undefined ? '…' : value ?? '—'
+  const accountName = (incident: Incident) => accountLabel(accounts.find(account => account.id === incident.account_id) ?? { id: incident.account_id ?? '' })
+
+  return <div className="page overview-page">
+    <PageHeader title="Overview" lead="What needs a decision now, and how much evidence the workspace holds." actions={<button className="button button-secondary" disabled={loading} onClick={onRefresh} type="button"><Icons.refresh />Refresh</button>} />
+
+    <Notice tone={gmail.length ? 'success' : 'info'} title={gmail.length ? 'Gmail sampling is connected' : 'This workspace uses controlled data'} action={<button className="button button-secondary" onClick={() => onNavigate('analysis')} type="button">{gmail.length ? 'Run a sample' : 'Set up Gmail'}</button>}>
+      {gmail.length ? 'Request an inbox sample to collect new evidence. Continuous monitoring is not enabled.' : profile?.gmail?.configured ? 'Google setup is ready. Connect a mailbox to run a read-only inbox sample.' : 'Analyse selected messages now. Gmail sampling needs local Google setup first.'}
+    </Notice>
+
+    <dl className="ledger" aria-label="Workspace totals">{ledger.map(item => <div className={`ledger-item ledger-${item.tone}`} key={item.label}><dt>{item.label}</dt><dd><span className="ledger-value">{show(item.value)}</span><span className="ledger-caption">{item.caption}</span></dd></div>)}</dl>
+
+    <div className="overview-grid">
+      <Panel labelledBy="attention-heading" className="attention">
+        <PanelHeading id="attention-heading" title="Needs your attention" meta="Open incidents, highest priority first" action={<button className="button button-ghost" onClick={() => onNavigate('incidents')} type="button">All incidents<Icons.arrow /></button>} />
+        {counted > 0 && <div className="severity-mix">
+          <div className="mix-bar" aria-hidden="true">{bySeverity.filter(item => item.count).map(item => <span key={item.severity} className={`mix-${item.severity}`} style={{ flexGrow: item.count }} />)}</div>
+          <ul className="mix-legend" aria-label="Open incidents by severity">{bySeverity.map(item => <li key={item.severity} className={item.count ? '' : 'is-zero'}><i className={`mix-key mix-${item.severity}`} aria-hidden="true" />{humanize(item.severity)} <strong>{item.count}</strong></li>)}</ul>
+        </div>}
+        {error ? <p className="form-error" role="alert">{error}</p>
+          : loading && !active.length ? <p className="muted">Loading incident evidence…</p>
+            : active.length ? <ul className="attention-list">{active.slice(0, 6).map(incident => <li key={incident.id}><button className={`attention-row edge-${incident.severity}`} onClick={() => onInspect(incident.id)} type="button">
+              <span className="attention-identity"><strong>{incidentTitle(incident)}</strong><small>{accountName(incident)} · {relativeTime(incident.last_seen_at)}</small></span>
+              <span className="attention-priority"><span className="attention-score">{scorePercent(incident.score) ?? '—'}</span><SeverityBadge severity={incident.severity} /></span>
+              <StatusBadge status={incident.status} />
+              <Icons.arrow className="row-arrow" />
+            </button></li>)}</ul>
+              : <EmptyState icon={<Icons.scan />} title={overview?.retained_signals ? 'No open incidents in this view' : 'Collect your first evidence'} action={<button className="button button-primary" onClick={() => onNavigate('analysis')} type="button">Analyse email</button>}>{overview?.retained_signals ? 'Review the retained sample and the detector limits. An empty queue does not establish safety.' : 'Analyse a selected email or connect Gmail for a recent inbox sample.'}</EmptyState>}
+        <p className="panel-footnote"><Icons.lock />Scores set review order. Every decision you record stays in the audit trail.</p>
+      </Panel>
+
+      <div className="overview-side">
+        <Panel labelledBy="collection-heading">
+          <PanelHeading id="collection-heading" title="Collection" />
+          <dl className="facts"><div><dt>Registered accounts</dt><dd>{overview?.accounts ?? '—'}</dd></div><div><dt>Active sources</dt><dd>{overview?.active_sources ?? '—'}</dd></div><div><dt>Gmail connections</dt><dd>{gmail.length}</dd></div><div><dt>Latest analysis</dt><dd>{overview?.latest_job ? humanize(overview.latest_job.status) : 'None yet'}</dd></div></dl>
+          <div className="stack-actions"><button className="button button-secondary" onClick={() => onNavigate('sources')} type="button">Manage accounts & sources</button><button className="button button-ghost" onClick={() => onNavigate('protection')} type="button">What is covered<Icons.arrow /></button></div>
+        </Panel>
+        <Panel labelledBy="recent-heading">
+          <PanelHeading id="recent-heading" title="Recent analyses" action={<button className="button button-ghost" onClick={() => onNavigate('evidence')} type="button">Evidence<Icons.arrow /></button>} />
+          {jobs.length ? <ul className="job-list">{jobs.slice(0, 3).map(job => <li key={job.id}><div><strong>{sources.find(source => source.id === job.source_id)?.name ?? 'Registered source'}</strong><small>{formatDateTime(job.created_at)}</small><span>{job.imported_count} imported · {job.finding_count} findings · {job.duplicate_count} duplicates</span></div><StatusBadge status={job.status} /></li>)}</ul> : <p className="muted">No analysis has been recorded.</p>}
+        </Panel>
+      </div>
+    </div>
+
+    <Panel labelledBy="activity-heading" className="activity">
+      <PanelHeading id="activity-heading" title="Retained activity" meta="Last 7 days, UTC" />
+      {overview ? overview.activity.length ? <ActivityChart activity={overview.activity} /> : <p className="muted">No activity has been retained in the last seven days.</p> : <p className="muted">Activity appears once workspace totals load.</p>}
+    </Panel>
+    {accounts.some(account => account.delete_after) && <p className="field-help"><Icons.clock />{accounts.filter(account => account.delete_after).map(account => `${accountLabel(account)}: local trial ends ${formatDateTime(account.delete_after ?? undefined)}`).join(' · ')}</p>}
   </div>
 }

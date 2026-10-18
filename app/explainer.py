@@ -10,7 +10,10 @@ Configuration (all optional; disabled by default):
 * ``AI_SOC_EXPLAINER=ollama`` enables the adapter.
 * ``AI_SOC_OLLAMA_URL`` defaults to ``http://127.0.0.1:11434`` and must be loopback,
   so incident data never leaves the computer running SentinelSME.
-* ``AI_SOC_OLLAMA_MODEL`` defaults to ``qwen2.5:3b``.
+* ``AI_SOC_OLLAMA_MODEL`` defaults to ``qwen2.5:3b``. Ollama cloud models (a tag of
+  ``cloud`` or ending in ``-cloud``, for example ``gemma4:cloud``) are refused: a
+  signed-in local Ollama server forwards them to ollama.com, so a loopback URL alone
+  would not keep incident data on this computer.
 * ``AI_SOC_EXPLAINER_TIMEOUT`` defaults to 120 seconds (CPU inference is slow).
 """
 
@@ -78,6 +81,13 @@ class Settings:
     timeout: float
 
 
+def is_cloud_model(model: str) -> bool:
+    """True for Ollama cloud model names, which run on ollama.com rather than locally."""
+    name = model.strip().lower().partition("@")[0]  # ignore a pinned digest
+    tag = name.rpartition(":")[2] if ":" in name else ""
+    return "cloud" in tag.split("-")
+
+
 def settings() -> Settings:
     mode = os.getenv("AI_SOC_EXPLAINER", "off").strip().lower()
     url = os.getenv("AI_SOC_OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
@@ -87,7 +97,7 @@ def settings() -> Settings:
     except ValueError:
         timeout = 120.0
     host = urlparse(url).hostname or ""
-    enabled = mode == "ollama" and host in LOOPBACK_HOSTS
+    enabled = mode == "ollama" and host in LOOPBACK_HOSTS and not is_cloud_model(model)
     return Settings(enabled=enabled, url=url, model=model, timeout=max(5.0, min(timeout, 600.0)))
 
 
@@ -184,6 +194,8 @@ def generate(
     config = config or settings()
     if not config.enabled:
         raise ExplainerError("disabled")
+    if is_cloud_model(config.model):
+        raise ExplainerError("cloud_model")
     body = {
         "model": config.model,
         "stream": False,

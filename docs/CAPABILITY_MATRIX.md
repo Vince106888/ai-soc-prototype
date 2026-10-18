@@ -30,7 +30,7 @@ companion to this page.
 | Evidence | Persistent signal-to-rule-to-incident chain | Implemented | SQLAlchemy entities and detail API |
 | Evidence | Searchable retained signals including no-match records | Implemented | Tenant-scoped `/signals` page/detail; stored features only, no re-scoring |
 | Guidance | Plain-language template explanation | Implemented | Four-part explanation, per-indicator reasons with a "could be legitimate if" counterfactual, warning-sign count, advisory action catalogue |
-| Guidance | Local-model explanation (Ollama, loopback only) | Implemented; off by default | `AI_SOC_EXPLAINER=ollama`; redacted findings, validated output, template fallback; see `LOCAL_MODEL.md`. Run on the target laptop pending |
+| Guidance | Local-model explanation (Ollama, loopback only) | Implemented; off by default | `AI_SOC_EXPLAINER=ollama`; cloud model names refused; redacted findings, validated output, template fallback; see `LOCAL_MODEL.md`. Run on the target laptop pending |
 | Response | Human review and lifecycle decisions | Implemented | Dashboard/API status change with audit record |
 | Response | Password reset, grant revocation, or mailbox change | Not implemented | Recommendations are advisory only |
 | Dashboard | Overview, priority queue, incident detail | Implemented | React/Vite SPA |
