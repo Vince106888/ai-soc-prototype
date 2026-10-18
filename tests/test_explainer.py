@@ -102,6 +102,46 @@ def test_settings_are_off_by_default_and_loopback_only(monkeypatch):
     assert current.enabled and current.timeout == 120 and current.url.endswith("11434")
 
 
+@pytest.mark.parametrize(
+    ("model", "cloud"),
+    [
+        ("gemma4:cloud", True),
+        ("gpt-oss:120b-cloud", True),
+        ("Qwen3-Coder:480B-CLOUD", True),
+        ("qwen2.5:3b", False),
+        ("qwen2.5", False),
+        ("cloudy-model:7b", False),
+        ("library/cloud", False),
+        ("gpt-oss:120b-cloud@sha256:abc", True),
+        ("qwen3:cloud-preview", True),
+    ],
+)
+def test_cloud_model_names_are_recognised(model, cloud):
+    assert explainer.is_cloud_model(model) is cloud
+
+
+def test_cloud_models_never_enable_the_adapter(monkeypatch, tmp_path):
+    from app import explain
+
+    monkeypatch.setenv("AI_SOC_EXPLAINER", "ollama")
+    monkeypatch.setenv("AI_SOC_OLLAMA_URL", "http://127.0.0.1:11434")
+    monkeypatch.setenv("AI_SOC_OLLAMA_MODEL", "gemma4:cloud")
+    assert not explainer.settings().enabled
+    monkeypatch.setattr(explain, "_ollama_info", lambda config: {"reachable": True})
+    result = explain.check(1, tmp_path / "check.json")["result"]
+    assert "cloud model" in result and "qwen2.5:3b" in result
+    cloud = explainer.Settings(
+        enabled=True, url="http://127.0.0.1:11434", model="gemma4:cloud", timeout=5
+    )
+    with pytest.raises(explainer.ExplainerError, match="cloud_model"):
+        explainer.generate({}, cloud)
+    monkeypatch.setenv("AI_SOC_OLLAMA_MODEL", "qwen2.5:3b")
+    assert explainer.settings().enabled
+    remote = {"reachable": True, "model_present": True, "remote": True}
+    monkeypatch.setattr(explain, "_ollama_info", lambda config: remote)
+    assert "cloud servers" in explain.check(1, tmp_path / "check.json")["result"]
+
+
 def test_payload_is_redacted_and_structured(seeded):
     db, _, _ = seeded
     incident = _incidents(db)[0]
