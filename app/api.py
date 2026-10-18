@@ -6,33 +6,45 @@ import hmac
 import os
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import auth, explainer
 from .database import get_session
-from .entities import AuditRecord
+from .entities import AuditRecord, ScanSchedule
+from .evidence import signal_detail, signal_page
+from .gmail import configuration_status
+from .overview import dashboard_overview
 from .platform import (
     ConflictError,
     InvalidTransitionError,
     NotFoundError,
+    _load_incident,
+    add_trusted_sender,
     create_account,
     create_scan_job,
     create_source,
     get_account,
     get_scan_job,
+    get_source,
     incident_detail,
+    incident_page,
     ingest_signals,
     list_accounts,
     list_incidents,
     list_rules,
     list_scan_jobs,
     list_sources,
+    list_trusted_senders,
     mark_scan_job_failed,
+    remove_trusted_sender,
     retry_scan_job,
     run_evaluation,
+    submit_posture_check,
     transition_incident,
     update_source_status,
 )
@@ -40,23 +52,35 @@ from .platform_schemas import (
     AccountCreate,
     AccountView,
     AuditView,
+    CanonicalSignalType,
     CompatibilityScanCreate,
     EvaluationRequest,
     EvaluationResult,
     IncidentDetail,
     IncidentListItem,
+    IncidentPage,
     IncidentStatus,
     IncidentTransition,
     IngestionResult,
+    PostureCheck,
+    PostureResult,
     RuleView,
     ScanJobCreate,
     ScanJobView,
+    ScheduleUpdate,
+    ScheduleView,
     Severity,
     SignalBatch,
+    SignalDetail,
+    SignalPage,
     SourceCreate,
     SourceStatusUpdate,
     SourceView,
+    TrustedSenderCreate,
+    TrustedSenderView,
 )
+from .retention import delete_account_data
+from .scheduling import configure_schedule
 
 TENANT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$")
 
@@ -64,13 +88,21 @@ TENANT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$")
 @dataclass(frozen=True)
 class RequestContext:
     tenant_id: str
+    user_id: str | None = None
+    email: str | None = None
 
 
 def request_context(
+    request: Request,
+    db: Annotated[Session, Depends(get_session)],
     x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
     x_tenant_id: Annotated[str, Header(alias="X-Tenant-ID")] = "default",
 ) -> RequestContext:
-    """Enforce optional deployment API-key auth and validate the tenant boundary."""
+    """Google mode derives identity and tenant from the server-side session."""
+
+    if auth.required():
+        identity = auth.principal(db, request)
+        return RequestContext(identity.tenant_id, identity.user_id, identity.email)
 
     expected = os.getenv("AI_SOC_API_KEY")
     if expected and (not x_api_key or not hmac.compare_digest(x_api_key, expected)):
@@ -105,10 +137,11 @@ def capabilities() -> dict:
         "service": "SentinelSME",
         "signal_types": ["email", "forwarding", "signin", "mfa", "oauth_grant"],
         "source_types": ["controlled", "gmail", "workspace"],
-        "live_connectors": [],
+        "live_connectors": ["gmail"] if configuration_status()["configured"] else [],
+        "gmail": configuration_status(),
         "controlled_ingestion": True,
         "template_explanations": True,
-        "ai_explanations": False,
+        "ai_explanations": explainer.settings().enabled,
         "correlation_window_minutes": 30,
         "maximum_batch_size": 500,
         "privacy": {"stores_full_bodies": False, "stores_attachments": False},
@@ -119,6 +152,32 @@ def capabilities() -> dict:
 def accounts_create(payload: AccountCreate, db: DB, context: Context) -> AccountView:
     try:
         return AccountView.model_validate(create_account(db, context.tenant_id, payload))
+    except (ConflictError, NotFoundError) as exc:
+        raise _http_error(exc) from exc
+
+
+@router.get("/overview")
+def overview(db: DB, context: Context) -> dict:
+    return dashboard_overview(db, context.tenant_id)
+
+
+@router.get("/sources/{source_id}/schedule", response_model=ScheduleView | None)
+def schedule_get(source_id: str, db: DB, context: Context) -> ScheduleView | None:
+    try:
+        get_source(db, context.tenant_id, source_id)
+    except NotFoundError as exc:
+        raise _http_error(exc) from exc
+    schedule = db.get(ScanSchedule, source_id)
+    return ScheduleView.model_validate(schedule) if schedule else None
+
+
+@router.put("/sources/{source_id}/schedule", response_model=ScheduleView)
+def schedule_put(source_id: str, payload: ScheduleUpdate, db: DB, context: Context) -> ScheduleView:
+    try:
+        schedule = configure_schedule(
+            db, context.tenant_id, source_id, payload, actor=context.user_id or "console-user"
+        )
+        return ScheduleView.model_validate(schedule)
     except (ConflictError, NotFoundError) as exc:
         raise _http_error(exc) from exc
 
@@ -136,8 +195,33 @@ def accounts_get(account_id: str, db: DB, context: Context) -> AccountView:
         raise _http_error(exc) from exc
 
 
+@router.delete("/accounts/{account_id}", status_code=204)
+def accounts_delete(account_id: str, db: DB, context: Context) -> None:
+    try:
+        delete_account_data(db, context.tenant_id, account_id)
+    except NotFoundError as exc:
+        raise _http_error(exc) from exc
+
+
+@router.post("/accounts/{account_id}/posture-check", response_model=PostureResult, status_code=201)
+def posture_check(
+    account_id: str, payload: PostureCheck, db: DB, context: Context
+) -> PostureResult:
+    """Record self-reported MFA, forwarding and app-access answers as signals."""
+
+    try:
+        return submit_posture_check(db, context.tenant_id, account_id, payload)
+    except NotFoundError as exc:
+        raise _http_error(exc) from exc
+    except ConflictError as exc:
+        db.rollback()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.post("/accounts/{account_id}/sources", response_model=SourceView, status_code=201)
 def sources_create(account_id: str, payload: SourceCreate, db: DB, context: Context) -> SourceView:
+    if payload.source_type != "controlled":
+        raise HTTPException(409, "Use Google consent to create a live Gmail source.")
     try:
         return SourceView.model_validate(create_source(db, context.tenant_id, account_id, payload))
     except (ConflictError, NotFoundError) as exc:
@@ -167,7 +251,12 @@ def sources_list(db: DB, context: Context, account_id: str | None = None) -> lis
 def sources_update(
     source_id: str, payload: SourceStatusUpdate, db: DB, context: Context
 ) -> SourceView:
+    from .platform import get_source
+
     try:
+        source = get_source(db, context.tenant_id, source_id)
+        if source.source_type != "controlled":
+            raise HTTPException(409, "Use Gmail connect or disconnect to change provider consent.")
         return SourceView.model_validate(
             update_source_status(db, context.tenant_id, source_id, payload.status)
         )
@@ -253,6 +342,9 @@ def signals_ingest(
     source_id: str, payload: SignalBatch, db: DB, context: Context
 ) -> IngestionResult:
     try:
+        source = get_source(db, context.tenant_id, source_id)
+        if source.source_type != "controlled":
+            raise ConflictError("Manual ingestion requires a controlled source.")
         return ingest_signals(db, context.tenant_id, source_id, payload)
     except (ConflictError, NotFoundError) as exc:
         mark_scan_job_failed(
@@ -297,9 +389,91 @@ def incidents_list(
     )
 
 
+@router.get("/incidents/page", response_model=IncidentPage)
+def incidents_page(
+    db: DB,
+    context: Context,
+    severity: Severity | None = None,
+    status_filter: Annotated[IncidentStatus | None, Query(alias="status")] = None,
+    search: Annotated[str | None, Query(max_length=200)] = None,
+    account_id: str | None = None,
+    open_only: bool = False,
+    seen_from: datetime | None = None,
+    seen_to: datetime | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> IncidentPage:
+    def utc(value):
+        return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+    if seen_from and seen_to and utc(seen_from) > utc(seen_to):
+        raise HTTPException(422, "The start time must precede the end time.")
+    return incident_page(
+        db,
+        context.tenant_id,
+        severity=severity,
+        status=status_filter,
+        search=search,
+        account_id=account_id,
+        open_only=open_only,
+        seen_from=seen_from,
+        seen_to=seen_to,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/signals", response_model=SignalPage)
+def signals_list(
+    db: DB,
+    context: Context,
+    account_id: str | None = None,
+    source_id: str | None = None,
+    signal_type: CanonicalSignalType | None = None,
+    has_findings: bool | None = None,
+    search: Annotated[str | None, Query(max_length=200)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> SignalPage:
+    return signal_page(
+        db,
+        context.tenant_id,
+        account_id=account_id,
+        source_id=source_id,
+        signal_type=signal_type,
+        has_findings=has_findings,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/signals/{signal_id}", response_model=SignalDetail)
+def signals_get(signal_id: str, db: DB, context: Context) -> SignalDetail:
+    try:
+        return signal_detail(db, context.tenant_id, signal_id)
+    except NotFoundError as exc:
+        raise _http_error(exc) from exc
+
+
 @router.get("/incidents/{incident_id}", response_model=IncidentDetail)
 def incidents_get(incident_id: str, db: DB, context: Context) -> IncidentDetail:
     try:
+        return incident_detail(db, context.tenant_id, incident_id)
+    except NotFoundError as exc:
+        raise _http_error(exc) from exc
+
+
+@router.post("/incidents/{incident_id}/explanation", response_model=IncidentDetail)
+def incidents_explain(incident_id: str, db: DB, context: Context) -> IncidentDetail:
+    """Ask the local model to explain one incident now; the template remains on failure."""
+
+    if not explainer.settings().enabled:
+        raise HTTPException(status_code=409, detail="Local model explanations are not enabled.")
+    try:
+        incident = _load_incident(db, context.tenant_id, incident_id)
+        explainer.explain_incident(db, incident)
+        db.expire_all()
         return incident_detail(db, context.tenant_id, incident_id)
     except NotFoundError as exc:
         raise _http_error(exc) from exc
@@ -310,8 +484,40 @@ def incidents_transition(
     incident_id: str, payload: IncidentTransition, db: DB, context: Context
 ) -> IncidentDetail:
     try:
+        if context.user_id:
+            payload = payload.model_copy(update={"actor": "user:" + context.user_id})
         return transition_incident(db, context.tenant_id, incident_id, payload)
-    except (InvalidTransitionError, NotFoundError) as exc:
+    except (ConflictError, InvalidTransitionError, NotFoundError) as exc:
+        raise _http_error(exc) from exc
+
+
+@router.get("/trusted-senders", response_model=list[TrustedSenderView])
+def trusted_senders_list(db: DB, context: Context) -> list[TrustedSenderView]:
+    return [
+        TrustedSenderView.model_validate(item)
+        for item in list_trusted_senders(db, context.tenant_id)
+    ]
+
+
+@router.post("/trusted-senders", response_model=TrustedSenderView, status_code=201)
+def trusted_senders_create(
+    payload: TrustedSenderCreate, db: DB, context: Context
+) -> TrustedSenderView:
+    actor = "user:" + context.user_id if context.user_id else "console-user"
+    try:
+        return TrustedSenderView.model_validate(
+            add_trusted_sender(db, context.tenant_id, payload, actor=actor)
+        )
+    except ConflictError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.delete("/trusted-senders/{trusted_id}", status_code=204)
+def trusted_senders_delete(trusted_id: str, db: DB, context: Context) -> None:
+    actor = "user:" + context.user_id if context.user_id else "console-user"
+    try:
+        remove_trusted_sender(db, context.tenant_id, trusted_id, actor=actor)
+    except NotFoundError as exc:
         raise _http_error(exc) from exc
 
 

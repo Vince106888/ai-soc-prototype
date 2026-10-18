@@ -44,6 +44,7 @@ class Account(Base):
     provider: Mapped[str] = mapped_column(String(40), default="controlled", nullable=False)
     profile: Mapped[str] = mapped_column(String(40), default="controlled", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="active", nullable=False)
+    delete_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
@@ -93,6 +94,26 @@ class ScanJob(Base):
     source: Mapped[Source] = relationship(back_populates="scan_jobs")
 
 
+class ScanSchedule(Base):
+    """Opt-in bounded collection; no raw messages or provider credentials here."""
+
+    __tablename__ = "scan_schedules"
+    source_id: Mapped[str] = mapped_column(
+        ForeignKey("sources.id", ondelete="CASCADE"), primary_key=True
+    )
+    tenant_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    interval_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    maximum_messages: Mapped[int] = mapped_column(Integer, nullable=False)
+    recent_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    next_run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    lease_id: Mapped[str | None] = mapped_column(String(36))
+    failure_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_job_id: Mapped[str | None] = mapped_column(ForeignKey("scan_jobs.id", ondelete="SET NULL"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Signal(Base):
     __tablename__ = "signals"
     __table_args__ = (
@@ -117,6 +138,70 @@ class Signal(Base):
     findings: Mapped[list[Finding]] = relationship(back_populates="signal")
 
 
+class OAuthCredential(Base):
+    """Provider secrets are encrypted together; none are returned by the API."""
+
+    __tablename__ = "oauth_credentials"
+
+    source_id: Mapped[str] = mapped_column(
+        ForeignKey("sources.id", ondelete="CASCADE"), primary_key=True
+    )
+    tenant_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    encrypted_tokens: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class OAuthAttempt(Base):
+    """Short-lived, single-use consent state bound to the initiating browser."""
+
+    __tablename__ = "oauth_attempts"
+
+    state_digest: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    cookie_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    encrypted_verifier: Mapped[str] = mapped_column(Text, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AppUser(Base):
+    """Google sign-in identity; mailbox accounts remain separate evidence resources."""
+
+    __tablename__ = "app_users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    google_subject: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    tenant_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AppSession(Base):
+    """Only a hash of the opaque browser session is persisted."""
+
+    __tablename__ = "app_sessions"
+
+    token_digest: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("app_users.id", ondelete="CASCADE"))
+    csrf_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+
+
+class LoginAttempt(Base):
+    """Single-use browser-bound Google OIDC attempt; no provider tokens retained."""
+
+    __tablename__ = "login_attempts"
+
+    state_digest: Mapped[str] = mapped_column(String(64), primary_key=True)
+    cookie_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    encrypted_parameters: Mapped[str] = mapped_column(Text, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
+
+
 class DetectionRule(Base):
     __tablename__ = "detection_rules"
 
@@ -128,6 +213,44 @@ class DetectionRule(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     configuration: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+
+class TrustedSender(Base):
+    """Workspace-approved sender address or domain; silences content-only indicators."""
+
+    __tablename__ = "trusted_senders"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "kind", "value", name="uq_trusted_sender_value"),
+        Index("ix_trusted_senders_tenant", "tenant_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    tenant_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)  # "address" | "domain"
+    value: Mapped[str] = mapped_column(String(320), nullable=False)
+    note: Mapped[str] = mapped_column(String(200), default="", nullable=False)
+    created_by: Mapped[str] = mapped_column(String(200), default="user", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SenderHistory(Base):
+    """Earliest time a hashed sender address was seen for one monitored account.
+
+    Only an account-salted SHA-256 digest is stored, never the address itself, so
+    the table supports first-contact checks without keeping a readable contact list.
+    """
+
+    __tablename__ = "sender_history"
+    __table_args__ = (
+        UniqueConstraint("account_id", "sender_digest", name="uq_sender_history_account"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    tenant_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"))
+    sender_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    message_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
 
 class Incident(Base):

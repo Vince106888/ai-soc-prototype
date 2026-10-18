@@ -23,9 +23,13 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import Response
 
 from .api import router as platform_router
+from .auth import purge_expired
+from .auth_api import router as auth_router
 from .database import SessionLocal, migrate_schema
 from .detection import analyze_message
+from .gmail_api import router as gmail_router
 from .models import AnalysisResult, MessageInput
+from .retention import expire_trials
 
 MAX_REQUEST_BYTES = 1_000_000
 DEFAULT_ALLOWED_HOSTS = "localhost,127.0.0.1,testserver"
@@ -112,6 +116,9 @@ async def lifespan(_app: FastAPI):
     """Upgrade the configured database before accepting requests."""
 
     migrate_schema()
+    with SessionLocal() as session:
+        expire_trials(session)
+        purge_expired(session)
     yield
 
 
@@ -197,6 +204,9 @@ async def apply_api_guards(
             "Requests with a body must use application/json.",
         )
     else:
+        if request.url.path.startswith("/api/v1"):
+            with SessionLocal() as session:
+                expire_trials(session)
         response = await call_next(request)
 
     supplied_request_id = request.headers.get("x-request-id", "")
@@ -249,6 +259,8 @@ def analyze(message: MessageInput) -> AnalysisResult:
 
 
 app.include_router(platform_router)
+app.include_router(gmail_router)
+app.include_router(auth_router)
 
 
 if FRONTEND_DIST.is_dir():

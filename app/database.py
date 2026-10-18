@@ -35,7 +35,7 @@ def _database_url() -> str:
 
 def _make_engine(url: str) -> Engine:
     options = {"check_same_thread": False} if url.startswith("sqlite") else {}
-    created = create_engine(url, connect_args=options, pool_pre_ping=True)
+    created = create_engine(url, connect_args=options, pool_pre_ping=True, hide_parameters=True)
     if url.startswith("sqlite"):
 
         @event.listens_for(created, "connect")
