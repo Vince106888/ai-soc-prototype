@@ -1,0 +1,117 @@
+/*
+ * SentinelSME design tokens.
+ * Light is the default; dark is a separately tuned palette, applied when the
+ * system asks for it (unless the person chose light) or when chosen explicitly.
+ */
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --paper: #f3f6f5;
+  --surface: #ffffff;
+  --surface-2: #eef2f1;
+  --surface-3: #e4eae8;
+  --overlay: rgb(10 20 18 / 0.46);
+
+  /* Ink */
+  --ink: #13201e;
+  --ink-2: #44524f;
+  --ink-3: #5b6965;
+  --ink-inverse: #ffffff;
+
+  /* Lines */
+  --line: #dbe2e0;
+  --line-strong: #c3cdca;
+  --focus: #0b6fd1;
+
+  /* Brand */
+  --primary: #0e6b60;
+  --primary-hover: #0a564d;
+  --primary-ink: #ffffff;
+  --primary-soft: #e1f0ec;
+  --primary-text: #0b5f55;
+
+  /* Rail */
+  --rail: #0f1d1b;
+  --rail-2: #172b28;
+  --rail-ink: #c6d5d1;
+  --rail-ink-strong: #ffffff;
+  --rail-muted: #7f9590;
+  --rail-active: #1f3a36;
+
+  /* Severity: text on tint, and a solid edge colour */
+  --critical: #b3261e; --critical-tint: #fbe9e7; --critical-edge: #c62f26;
+  --high: #a8480c;     --high-tint: #fcefe3;     --high-edge: #d06a1d;
+  --medium: #7d5c00;   --medium-tint: #f9f1d8;   --medium-edge: #c79a14;
+  --low: #2c5f86;      --low-tint: #e5eff7;      --low-edge: #4a86b4;
+
+  /* Workflow state */
+  --info: #2556a8;     --info-tint: #e7eefb;
+  --warn: #8a5a00;     --warn-tint: #fbf1dc;
+  --ok: #1d6b3a;       --ok-tint: #e3f2e8;
+  --danger: #b3261e;   --danger-tint: #fbe9e7;  --danger-fill: #b3261e; --on-danger: #ffffff;
+  --badge-alert: #c62f26; --on-badge-alert: #ffffff;
+  --neutral: #55625f;  --neutral-tint: #edf0ef;
+
+  /* Chart series (validated pair) */
+  --series-signals: #14917f;
+  --series-incidents: #5b5fc7;
+
+  /* Type */
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mono: "Cascadia Mono", "Cascadia Code", ui-monospace, Consolas, "SF Mono", Menlo, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-md: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.625rem;
+  --text-2xl: 2rem;
+
+  /* Space, radius, motion */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow-pop: 0 12px 32px rgb(15 29 27 / 0.18), 0 2px 6px rgb(15 29 27 / 0.08);
+  --ease: 150ms ease;
+  --rail-width: 240px;
+  --topbar-height: 60px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --paper: #0c1413; --surface: #131d1b; --surface-2: #192522; --surface-3: #22302d; --overlay: rgb(0 0 0 / 0.6);
+    --ink: #e3ece9; --ink-2: #aebdb9; --ink-3: #8a9a96; --ink-inverse: #0c1413;
+    --line: #25332f; --line-strong: #344541; --focus: #6cb4ff;
+    --primary: #3fb8a5; --primary-hover: #5ccab8; --primary-ink: #04201c; --primary-soft: #16312d; --primary-text: #6fd0c0;
+    --rail: #091110; --rail-2: #101b19; --rail-ink: #b9c9c5; --rail-muted: #6f8580; --rail-active: #16302c;
+    --critical: #ff8a80; --critical-tint: #3a1715; --critical-edge: #ef5b50;
+    --high: #f4a467;     --high-tint: #38220f;     --high-edge: #e0802f;
+    --medium: #e6c55c;   --medium-tint: #33290c;   --medium-edge: #c9a227;
+    --low: #8cbde6;      --low-tint: #142636;      --low-edge: #5b9ccf;
+    --info: #9cbcf5; --info-tint: #17233a; --warn: #e6c55c; --warn-tint: #33290c; --ok: #7fd39b; --ok-tint: #13291b;
+    --danger: #ff8a80; --danger-tint: #3a1715; --danger-fill: #ff8a80; --on-danger: #2a0705; --badge-alert: #ff8a80; --on-badge-alert: #2a0705; --neutral: #a3b1ad; --neutral-tint: #1f2a28;
+    --series-signals: #2fa693; --series-incidents: #7b7fe6;
+    --shadow-pop: 0 14px 36px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.4);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #0c1413; --surface: #131d1b; --surface-2: #192522; --surface-3: #22302d; --overlay: rgb(0 0 0 / 0.6);
+  --ink: #e3ece9; --ink-2: #aebdb9; --ink-3: #8a9a96; --ink-inverse: #0c1413;
+  --line: #25332f; --line-strong: #344541; --focus: #6cb4ff;
+  --primary: #3fb8a5; --primary-hover: #5ccab8; --primary-ink: #04201c; --primary-soft: #16312d; --primary-text: #6fd0c0;
+  --rail: #091110; --rail-2: #101b19; --rail-ink: #b9c9c5; --rail-muted: #6f8580; --rail-active: #16302c;
+  --critical: #ff8a80; --critical-tint: #3a1715; --critical-edge: #ef5b50;
+  --high: #f4a467;     --high-tint: #38220f;     --high-edge: #e0802f;
+  --medium: #e6c55c;   --medium-tint: #33290c;   --medium-edge: #c9a227;
+  --low: #8cbde6;      --low-tint: #142636;      --low-edge: #5b9ccf;
+  --info: #9cbcf5; --info-tint: #17233a; --warn: #e6c55c; --warn-tint: #33290c; --ok: #7fd39b; --ok-tint: #13291b;
+  --danger: #ff8a80; --danger-tint: #3a1715; --danger-fill: #ff8a80; --on-danger: #2a0705; --badge-alert: #ff8a80; --on-badge-alert: #2a0705; --neutral: #a3b1ad; --neutral-tint: #1f2a28;
+  --series-signals: #2fa693; --series-incidents: #7b7fe6;
+  --shadow-pop: 0 14px 36px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.4);
+}
