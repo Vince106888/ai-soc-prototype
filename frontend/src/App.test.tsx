@@ -1,0 +1,102 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import App from './App'
+import { api } from './api'
+import type { Incident } from './types'
+
+afterEach(() => { cleanup(); vi.restoreAllMocks(); sessionStorage.clear() })
+
+const incident: Incident = { id: 'case-a', title: 'Controlled critical case', summary: 'Synthetic evidence', severity: 'critical', status: 'new', score: 0.9, account_id: 'account-a' }
+
+function mockWorkspace() {
+  vi.spyOn(api, 'accounts').mockResolvedValue([{ id: 'account-a', email: 'owner@example.test' }])
+  vi.spyOn(api, 'allSources').mockResolvedValue([])
+  vi.spyOn(api, 'scanJobs').mockResolvedValue([])
+  vi.spyOn(api, 'capabilities').mockResolvedValue({ service: 'SentinelSME', signal_types: ['email'], source_types: ['controlled'], live_connectors: [], controlled_ingestion: true, template_explanations: true, ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500, privacy: { stores_full_bodies: false, stores_attachments: false } })
+  vi.spyOn(api, 'overview').mockResolvedValue({ incidents: { active: 1, critical: 1, under_review: 0, resolved: 0, false_positive: 0 }, accounts: 1, active_sources: 0, retained_signals: 1, source_activity: {}, activity: [], latest_job: null })
+  vi.spyOn(api, 'incident').mockResolvedValue(incident)
+}
+
+describe('workspace investigation state', () => {
+  it('keeps keyboard focus inside the mobile drawer and restores it on Escape', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
+    try {
+      render(<App />)
+      const opener = screen.getByRole('button', { name: 'Open navigation' })
+      const panel = screen.getByRole('navigation').closest('aside')!
+      expect(panel).toHaveAttribute('inert')
+      fireEvent.click(opener)
+      expect(panel).not.toHaveAttribute('inert')
+      expect(screen.getByRole('button', { name: 'Overview' })).toHaveFocus()
+      screen.getByRole('button', { name: 'Settings' }).focus()
+      fireEvent.keyDown(window, { key: 'Tab' })
+      expect(screen.getByRole('button', { name: 'Overview' })).toHaveFocus()
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(panel).toHaveAttribute('inert')
+      expect(opener).toHaveFocus()
+    } finally { vi.unstubAllGlobals() }
+  })
+
+  it('traps settings dialog focus and returns it to the opener', () => {
+    render(<App />)
+    const opener = screen.getByRole('button', { name: 'API settings' })
+    opener.focus()
+    fireEvent.click(opener)
+    const dialog = within(screen.getByRole('dialog'))
+    const close = dialog.getByRole('button', { name: 'Close dialog' })
+    expect(close).toHaveFocus()
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true })
+    expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveFocus()
+    fireEvent.keyDown(window, { key: 'Tab' })
+    expect(close).toHaveFocus()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(opener).toHaveFocus()
+  })
+
+  it('reports a queue failure instead of showing a clean queue', async () => {
+    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    mockWorkspace()
+    vi.spyOn(api, 'incidentPage').mockImplementation(async (_credentials, filters) => {
+      if (filters.openOnly) throw new Error('Queue unavailable')
+      return { items: [], total: 0, offset: 0, limit: 25 }
+    })
+    render(<App />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('The review queue is unavailable')
+    expect(screen.queryByText('No open incidents in this view')).not.toBeInTheDocument()
+  })
+
+  it('keeps the overview queue independent of incident filters', async () => {
+    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    mockWorkspace()
+    const pages = vi.spyOn(api, 'incidentPage').mockImplementation(async (_credentials, filters) => ({ items: filters.status === 'resolved' ? [] : [incident], total: filters.status === 'resolved' ? 0 : 1, offset: 0, limit: 25 }))
+    render(<App />)
+    await screen.findByRole('button', { name: /Controlled critical case/ })
+    fireEvent.click(screen.getByRole('button', { name: 'All incidents' }))
+    fireEvent.change(screen.getAllByLabelText('Status')[0], { target: { value: 'resolved' } })
+    await screen.findByText('No matching incidents')
+    expect(pages.mock.calls.some(([, filters]) => filters.openOnly === true && filters.status === '')).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Overview' }))
+    await screen.findByRole('button', { name: /Controlled critical case/ })
+  })
+
+  it('discards an older workspace response after switching tenants', async () => {
+    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    mockWorkspace()
+    let release: (() => void) | undefined
+    const pending = new Promise<void>(resolve => { release = resolve })
+    vi.spyOn(api, 'incidentPage').mockImplementation(async credentials => {
+      if (credentials.tenantId === 'a') await pending
+      return { items: credentials.tenantId === 'a' ? [incident] : [], total: credentials.tenantId === 'a' ? 1 : 0, offset: 0, limit: 25 }
+    })
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    const dialog = within(screen.getByRole('dialog'))
+    fireEvent.change(dialog.getByLabelText('Workspace ID'), { target: { value: 'b' } })
+    fireEvent.click(dialog.getByRole('button', { name: 'Save & connect' }))
+    await screen.findByText('No open incidents in this view')
+    release?.()
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Controlled critical case/ })).not.toBeInTheDocument())
+    expect(sessionStorage.getItem('sentinelsme.tenantId')).toBe('b')
+  })
+})

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Incident } from './types'
-import { accountLabel, incidentTitle, prioritizeIncidents, relativeTime, scorePercent, telemetryCoverage } from './utils'
+import { accountLabel, formatDateTime, incidentTitle, prioritizeIncidents, relativeTime, scorePercent, telemetryCoverage } from './utils'
 
 const incident = (id: string, severity: Incident['severity'], detectedAt: string): Incident => ({
   id,
@@ -39,6 +39,20 @@ describe('incident presentation helpers', () => {
     expect(scorePercent(0.86)).toBe(86)
     expect(scorePercent(1)).toBe(100)
     expect(scorePercent(86)).toBe(86)
+  })
+
+  it('interprets offset-free API timestamps as UTC and respects explicit offsets', () => {
+    vi.setSystemTime(new Date('2026-09-24T12:00:00Z'))
+    try {
+      expect(relativeTime('2026-09-24T11:30:00.000')).toBe('30 minutes ago')
+      expect(formatDateTime('2026-09-24T11:30:00')).toBe(formatDateTime('2026-09-24T11:30:00Z'))
+      expect(formatDateTime('2026-09-24T14:30:00+03:00')).toBe(formatDateTime('2026-09-24T11:30:00Z'))
+      expect(relativeTime('unavailable')).toBe('unavailable')
+      expect(prioritizeIncidents([
+        incident('earlier', 'high', '2026-09-24T13:00:00+03:00'),
+        incident('later', 'high', '2026-09-24T11:30:00'),
+      ]).map(({ id }) => id)).toEqual(['later', 'earlier'])
+    } finally { vi.useRealTimers() }
   })
 
   it('uses display name, email, then ID for account labels', () => {

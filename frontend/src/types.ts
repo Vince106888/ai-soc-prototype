@@ -10,6 +10,8 @@ export interface Finding {
   evidence: string | Record<string, unknown>
   weight?: number
   observed_at?: string
+  signal_id?: string
+  confidence?: number
 }
 
 export interface AuditEntry {
@@ -25,12 +27,34 @@ export interface AuditEntry {
   timestamp?: string
 }
 
+export interface ExplanationReason {
+  rule_code: string
+  indicator: string
+  why: string
+  legitimate_if: string
+}
+
 export interface IncidentExplanation {
   source?: 'template' | 'ai'
   what_happened: string
   why_it_matters: string
   severity: string
   next_step: string
+  reasons?: ExplanationReason[]
+  warning_signs?: number | null
+  warning_level?: 'few' | 'some' | 'many' | null
+  warning_note?: string
+}
+
+export type TrustChoice = 'none' | 'address' | 'domain'
+
+export interface TrustedSender {
+  id: string
+  kind: 'address' | 'domain'
+  value: string
+  note: string
+  created_by: string
+  created_at: string
 }
 
 export interface Recommendation {
@@ -54,12 +78,15 @@ export interface Incident {
   created_at?: string
   updated_at?: string
   account_id?: string
+  correlation_key?: string
   account_name?: string
   assignee?: string
   findings?: Finding[]
   recommendations?: Array<string | Recommendation>
   recommended_actions?: string[]
   audit?: AuditEntry[]
+  signals?: Signal[]
+  confidence?: number
 }
 
 export interface Account {
@@ -69,6 +96,7 @@ export interface Account {
   status?: string
   email?: string
   last_scan_at?: string
+  delete_after?: string | null
 }
 
 export interface CapabilityProfile {
@@ -81,6 +109,7 @@ export interface CapabilityProfile {
   ai_explanations: boolean
   correlation_window_minutes: number
   maximum_batch_size: number
+  gmail?: GmailConfiguration
   privacy: {
     stores_full_bodies: boolean
     stores_attachments: boolean
@@ -112,15 +141,112 @@ export interface ScanJob {
   completed_at?: string | null
 }
 
+export interface ScanSchedule {
+  source_id: string
+  enabled: boolean
+  interval_minutes: number
+  maximum_messages: number
+  recent_days: number
+  next_run_at: string
+  failure_count: number
+  last_job_id: string | null
+  updated_at: string
+}
+
 export interface Credentials {
   apiKey: string
   tenantId: string
+  csrfToken?: string
+  userEmail?: string
+}
+
+export interface AuthSession {
+  mode: 'local' | 'google'
+  configured: boolean
+  invitation_only: boolean
+  session_hours: number
+  mailbox_consent_separate: boolean
+  user: { id: string; email: string; workspace_id: string } | null
+  csrf_token: string
+  expires_at?: string
 }
 
 export interface IncidentFilters {
+  seenFrom?: string
+  seenTo?: string
   severity: string
   status: string
   q: string
+  accountId?: string
+  offset?: number
+  openOnly?: boolean
+}
+
+export interface Signal {
+  id: string
+  signal_type: string
+  occurred_at: string
+  received_at: string
+  features: Record<string, unknown>
+  account_id?: string
+  source_id?: string
+}
+
+export interface Page<T> { items: T[]; total: number; limit: number; offset: number }
+export interface EvidenceItem {
+  id: string
+  account_id: string
+  source_id: string
+  signal_type: string
+  occurred_at: string
+  received_at: string
+  sender: string
+  subject: string
+  finding_count: number
+  incident_ids: string[]
+}
+export interface EvidenceDetail extends Signal {
+  external_id: string
+  correlation_key: string
+  findings: Finding[]
+  incidents: Incident[]
+}
+export interface DetectionRule {
+  code: string
+  signal_type: string
+  title: string
+  weight: number
+  confidence: number
+  enabled: boolean
+  configuration: Record<string, unknown>
+  version: number
+}
+
+export interface IngestionResult {
+  imported_count: number
+  duplicate_count: number
+  finding_count: number
+  items: Array<{ external_id: string; signal_id: string; duplicate: boolean; finding_count: number; incident_ids: string[] }>
+}
+
+export interface GmailConfiguration {
+  implemented: boolean
+  configured: boolean
+  message: string
+  scope: string
+  maximum_messages: number
+  signal_types: string[]
+  automatic_scanning: boolean
+}
+
+export interface Overview {
+  incidents: { active: number; critical: number; under_review: number; resolved: number; false_positive: number }
+  accounts: number
+  active_sources: number
+  retained_signals: number
+  source_activity: Record<string, { signal_count: number; last_received_at: string }>
+  activity: Array<{ day: string; signals: number; incidents: number }>
+  latest_job: { status: string; completed_at?: string; imported_count: number } | null
 }
 
 export interface ScanRequest {
@@ -138,4 +264,18 @@ export class ApiError extends Error {
     this.status = status
     this.code = code
   }
+}
+
+export interface PostureAnswers {
+  mfa: 'on' | 'off' | 'unsure'
+  forwarding: 'none' | 'approved' | 'unapproved' | 'unsure'
+  forwarding_domain?: string
+  apps: Array<{ name: string; full_mailbox_access: boolean; from_known_developer: boolean }>
+}
+
+export interface PostureResult {
+  source_id: string
+  submitted: string[]
+  skipped: string[]
+  ingestion: IngestionResult
 }

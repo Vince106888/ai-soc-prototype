@@ -12,5 +12,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    // Keep local checks reliable on the documented 8 GB development computer.
+    maxWorkers: 1,
+    pool: 'threads',
   },
 })

@@ -1,0 +1,38 @@
+.onboarding-shell { min-height: 100vh; max-width: 1240px; margin: 0 auto; padding: 36px 40px 24px; }
+.onboarding-brand { display: flex; align-items: center; gap: 12px; color: #122c31; }
+.onboarding-brand > svg { width: 32px; height: 32px; color: #087f73; }
+.onboarding-brand strong { font-size: 22px; letter-spacing: -.6px; }
+.onboarding-brand strong span { color: #087f73; }
+.onboarding-mode { margin-left: auto; border: 1px solid #c4d3d4; border-radius: 6px; padding: 7px 12px; font-size: 13px; color: #475e64; }
+.onboarding-layout { display: grid; grid-template-columns: 1.25fr 1fr; align-items: start; gap: 64px; padding: 72px 0 48px; }
+.onboarding-intro h1 { font-size: clamp(32px, 3.4vw, 44px); line-height: 1.18; letter-spacing: -1.2px; margin: 12px 0 20px; color: #132e33; }
+.onboarding-intro > p { max-width: 490px; color: #52676d; line-height: 1.65; }
+.onboarding-steps { list-style: none; margin: 32px 0; padding: 0; display: grid; gap: 24px; }
+.onboarding-steps li { display: flex; align-items: flex-start; gap: 16px; }
+.onboarding-steps li > span { flex: 0 0 32px; height: 32px; display: grid; place-items: center; background: #e3f1ed; color: #076d63; border-radius: 6px; font-weight: 600; }
+.onboarding-steps strong { color: #1e383e; }
+.onboarding-steps p { margin: 6px 0 0; line-height: 1.5; color: #52676d; font-size: 14px; }
+.onboarding-intro .onboarding-boundary { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; border-top: 1px solid #d4dfe0; padding-top: 20px; }
+.onboarding-boundary svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 3px; }
+.onboarding-entry { padding: 32px; border: 1px solid #cddbdd; border-radius: 8px; }
+.onboarding-entry .state-icon { background: #e3f1ed; color: #087367; }
+.onboarding-entry h2 { margin: 20px 0 12px; font-size: 24px; color: #17343a; }
+.onboarding-entry > p { color: #52676d; line-height: 1.6; margin: 0 0 24px; }
+.onboarding-entry .field-help { margin-top: 16px !important; font-size: 13px; }
+.onboarding-entry .onboarding-invite { border-top: 1px solid #d4dfe0; padding-top: 20px; margin-bottom: 0; font-size: 13px; }
+.onboarding-entry .form-error { margin-top: 20px; color: #9f2d2d; }
+.onboarding-advanced { margin-top: 24px; }
+.onboarding-advanced summary { min-height: 44px; color: #3e5d63; cursor: pointer; font-size: 14px; }
+.onboarding-advanced form { display: grid; gap: 12px; padding-top: 8px; }
+.onboarding-advanced input { min-height: 44px; padding: 10px 12px; border: 1px solid #9badb0; border-radius: 6px; background: white; color: #18343a; width: 100%; }
+.onboarding-footer { border-top: 1px solid #d4dfe0; padding-top: 20px; color: #52676d; font-size: 13px; line-height: 1.6; }
+.onboarding-status { min-height: 100vh; padding: 48px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; }
+.onboarding-status > svg { width: 32px; height: 32px; color: #087f73; }
+.session-account { display: flex; gap: 16px; align-items: flex-start; padding: 24px; background: #eef5f3; margin: 24px 0; border-radius: 6px; }
+.session-account strong { overflow-wrap: anywhere; }.session-account p, .session-help { color: #52676d; line-height: 1.6; }.session-account svg { flex-shrink: 0; }
+.pilot-first-step { margin-bottom: 24px; padding: 24px; display: flex; gap: 20px; justify-content: space-between; align-items: center; }
+.pilot-first-step h2 { margin: 4px 0 8px; font-size: 20px; }.pilot-first-step p { color: #52676d; line-height: 1.6; margin: 0; max-width: 600px; }
+.onboarding-shell button { min-height: 44px; }.onboarding-shell :focus-visible { outline: 3px solid #087f73; outline-offset: 3px; }
+@media (max-width: 900px) { .onboarding-shell { padding: 24px; }.onboarding-layout { gap: 32px; padding-top: 48px; }.onboarding-entry { padding: 24px; } }
+@media (max-width: 680px) { .onboarding-layout { grid-template-columns: 1fr; padding-top: 32px; gap: 28px; }.onboarding-entry { grid-row: 1; }.onboarding-brand { flex-wrap: wrap; }.onboarding-mode { font-size: 12px; padding: 6px 8px; }.onboarding-entry { padding: 24px 20px; }.onboarding-shell { padding: 24px 20px; }.onboarding-intro h1 { font-size: 32px; }.pilot-first-step { flex-direction: column; align-items: flex-start; } }
+@media (prefers-reduced-motion: reduce) { .onboarding-shell * { animation: none !important; transition: none !important; } }
