@@ -55,4 +55,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build --tag sentinelsme:test .
+      - name: Execute controlled Compose scan and worker smoke test
+        env:
+          AI_SOC_API_KEY: ci-controlled-synthetic-key
+        run: |
+          printf 'AI_SOC_API_KEY=ci-controlled-synthetic-key\nPOSTGRES_PASSWORD=ci-controlled-synthetic-password\nAI_SOC_AUTH_MODE=local\n' > .env
+          docker compose up --build --wait --wait-timeout 180
+          docker compose exec -T api python -m app.demo --tenant container-acceptance
+          docker compose exec -T api python -m app.worker --once --enable-demo --tenant container-acceptance
+          python -m pip install httpx
+          python scripts/verify_container.py
+      - if: always()
+        run: docker compose down --volumes
 
