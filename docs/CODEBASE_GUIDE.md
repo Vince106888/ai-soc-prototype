@@ -37,10 +37,12 @@ uv.lock                  Reproducible Python dependency resolution
 
 | File | Responsibility |
 |---|---|
-| `frontend/src/App.tsx` | Overview, incidents, coverage, detail, transitions, scan/settings UI |
+| `frontend/src/App.tsx` | Console shell: routing, shortcuts, workspace actions and dialogs |
+| `frontend/src/useWorkspace.ts` | Workspace data loading that discards stale tenant/filter responses |
+| `frontend/src/pages/`, `shell/`, `ui/`, `modals.tsx` | Incidents and sources pages, rail and top bar, router/theme/hooks/primitives, dialogs |
 | `frontend/src/api.ts` | Typed API client and request headers |
 | `frontend/src/types.ts` | Client-side platform contracts |
-| `frontend/src/styles.css` | Responsive visual system and interaction states |
+| `frontend/src/styles/` | Design tokens (light and dark), base, components, shell and page styles |
 | `frontend/src/utils.ts` | Display and filtering helpers |
 | `frontend/src/*.test.ts*` | API/helper/component behaviour tests |
 | `frontend/vite.config.ts` | Vite and local `/api` proxy configuration |

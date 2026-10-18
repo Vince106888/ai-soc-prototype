@@ -1,46 +1,62 @@
 # SentinelSME console design system
 
-Direction established 4 October 2026 using the installed UI/UX Pro Max skill.
-The verified Data-Dense Dashboard recommendation fits operational analytics.
-The returned marketing gateway pattern and earlier Cyberpunk recommendation do
-not fit an analyst console and were excluded.
+Direction first established 4 October 2026 (Data-Dense Dashboard). Revised
+17 October 2026: token-based light and dark themes, the evidence chain, hash
+routing and keyboard triage. The principles below are unchanged in spirit: an
+analyst console for non-specialists, evidence before verdicts, no decoration
+that implies protection the system does not provide.
 
 ## Visual direction
 
-Use a restrained dark navigation rail, neutral light workspace, clear ink text
-and a deep teal primary action. Severity colours identify priority; they never
-imply a source is protecting mail. Avoid gradients, glowing shields, decorative
-score rings, giant empty cards and repeated explanatory blocks.
+A restrained dark rail (`--rail #0f1d1b`), a cool neutral workspace
+(`--paper #f3f6f5`, `--surface #ffffff`), green-black ink (`--ink #13201e`) and
+one deep teal action colour (`--primary #0e6b60`). Dark mode is a separately
+tuned palette, not an inversion. Severity colours (critical, high, medium,
+low) each have a text, tint and edge value and always appear with a word.
+Avoid gradients, glowing shields, score rings, identical card grids and
+all-caps eyebrow labels.
 
-Typography: locally available Segoe UI/system sans, 16px base, 14px data text,
-13px secondary labels, 32px page headings. Monospace is reserved for rule codes
-and technical identifiers. No remote font dependency or third-party assets.
+**Signature element: the evidence chain.** Every incident shows five linked
+steps (observed, matched, priority, explained by, decision) in one strip. This
+is the one bold element; everything around it stays quiet. The welcome screen
+introduces the same chain so the idea is learned before the console opens.
 
-Spacing follows 4/8px increments. Use 24px page gutters, 20px panel padding,
-8px component radii, visible borders and little or no shadow. Tables and split
-workspaces should expose useful evidence without forcing a page-length read.
+Typography: Segoe UI Variable (Display for headings, Text for body) with
+system fallbacks; no remote fonts. Scale 12 / 13 / 14 / 16 / 20 / 26 / 32 px.
+Numbers that are compared (scores, counts) use tabular figures. Monospace
+(Cascadia Mono) only for rule codes and identifiers. Sentence case for every
+label, including signal types (MFA, Sign-in, OAuth grant).
+
+Spacing follows 4/8 px steps; 32 px page gutters on desktop, 16 px on phones.
+Radii: 6 px controls inside groups, 8 px controls, 12 px panels. Borders do the
+structural work; shadows only on floating layers (dialogs, menus, toasts).
 
 ## Workflow structure
 
-- Overview: explicit collection state, urgent review queue, retained activity,
-  operational counts and a useful next step.
-- Incidents: compact selectable queue and tabbed overview/evidence/activity
-  detail; priority is a deterministic value, never an attack probability.
-- Evidence: filters, compact results, finding summary before detailed metadata.
-- Email analysis: selected message and Gmail sample are separate task modes.
-- Protection coverage: capability boundaries and actual telemetry, including
-  unavailable products; no decorative enable switches.
-- Detection catalogue: compact rows, accessible disclosure for matcher details.
+- Overview: collection notice, a single four-figure ledger (open, critical,
+  under review, retained signals), "Needs your attention" with an open-queue
+  severity mix, collection facts, recent analyses, seven-day activity chart
+  with a table alternative.
+- Incidents: segmented severity filter, status select, "More filters"
+  (account, date range); queue ordered by severity, score, recency; detail
+  with the evidence chain, Overview / Evidence / Activity tabs and a decision
+  panel beside them on wide screens.
+- Evidence: filters, compact list, inspector with the detection outcome first.
+- Email analysis: selected message and Gmail sample as two explicit modes.
+- Accounts & sources: accounts with their sources, engine capabilities,
+  analysis history as a table.
+- Protection coverage: one list, each area marked present or missing, with
+  email platforms and the self-reported account check below.
+- Detection rules: tabular catalogue with disclosure for matcher details,
+  trusted senders below.
 
 ## Interaction and accessibility
 
-Controls have visible labels, 44px touch areas, visible keyboard focus, useful
-pressed/disabled states and 150ms colour transitions. Dialog focus stays inside
-the dialog and returns to its opener. Mobile navigation is labelled and exposes
-expanded state. Sticky headers must not obscure focused controls. All meaningful
-state is expressed in words as well as colour. Honour reduced motion.
-
-Charts include a text table alternative. Retained counts are not scanned-mail
-coverage percentages. Missing telemetry and provider failures remain explicit.
-Short identifiers are displayed with access to the full value; long addresses
-and subjects wrap. Check 375px, 768px, 1024px and desktop widths, including zoom.
+Every view has a URL (`#/incidents/<id>` and so on). Keyboard: `/` search,
+`j`/`k` queue, `g` + letter to navigate, `?` for the list; shortcuts never fire
+while typing or with a dialog open. Controls have visible labels, 40-44 px
+targets, a visible 2 px focus ring and 150 ms colour transitions. Dialogs and
+the mobile drawer trap focus and return it to the opener. Charts have a legend,
+per-day hover and focus tooltips and a table view; the two chart series colours
+pass the colour-vision checks in both themes. Reduced motion and forced-colours
+modes are honoured. Check 390, 768, 1080 and 1440 px widths in both themes.
