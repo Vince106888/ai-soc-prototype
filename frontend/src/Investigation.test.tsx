@@ -14,7 +14,7 @@ it('navigates incident tabs with the keyboard and exposes supplied account evide
   await user.keyboard('{ArrowRight}')
   expect(screen.getByRole('tab', { name: /Evidence/ })).toHaveFocus()
   expect(screen.getByRole('tabpanel')).toHaveTextContent('Source observations')
-  fireEvent.click(screen.getByText('Mfa'))
+  fireEvent.click(screen.getByText('MFA'))
   expect(screen.getByText(/method count/i)).toBeVisible()
   expect(screen.getByText('No', { exact: true })).toBeVisible()
   await user.click(screen.getByRole('tab', { name: 'Activity' }))

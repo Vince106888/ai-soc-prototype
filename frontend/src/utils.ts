@@ -17,6 +17,9 @@ export function prioritizeIncidents(incidents: Incident[]): Incident[] {
   return [...incidents].sort((a, b) => {
     const severityDifference = severityOrder[b.severity] - severityOrder[a.severity]
     if (severityDifference) return severityDifference
+    // Within a severity band the deterministic score decides; recency breaks ties.
+    const scoreDifference = (scorePercent(b.score) ?? -1) - (scorePercent(a.score) ?? -1)
+    if (scoreDifference) return scoreDifference
     const aTime = parseApiTime(a.detected_at ?? a.last_seen_at ?? a.created_at ?? '') || 0
     const bTime = parseApiTime(b.detected_at ?? b.last_seen_at ?? b.created_at ?? '') || 0
     return bTime - aTime
@@ -27,8 +30,13 @@ export function incidentTitle(incident: Incident): string {
   return incident.title?.trim() || incident.summary?.trim() || `Incident ${incident.id}`
 }
 
+const labels: Record<string, string> = { mfa: 'MFA', signin: 'Sign-in', oauth_grant: 'OAuth grant', false_positive: 'False positive', under_review: 'Under review', spf: 'SPF', dkim: 'DKIM', dmarc: 'DMARC' }
+
 export function humanize(value: string): string {
-  return value.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase())
+  if (labels[value]) return labels[value]
+  // Sentence case reads more calmly than Title Case in dense tables.
+  const words = value.replaceAll('_', ' ').trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 export function scorePercent(score?: number): number | undefined {

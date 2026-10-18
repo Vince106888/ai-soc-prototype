@@ -1,493 +1,298 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api'
 import { Icons } from './icons'
 import { type EmailDraft } from './EmailAnalysis'
 import { EmailWorkspace } from './EmailWorkspace'
+import { EvidenceWorkspace } from './EvidenceWorkspace'
 import { OverviewPanel } from './OverviewPanel'
-import { EvidenceWorkspace, Pagination } from './EvidenceWorkspace'
-import { RuleCatalogue } from './RuleCatalogue'
-import { TrustedSenders } from './TrustedSenders'
 import { PostureCheck } from './PostureCheck'
 import { ProtectionCoverage } from './ProtectionCoverage'
-import { IncidentDetail } from './IncidentDetail'
-import type { AuthSession, Overview } from './types'
-import type { Account, CapabilityProfile, Credentials, Incident, IncidentFilters, IncidentStatus, ScanJob, Severity, SignalType, Source, TrustChoice } from './types'
-import { accountLabel, formatDateTime, humanize, incidentTitle, prioritizeIncidents, relativeTime, scorePercent, telemetryCoverage } from './utils'
+import { RuleCatalogue } from './RuleCatalogue'
+import { TrustedSenders } from './TrustedSenders'
+import { AddSourceModal, DeleteAccountModal, SessionModal, SettingsModal, ShortcutsModal, type SourceDraft } from './modals'
+import { IncidentsPage } from './pages/IncidentsPage'
+import { SourcesPage } from './pages/SourcesPage'
+import { Sidebar } from './shell/Sidebar'
+import { Topbar } from './shell/Topbar'
+import type { Account, AuthSession, Credentials, Incident, IncidentFilters, IncidentStatus, Source, TrustChoice } from './types'
+import { useFocusTrap, useMediaQuery, useRequest } from './ui/hooks'
+import { Notice } from './ui/primitives'
+import { useRoute, type Section } from './ui/router'
+import { useWorkspace } from './useWorkspace'
+import { telemetryCoverage } from './utils'
 
 const KEY_STORAGE = 'sentinelsme.apiKey'
 const TENANT_STORAGE = 'sentinelsme.tenantId'
-const statuses: IncidentStatus[] = ['new', 'under_review', 'resolved', 'false_positive']
-const severities: Severity[] = ['critical', 'high', 'medium', 'low']
-const signalTypes: SignalType[] = ['email', 'forwarding', 'signin', 'mfa', 'oauth_grant']
+const NO_FILTERS: IncidentFilters = { severity: '', status: '', q: '' }
 
-function readKey() {
-  try {
-    return sessionStorage.getItem(KEY_STORAGE) ?? ''
-  } catch {
-    return ''
-  }
+function readSession(key: string) {
+  try { return sessionStorage.getItem(key) ?? '' } catch { return '' }
 }
 
-function readTenant() {
-  try {
-    return sessionStorage.getItem(TENANT_STORAGE) ?? ''
-  } catch {
-    return ''
-  }
+type Toast = { message: string; tone: 'success' | 'error' | 'info' }
+
+/** Read and strip a Google consent callback before the first render, so the route is right immediately. */
+function consumeGmailCallback(): Toast | null {
+  const callback = new URLSearchParams(window.location.search).get('gmail')
+  if (!callback) return null
+  window.history.replaceState(null, '', `${window.location.pathname}#/analyse`)
+  return callback === 'connected' ? { message: 'Gmail connected with read-only consent.', tone: 'success' }
+    : callback === 'cancelled' ? { message: 'Google consent was cancelled.', tone: 'info' }
+      : { message: 'Google consent failed or expired. Check setup and try again.', tone: 'error' }
 }
 
-function capabilityRows(profile: CapabilityProfile | null) {
-  if (!profile) return []
-  const signalRows = profile.signal_types.map((signal) => ({
-    id: `signal-${signal}`,
-    name: `${humanize(signal)} detection`,
-    description: `Analyzes ${humanize(signal).toLowerCase()} security signals.`,
-    enabled: true,
-  }))
-  return [
-    ...signalRows,
-    { id: 'controlled-ingestion', name: 'Controlled ingestion', description: `Up to ${profile.maximum_batch_size} signals per batch.`, enabled: profile.controlled_ingestion },
-    { id: 'template-explanations', name: 'Template explanations', description: 'Deterministic, auditable incident context.', enabled: profile.template_explanations },
-    { id: 'ai-explanations', name: 'Local-model explanations', description: 'Optional plain-language context from a model on this computer; template fallback.', enabled: profile.ai_explanations },
-  ]
-}
-
-function SeverityBadge({ severity }: { severity: Severity }) {
-  return <span className={`badge severity severity-${severity}`}><span />{severity}</span>
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge status status-${status.toLowerCase()}`}>{humanize(status)}</span>
-}
-
-function Panel({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`panel ${className}`}>{children}</section>
-}
-
-function LoadingRows({ count = 3 }: { count?: number }) {
-  return <div aria-label="Loading" className="loading-list" role="status">{Array.from({ length: count }, (_, index) => <div className="skeleton-row" key={index}><span /><span /><span /></div>)}</div>
-}
-
-function ErrorState({ message, retry }: { message: string; retry: () => void }) {
-  return <div className="state-card" role="alert"><span className="state-icon error-icon"><Icons.alert /></span><h3>We couldn’t load this view</h3><p>{message}</p><button className="button button-secondary" onClick={retry}><Icons.refresh />Try again</button></div>
-}
-
-function EmptyState({ filtered }: { filtered?: boolean }) {
-  return <div className="state-card"><span className="state-icon"><Icons.shield /></span><h3>{filtered ? 'No matching incidents' : 'Your queue is clear'}</h3><p>{filtered ? 'Try broadening your filters or changing the search term.' : 'No incident matches this view. Analyse an email to collect evidence; an empty queue alone does not establish safety.'}</p></div>
-}
-
-function Modal({ title, description, onClose, children }: { title: string; description?: string; onClose: () => void; children: ReactNode }) {
-  const closeButton = useRef<HTMLButtonElement>(null)
-  const dialog = useRef<HTMLElement>(null)
-  const close = useRef(onClose)
-  close.current = onClose
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null
-    closeButton.current?.focus()
-    const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close.current()
-      if (event.key !== 'Tab') return
-      const controls = dialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]')
-      if (!controls?.length) return
-      const first = controls[0], last = controls[controls.length - 1]
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
-    }
-    window.addEventListener('keydown', handler)
-    return () => { window.removeEventListener('keydown', handler); if (opener?.isConnected) opener.focus() }
-  }, [])
-  return <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section ref={dialog} aria-describedby={description ? 'modal-description' : undefined} aria-labelledby="modal-title" aria-modal="true" className="modal" role="dialog"><header><div><p className="eyebrow">SentinelSME</p><h2 id="modal-title">{title}</h2>{description && <p id="modal-description">{description}</p>}</div><button aria-label="Close dialog" className="icon-button" onClick={onClose} ref={closeButton}><Icons.close /></button></header>{children}</section></div>
-}
-
-function IncidentRow({ incident, onSelect, selected = false }: { incident: Incident; onSelect: () => void; selected?: boolean }) {
-  const time = incident.detected_at ?? incident.last_seen_at ?? incident.created_at ?? incident.updated_at
-  const explanation = typeof incident.explanation === 'string' ? incident.explanation : incident.explanation?.what_happened
-  const displayedScore = scorePercent(incident.score)
-  return <button aria-current={selected ? 'true' : undefined} className={`incident-row ${selected ? 'is-selected' : ''}`} onClick={onSelect}><span className={`severity-line severity-bg-${incident.severity}`} /><span className="incident-main"><span className="incident-topline"><SeverityBadge severity={incident.severity} /><StatusBadge status={incident.status} /></span><strong>{incidentTitle(incident)}</strong><span className="incident-summary">{incident.summary || explanation || 'Security activity requires review.'}</span><span className="incident-meta"><span>{incident.source || incident.account_name || 'Sentinel engine'}</span><span>·</span><span>{relativeTime(time)}</span></span></span>{displayedScore !== undefined && <span className="risk-score"><strong>{displayedScore}</strong><small>priority</small></span>}<Icons.arrow className="row-arrow" /></button>
-}
-
-function SettingsModal({ currentTenant, currentKey, onClose, onSave, onClear }: { currentTenant: string; currentKey: string; onClose: () => void; onSave: (credentials: Credentials) => void; onClear: () => void }) {
-  const [key, setKey] = useState(currentKey)
-  const [tenantId, setTenantId] = useState(currentTenant)
-  const connected = Boolean(currentTenant)
-  const hasKey = Boolean(currentKey)
-  return <Modal description="Manage the workspace and credential used to authenticate API requests." onClose={onClose} title="API connection"><form className="modal-form" onSubmit={(event) => { event.preventDefault(); if (tenantId.trim()) onSave({ apiKey: key.trim(), tenantId: tenantId.trim() }) }}><div className={`connection-status ${connected ? 'connected' : ''}`}><span /><div><strong>{connected ? hasKey ? 'API key configured' : 'Local workspace connected' : 'No workspace configured'}</strong><p>{connected ? `Requests are scoped to ${currentTenant}.` : 'Choose a workspace to open the console.'}</p></div></div><label htmlFor="settings-tenant">Workspace ID</label><input autoComplete="organization" id="settings-tenant" onChange={(event) => setTenantId(event.target.value)} placeholder="Your tenant ID" value={tenantId} /><label htmlFor="settings-key">API key <span>(optional in local mode)</span></label><input autoComplete="off" id="settings-key" onChange={(event) => setKey(event.target.value)} placeholder="Deployment API key" type="password" value={key} /><p className="field-help"><Icons.lock /> Credentials stay in session storage only—never local storage.</p><footer className="modal-actions">{connected && <button className="button button-danger" onClick={onClear} type="button">Disconnect</button>}<span /><button className="button button-secondary" onClick={onClose} type="button">Cancel</button><button className="button button-primary" disabled={!tenantId.trim()} type="submit">Save & connect</button></footer></form></Modal>
-}
-
-interface SourceDraft {
-  accountId?: string
-  email?: string
-  displayName?: string
-  name: string
-  externalId: string
-  capabilities: SignalType[]
-}
-
-function AddSourceModal({ accounts, profile, onClose, onCreate }: { accounts: Account[]; profile: CapabilityProfile | null; onClose: () => void; onCreate: (draft: SourceDraft) => Promise<void> }) {
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '__new__')
-  const [email, setEmail] = useState('')
-  const [displayName, setDisplayName] = useState('')
-  const [name, setName] = useState('Controlled signal source')
-  const [externalId, setExternalId] = useState('')
-  const supported = signalTypes.filter((item) => profile?.signal_types.includes(item) ?? true)
-  const [selected, setSelected] = useState<SignalType[]>(supported)
-  const [confirmed, setConfirmed] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [formError, setFormError] = useState('')
-  const creatingAccount = accountId === '__new__'
-  const valid = Boolean(name.trim() && externalId.trim() && selected.length && confirmed && (!creatingAccount || email.trim()))
-  const toggle = (capability: SignalType) => setSelected((current) => current.includes(capability) ? current.filter((item) => item !== capability) : [...current, capability])
-  return <Modal description="Register a minimal, authorized source for controlled ingestion. Use Email analysis for the separate Gmail consent flow." onClose={onClose} title="Add a controlled source"><form className="modal-form" onSubmit={(event) => { event.preventDefault(); if (!valid) return; setBusy(true); setFormError(''); void onCreate({ accountId: creatingAccount ? undefined : accountId, email: email.trim(), displayName: displayName.trim(), name: name.trim(), externalId: externalId.trim(), capabilities: selected }).then(onClose).catch((reason: unknown) => setFormError(reason instanceof Error ? reason.message : 'Could not add the source.')).finally(() => setBusy(false)) }}>
-    <div className="scope-note"><Icons.shield /><div><strong>Controlled data only</strong><p>This records source metadata and accepted signal types. It does not authorize or create a live mailbox connection.</p></div></div>
-    <label htmlFor="source-account">Protected account</label><select id="source-account" onChange={(event) => setAccountId(event.target.value)} value={accountId}>{accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)}</option>)}<option value="__new__">Create a new account</option></select>
-    {creatingAccount && <div className="form-grid"><label htmlFor="account-name">Display name <span>(optional)</span><input id="account-name" onChange={(event) => setDisplayName(event.target.value)} placeholder="Finance team" value={displayName} /></label><label htmlFor="account-email">Account email<input id="account-email" onChange={(event) => setEmail(event.target.value)} placeholder="security@example.test" required type="email" value={email} /></label></div>}
-    <div className="form-grid"><label htmlFor="source-name">Source name<input id="source-name" onChange={(event) => setName(event.target.value)} required value={name} /></label><label htmlFor="source-external-id">External ID<input id="source-external-id" onChange={(event) => setExternalId(event.target.value)} placeholder="controlled-demo-01" required value={externalId} /></label></div>
-    <fieldset className="capability-picker"><legend>Accepted signal types</legend>{supported.map((capability) => <label className="capability-check" key={capability}><input checked={selected.includes(capability)} onChange={() => toggle(capability)} type="checkbox" /><span><strong>{humanize(capability)}</strong><small>Normalized metadata only</small></span></label>)}</fieldset>
-    <label className="check-field"><input checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} type="checkbox" /><span>I confirm this source contains only synthetic, controlled, or explicitly authorized data.</span></label>
-    {formError && <p className="form-error" role="alert">{formError}</p>}
-    <footer className="modal-actions"><span /><button className="button button-secondary" onClick={onClose} type="button">Cancel</button><button className="button button-primary" disabled={!valid || busy} type="submit">{busy ? 'Adding…' : 'Add source'}</button></footer>
-  </form></Modal>
-}
-
-function SessionModal({ email, hours, onClose, onSignOut }: { email: string; hours: number; onClose: () => void; onSignOut: () => Promise<void> }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  return <Modal title="Your account" description="Your workspace is assigned to your Google identity." onClose={onClose}>
-    <div className="session-account"><Icons.lock /><div><strong>{email}</strong><p>Invited pilot · session lasts up to {hours} hours</p></div></div>
-    <p className="session-help">Signing out closes this app session. To revoke Gmail access or delete collected evidence, use Accounts &amp; sources.</p>
-    {error && <p className="form-error" role="alert">{error}</p>}
-    <footer className="modal-actions"><button className="button button-secondary" onClick={onClose}>Close</button><button className="button button-primary" disabled={busy} onClick={() => { setBusy(true); setError(''); void onSignOut().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Could not sign out.')).finally(() => setBusy(false)) }}>{busy ? 'Signing out…' : 'Sign out'}</button></footer>
-  </Modal>
+function isTyping(target: EventTarget | null) {
+  const element = target as HTMLElement | null
+  return Boolean(element && (element.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName)))
 }
 
 export default function App({ session, onSignOut, onLocalDisconnect }: { session?: AuthSession; onSignOut?: () => Promise<void>; onLocalDisconnect?: () => void }) {
-  const [apiKey, setApiKey] = useState(() => session?.user ? '' : readKey())
-  const [tenantId, setTenantId] = useState(() => session?.user?.workspace_id ?? readTenant())
-  const [section, setSection] = useState<'overview' | 'incidents' | 'coverage' | 'analysis' | 'evidence' | 'rules' | 'protection'>('overview')
-  const [overview, setOverview] = useState<Overview | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<Account | null>(null)
-  const [filters, setFilters] = useState<IncidentFilters>({ severity: '', status: '', q: '' })
-  const [incidents, setIncidents] = useState<Incident[]>([])
-  const [incidentTotal, setIncidentTotal] = useState(0)
-  const [priorityIncidents, setPriorityIncidents] = useState<Incident[]>([])
-  const [priorityError, setPriorityError] = useState('')
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [capabilities, setCapabilities] = useState<CapabilityProfile | null>(null)
-  const [sources, setSources] = useState<Source[]>([])
-  const [scanJobs, setScanJobs] = useState<ScanJob[]>([])
-  const [selectedId, setSelectedId] = useState<string>('')
-  const [detail, setDetail] = useState<Incident | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [detailLoading, setDetailLoading] = useState(false)
-  const [detailError, setDetailError] = useState('')
-  const [error, setError] = useState('')
-  const [supportError, setSupportError] = useState('')
-  const [statusBusy, setStatusBusy] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [sourceOpen, setSourceOpen] = useState(false)
-  const [operationBusy, setOperationBusy] = useState('')
+  const [initialToast] = useState(consumeGmailCallback)
+  const [apiKey, setApiKey] = useState(() => session?.user ? '' : readSession(KEY_STORAGE))
+  const [tenantId, setTenantId] = useState(() => session?.user?.workspace_id ?? readSession(TENANT_STORAGE))
+  const [route, navigateRoute] = useRoute()
+  const section = route.section
+  const [filters, setFilters] = useState<IncidentFilters>(NO_FILTERS)
+  const credentials = useMemo<Credentials>(() => ({ apiKey, tenantId, ...(session?.user ? { csrfToken: session.csrf_token, userEmail: session.user.email } : {}) }), [apiKey, tenantId, session])
+  const workspace = useWorkspace(credentials, filters)
+  const data = workspace.data
+  const accounts = useMemo(() => data?.accounts ?? [], [data])
+  const sources = useMemo(() => data?.sources ?? [], [data])
+  const incidents = useMemo(() => data?.incidents ?? [], [data])
+  const capabilities = data?.capabilities ?? null
+  const telemetry = useMemo(() => telemetryCoverage(sources, capabilities), [sources, capabilities])
+
+  const compactNavigation = useMediaQuery('(max-width: 900px)')
+  const compactSplit = useMediaQuery('(max-width: 1080px)')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [compactNavigation, setCompactNavigation] = useState(() => window.matchMedia?.('(max-width: 900px)').matches ?? false)
-  const navigationPanel = useRef<HTMLElement>(null)
-  const navigationButton = useRef<HTMLButtonElement>(null)
-  const [toast, setToast] = useState('')
-  const credentials = useMemo(() => ({ apiKey, tenantId, ...(session?.user ? { csrfToken: session.csrf_token, userEmail: session.user.email } : {}) }), [apiKey, tenantId, session])
-  const activeCredentials = useRef(credentials)
+  const [menuLayout, setMenuLayout] = useState(compactNavigation)
+  if (menuLayout !== compactNavigation) { setMenuLayout(compactNavigation); setMenuOpen(false) }
+  const drawerOpen = compactNavigation && menuOpen
+  const sidebar = useRef<HTMLElement>(null)
+  const menuButton = useRef<HTMLButtonElement>(null)
+  const searchInput = useRef<HTMLInputElement>(null)
+  useFocusTrap(sidebar, drawerOpen, () => setMenuOpen(false), undefined, menuButton)
 
-  useEffect(() => {
-    const query = window.matchMedia?.('(max-width: 900px)')
-    if (!query) return
-    const update = () => { setCompactNavigation(query.matches); if (!query.matches) setMenuOpen(false) }
-    query.addEventListener('change', update)
-    return () => query.removeEventListener('change', update)
-  }, [])
+  const [dialog, setDialog] = useState<'' | 'settings' | 'source' | 'shortcuts'>('')
+  const [deleteTarget, setDeleteTarget] = useState<Account | null>(null)
+  const [operationBusy, setOperationBusy] = useState('')
+  const [statusBusy, setStatusBusy] = useState(false)
+  const [explainBusy, setExplainBusy] = useState(false)
+  const [toast, setToast] = useState<Toast | null>(initialToast)
+  const gmailCallback = initialToast !== null
+  const notify = useCallback((message: string, tone: Toast['tone'] = 'success') => setToast({ message, tone }), [])
 
-  useEffect(() => {
-    if (!compactNavigation || !menuOpen) return
-    const opener = navigationButton.current
-    const controls = navigationPanel.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
-    controls?.[0]?.focus()
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); setMenuOpen(false) }
-      if (event.key !== 'Tab' || !controls?.length) return
-      const first = controls[0], last = controls[controls.length - 1]
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => { window.removeEventListener('keydown', handleKey); opener?.focus() }
-  }, [compactNavigation, menuOpen])
+  // Incident selection lives in the URL; on wide screens the top case is shown by default.
+  const selectedId = route.section === 'incidents' ? route.id ?? (compactSplit ? '' : incidents[0]?.id ?? '') : ''
+  const [detailRevision, setDetailRevision] = useState(0)
+  const [updated, setUpdated] = useState<{ incident: Incident; revision: number } | null>(null)
+  const detailKey = tenantId && selectedId ? JSON.stringify([tenantId, apiKey, selectedId, detailRevision]) : null
+  const detailRequest = useRequest(detailKey, signal => api.incident(credentials, selectedId, signal), 'Incident evidence is unavailable.')
+  const fetchedDetail = detailRequest.data ?? (detailRequest.previous?.id === selectedId ? detailRequest.previous : undefined)
+  const detail = updated && updated.incident.id === selectedId && (updated.revision === detailRevision || !detailRequest.data) ? updated.incident : fetchedDetail ?? null
+  /** Reload workspace data and the open case together. */
+  const refreshAll = useCallback(async () => { await workspace.refresh(); setDetailRevision(value => value + 1) }, [workspace])
 
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    if (!tenantId) return
-    setLoading(true)
-    setError('')
-    setSupportError('')
-    const [incidentResult, accountResult, capabilityResult, scanResult, overviewResult, priorityResult, sourceResult] = await Promise.allSettled([
-      api.incidentPage(credentials, filters, signal),
-      api.accounts(credentials, signal),
-      api.capabilities(credentials, signal),
-      api.scanJobs(credentials, signal),
-      api.overview(credentials, signal),
-      api.incidentPage(credentials, { severity: '', status: '', q: '', openOnly: true }, signal),
-      api.allSources(credentials, signal),
-    ])
-    if (signal?.aborted || activeCredentials.current.tenantId !== credentials.tenantId || activeCredentials.current.apiKey !== credentials.apiKey) return
-    if (incidentResult.status === 'fulfilled') {
-      const sorted = prioritizeIncidents(incidentResult.value.items)
-      setIncidents(sorted)
-      setIncidentTotal(incidentResult.value.total)
-      setSelectedId((current) => current || (sorted[0]?.id ?? ''))
-    } else if (incidentResult.reason?.name !== 'AbortError') {
-      setError(incidentResult.reason instanceof Error ? incidentResult.reason.message : 'Unable to load incidents.')
-    }
-    if (accountResult.status === 'fulfilled') {
-      setAccounts(accountResult.value)
-    }
-    else if (accountResult.reason?.name !== 'AbortError') setSupportError('Some account coverage data is unavailable.')
-    if (sourceResult.status === 'fulfilled') setSources(sourceResult.value)
-    else setSupportError('Source coverage is unavailable.')
-    if (priorityResult.status === 'fulfilled') { setPriorityIncidents(priorityResult.value.items); setPriorityError('') }
-    else { setPriorityIncidents([]); setPriorityError('The review queue is unavailable. Refresh to try again.'); setSupportError('The review queue is unavailable.') }
-    if (capabilityResult.status === 'fulfilled') setCapabilities(capabilityResult.value)
-    else if (capabilityResult.reason?.name !== 'AbortError') setSupportError('Some account and capability data is unavailable.')
-    if (scanResult.status === 'fulfilled') setScanJobs(scanResult.value)
-    else if (scanResult.reason?.name !== 'AbortError') setSupportError('Some source or scan-history data is unavailable.')
-    if (overviewResult.status === 'fulfilled') setOverview(overviewResult.value)
-    else if (overviewResult.reason?.name !== 'AbortError') { setOverview(null); setSupportError('Workspace totals are unavailable. Try refreshing.') }
-    if (!signal?.aborted) setLoading(false)
-  }, [credentials, filters, tenantId])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    void fetchData(controller.signal)
-    return () => controller.abort()
-  }, [fetchData])
-
-  useEffect(() => {
-    if (!tenantId || !selectedId) { setDetail(null); setDetailLoading(false); setDetailError(''); return }
-    const controller = new AbortController()
-    setDetailLoading(true)
-    setDetailError('')
-    api.incident(credentials, selectedId, controller.signal)
-      .then(result => { if (!controller.signal.aborted) setDetail(result) })
-      .catch((reason: unknown) => {
-        if (reason instanceof DOMException && reason.name === 'AbortError') return
-        setDetail(null)
-        setDetailError(reason instanceof Error ? reason.message : 'Incident evidence is unavailable.')
-      })
-      .finally(() => { if (!controller.signal.aborted) setDetailLoading(false) })
-    return () => controller.abort()
-  }, [credentials, selectedId, incidents, tenantId])
+  const go = useCallback((next: Section, id?: string) => {
+    if (next === 'overview' || (next === 'incidents' && !id)) setFilters(NO_FILTERS)
+    navigateRoute({ section: next, id })
+    setMenuOpen(false)
+    window.scrollTo({ top: 0 })
+  }, [navigateRoute])
 
   useEffect(() => {
     if (!toast) return
-    const timer = window.setTimeout(() => setToast(''), 4500)
+    const timer = window.setTimeout(() => setToast(null), toast.tone === 'error' ? 8000 : 4500)
     return () => window.clearTimeout(timer)
   }, [toast])
 
+  // Keyboard shortcuts. Read the latest values through a ref so the listener is attached once.
+  const shortcutState = useRef({ section, incidents, selectedId, dialog, go, drawerOpen })
+  useEffect(() => { shortcutState.current = { section, incidents, selectedId, dialog, go, drawerOpen } })
   useEffect(() => {
-    const callback = new URLSearchParams(window.location.search).get('gmail')
-    if (!callback) return
-    setSection('analysis')
-    setToast(callback === 'connected' ? 'Gmail connected with read-only consent.' : callback === 'cancelled' ? 'Google consent was cancelled.' : 'Google consent failed or expired. Check setup and try again.')
-    window.history.replaceState(null, '', window.location.pathname)
-  }, [])
-
-  const connect = (nextCredentials: Credentials) => {
-    if (nextCredentials.apiKey) sessionStorage.setItem(KEY_STORAGE, nextCredentials.apiKey)
-    else sessionStorage.removeItem(KEY_STORAGE)
-    sessionStorage.setItem(TENANT_STORAGE, nextCredentials.tenantId)
-    setApiKey(nextCredentials.apiKey)
-    setTenantId(nextCredentials.tenantId)
-    activeCredentials.current = nextCredentials
-    if (nextCredentials.tenantId !== tenantId || nextCredentials.apiKey !== apiKey) {
-      setSelectedId('')
-      setDetail(null)
-      setIncidents([])
-      setIncidentTotal(0)
-      setPriorityIncidents([])
-      setAccounts([])
-      setSources([])
-      setScanJobs([])
-      setOverview(null)
-      setCapabilities(null)
-      setFilters({ severity: '', status: '', q: '' })
-      setDeleteTarget(null)
-      setSourceOpen(false)
-      setToast('')
+    let chord = 0
+    const handler = (event: KeyboardEvent) => {
+      const state = shortcutState.current
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey || isTyping(event.target) || state.dialog || state.drawerOpen || document.querySelector('[role="dialog"]')) return
+      if (chord && Date.now() - chord < 1200) {
+        chord = 0
+        const target = ({ o: 'overview', i: 'incidents', e: 'evidence', a: 'analysis', s: 'sources', r: 'rules', c: 'protection' } as Record<string, Section>)[event.key]
+        if (target) { event.preventDefault(); state.go(target) }
+        return
+      }
+      if (event.key === 'g') { chord = Date.now(); return }
+      if (event.key === '/') { event.preventDefault(); searchInput.current?.focus(); return }
+      if (event.key === '?') { event.preventDefault(); setDialog('shortcuts'); return }
+      if ((event.key === 'j' || event.key === 'k') && state.section === 'incidents' && state.incidents.length) {
+        event.preventDefault()
+        const index = state.incidents.findIndex(incident => incident.id === state.selectedId)
+        const next = event.key === 'j' ? Math.min(state.incidents.length - 1, index + 1) : Math.max(0, index === -1 ? 0 : index - 1)
+        navigateRoute({ section: 'incidents', id: state.incidents[next].id }, { replace: true })
+      }
     }
-    setSettingsOpen(false)
-    setToast('Workspace connected')
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [navigateRoute])
+
+  const latestCredentials = useRef(credentials)
+  useEffect(() => { latestCredentials.current = credentials })
+  const isCurrent = (requested: Credentials) => requested.tenantId === latestCredentials.current.tenantId && requested.apiKey === latestCredentials.current.apiKey
+
+  const connect = (next: Credentials) => {
+    try {
+      if (next.apiKey) sessionStorage.setItem(KEY_STORAGE, next.apiKey)
+      else sessionStorage.removeItem(KEY_STORAGE)
+      sessionStorage.setItem(TENANT_STORAGE, next.tenantId)
+    } catch { notify('Session storage is unavailable; the workspace will not survive a reload.', 'info') }
+    if (next.tenantId !== tenantId || next.apiKey !== apiKey) {
+      setFilters(NO_FILTERS)
+      setDeleteTarget(null)
+      setUpdated(null)
+      navigateRoute({ section: route.section === 'incidents' ? 'incidents' : route.section }, { replace: true })
+    }
+    setApiKey(next.apiKey)
+    setTenantId(next.tenantId)
+    setDialog('')
+    notify('Workspace connected')
   }
   const disconnect = () => {
-    sessionStorage.removeItem(KEY_STORAGE)
-    sessionStorage.removeItem(TENANT_STORAGE)
+    try { sessionStorage.removeItem(KEY_STORAGE); sessionStorage.removeItem(TENANT_STORAGE) } catch { /* nothing stored */ }
     setApiKey('')
     setTenantId('')
-    activeCredentials.current = { tenantId: '', apiKey: '' }
-    setIncidents([])
-    setDetail(null)
-    setSelectedId('')
-    setIncidentTotal(0)
-    setPriorityIncidents([])
-    setAccounts([])
-    setCapabilities(null)
-    setSources([])
-    setScanJobs([])
-    setOverview(null)
-    setSettingsOpen(false)
+    setUpdated(null)
+    setDialog('')
+    window.history.replaceState(null, '', window.location.pathname)
     onLocalDisconnect?.()
   }
-  const [explainBusy, setExplainBusy] = useState(false)
+
   const explainIncident = async () => {
     if (!detail) return
+    const requested = credentials
     setExplainBusy(true)
     try {
-      const updated = await api.explainIncident(credentials, detail.id)
-      if (activeCredentials.current.tenantId !== credentials.tenantId || activeCredentials.current.apiKey !== credentials.apiKey) return
-      setDetail(updated)
-      const explanation = typeof updated.explanation === 'object' ? updated.explanation : null
-      setToast(explanation?.source === 'ai' ? 'Plain-language explanation added' : 'The local model was unavailable; the template explanation was kept.')
+      const result = await api.explainIncident(requested, detail.id)
+      if (!isCurrent(requested)) return
+      setUpdated({ incident: result, revision: detailRevision })
+      const explanation = typeof result.explanation === 'object' ? result.explanation : null
+      notify(explanation?.source === 'ai' ? 'Plain-language explanation added' : 'The local model was unavailable; the template explanation was kept.', explanation?.source === 'ai' ? 'success' : 'info')
     } catch (reason) {
-      setToast(reason instanceof Error ? reason.message : 'Could not explain the incident.')
-    } finally {
-      setExplainBusy(false)
-    }
+      notify(reason instanceof Error ? reason.message : 'Could not explain the incident.', 'error')
+    } finally { setExplainBusy(false) }
   }
+
   const updateStatus = async (status: IncidentStatus, note: string, trust: TrustChoice = 'none') => {
     if (!detail) return false
+    const requested = credentials
     setStatusBusy(true)
     try {
-      const updated = await api.updateStatus(credentials, detail.id, status, note, trust)
-      if (activeCredentials.current.tenantId !== credentials.tenantId || activeCredentials.current.apiKey !== credentials.apiKey) return false
-      setDetail(updated)
-      setIncidents((current) => current.map((item) => item.id === updated.id ? { ...item, ...updated } : item))
-      setToast(trust !== 'none' ? `Incident moved to ${status.replaceAll('_', ' ')}; sender trusted for new email` : `Incident moved to ${status.replaceAll('_', ' ')}`)
-      await fetchData()
+      const result = await api.updateStatus(requested, detail.id, status, note, trust)
+      if (!isCurrent(requested)) return false
+      setUpdated({ incident: result, revision: detailRevision })
+      workspace.patch(value => ({ ...value, incidents: value.incidents.map(item => item.id === result.id ? { ...item, ...result } : item) }))
+      // Pin the case so a status filter cannot swap the open record after the refresh.
+      if (route.section === 'incidents' && route.id !== result.id) navigateRoute({ section: 'incidents', id: result.id }, { replace: true })
+      notify(trust !== 'none' ? `Incident moved to ${status.replaceAll('_', ' ')}; sender trusted for new email` : `Incident moved to ${status.replaceAll('_', ' ')}`)
+      await workspace.refresh()
       return true
     } catch (reason) {
-      setToast(reason instanceof Error ? reason.message : 'Could not update the incident.')
+      notify(reason instanceof Error ? reason.message : 'Could not update the incident.', 'error')
       return false
-    } finally {
-      setStatusBusy(false)
-    }
+    } finally { setStatusBusy(false) }
   }
+
   const createControlledSource = async (draft: SourceDraft) => {
     let accountId = draft.accountId
-    if (!accountId) {
-      const account = await api.createAccount(credentials, {
-        email: draft.email || '',
-        display_name: draft.displayName,
-        provider: 'controlled',
-        profile: 'controlled',
-      })
-      accountId = account.id
-    }
-    await api.createSource(credentials, accountId, {
-      source_type: 'controlled',
-      name: draft.name,
-      external_id: draft.externalId,
-      capabilities: draft.capabilities,
-    })
-    setToast('Controlled source added')
-    await fetchData()
+    if (!accountId) accountId = (await api.createAccount(credentials, { email: draft.email || '', display_name: draft.displayName, provider: 'controlled', profile: 'controlled' })).id
+    await api.createSource(credentials, accountId, { source_type: 'controlled', name: draft.name, external_id: draft.externalId, capabilities: draft.capabilities })
+    notify('Controlled source added')
+    await workspace.refresh()
   }
+
   const changeSourceStatus = async (source: Source) => {
     const next = source.status === 'active' ? 'disconnected' : 'active'
     setOperationBusy(`source-${source.id}`)
     try {
       if (source.source_type === 'gmail') {
-        if (source.status !== 'active') { setSection('analysis'); setToast('Use Google consent to reconnect Gmail.'); return }
-        const result = await api.disconnectGmail(credentials, source.id)
-        setToast(result.message)
-        await fetchData()
-        return
+        if (source.status !== 'active') { go('analysis'); notify('Use Google consent to reconnect Gmail.', 'info'); return }
+        notify((await api.disconnectGmail(credentials, source.id)).message)
+      } else {
+        await api.updateSourceStatus(credentials, source.id, next)
+        notify(`${source.name} ${next === 'active' ? 'activated' : 'disconnected'}`)
       }
-      const updated = await api.updateSourceStatus(credentials, source.id, next)
-      setSources((current) => current.map((item) => item.id === updated.id ? { ...item, ...updated } : item))
-      setToast(`${source.name} ${next === 'active' ? 'activated' : 'disconnected'}`)
+      await workspace.refresh()
     } catch (reason) {
-      setToast(reason instanceof Error ? reason.message : 'Could not update the source.')
-    } finally {
-      setOperationBusy('')
-    }
+      notify(reason instanceof Error ? reason.message : 'Could not update the source.', 'error')
+    } finally { setOperationBusy('') }
   }
-  const navigate = (next: typeof section) => {
-    if (next === 'overview' || next === 'incidents') setFilters({ severity: '', status: '', q: '' })
-    setSection(next); setMenuOpen(false); window.scrollTo({ top: 0 })
-  }
-  const changeFilters = (patch: Partial<IncidentFilters>) => { setSelectedId(''); setFilters(current => ({ ...current, ...patch, offset: 0 })) }
-  const inspectIncident = (id: string) => { setFilters({ severity: '', status: '', q: '' }); setSelectedId(id); navigate('incidents') }
+
   const analyzeEmail = async (draft: EmailDraft) => {
     let accountId = draft.accountId
     if (!accountId) {
-      const knownAccounts = await api.accounts(credentials)
-      const existing = knownAccounts.find(account => account.email?.toLowerCase() === draft.accountEmail.trim().toLowerCase())
-      const account = existing ?? await api.createAccount(credentials, { email: draft.accountEmail.trim(), provider: 'controlled', profile: 'controlled', display_name: '' })
-      accountId = account.id
+      const known = await api.accounts(credentials)
+      const existing = known.find(account => account.email?.toLowerCase() === draft.accountEmail.trim().toLowerCase())
+      accountId = (existing ?? await api.createAccount(credentials, { email: draft.accountEmail.trim(), provider: 'controlled', profile: 'controlled', display_name: '' })).id
     }
     let sourceId = draft.sourceId
     if (!sourceId) {
-      const existingSources = await api.sources(credentials, accountId)
-      const existing = existingSources.find(source => source.source_type === 'controlled' && source.status === 'active' && source.capabilities?.includes('email'))
-      const source = existing ?? await api.createSource(credentials, accountId, { source_type: 'controlled', name: 'Selected emails', external_id: `selected-email:${accountId}:${crypto.randomUUID()}`, capabilities: ['email'] })
-      sourceId = source.id
+      const existing = (await api.sources(credentials, accountId)).find(source => source.source_type === 'controlled' && source.status === 'active' && source.capabilities?.includes('email'))
+      sourceId = (existing ?? await api.createSource(credentials, accountId, { source_type: 'controlled', name: 'Selected emails', external_id: `selected-email:${accountId}:${crypto.randomUUID()}`, capabilities: ['email'] })).id
     }
-    const digestBytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([draft.sender, draft.replyTo, draft.displayName, draft.subject, draft.body, draft.claimedDomains ?? [], draft.spf, draft.dkim, draft.dmarc])))
-    const externalId = `selected:${Array.from(new Uint8Array(digestBytes), byte => byte.toString(16).padStart(2, '0')).join('')}`
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([draft.sender, draft.replyTo, draft.displayName, draft.subject, draft.body, draft.claimedDomains ?? [], draft.spf, draft.dkim, draft.dmarc])))
+    const externalId = `selected:${Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')}`
     const job = await api.scan(credentials, { source_id: sourceId, trigger: 'user' })
     const authentication = Object.fromEntries(Object.entries({ spf: draft.spf, dkim: draft.dkim, dmarc: draft.dmarc }).filter(([, value]) => value))
     const result = await api.ingestSignals(credentials, sourceId, { scan_job_id: job.id, signals: [{ external_id: externalId, signal_type: 'email', features: { sender: draft.sender, reply_to: draft.replyTo, display_name: draft.displayName, subject: draft.subject, body: draft.body, claimed_domains: draft.claimedDomains ?? [], authentication } }] })
-    await fetchData()
+    await workspace.refresh()
     return { ...result, accountId }
   }
+
   const deleteAccount = async () => {
     if (!deleteTarget) return
     setOperationBusy('delete')
     try {
       await api.deleteAccount(credentials, deleteTarget.id)
       setDeleteTarget(null)
-      setToast('Local account evidence deleted. Review Google access separately if it was connected.')
-      await fetchData()
-    } catch (reason) { setToast(reason instanceof Error ? reason.message : 'Deletion failed.') }
+      notify('Local account data deleted. Review Google access separately if it was connected.')
+      await workspace.refresh()
+    } catch (reason) { notify(reason instanceof Error ? reason.message : 'Deletion failed.', 'error') }
     finally { setOperationBusy('') }
   }
-  const selected = detail?.id === selectedId ? detail : incidents.find((incident) => incident.id === selectedId) ?? null
-  const capabilityItems = useMemo(() => capabilityRows(capabilities), [capabilities])
-  const enabledEngineCapabilities = capabilityItems.filter((capability) => capability.enabled).length
-  const telemetry = useMemo(() => telemetryCoverage(sources, capabilities), [sources, capabilities])
+
+  const changeFilters = (patch: Partial<IncidentFilters>) => {
+    setFilters(current => ({ ...current, ...patch, offset: 0 }))
+    if (route.section === 'incidents' && route.id) navigateRoute({ section: 'incidents' }, { replace: true })
+  }
+  const inspectIncident = (id: string) => { setFilters(NO_FILTERS); go('incidents', id) }
+  const openCount = data?.overview?.incidents.active ?? 0
+  const collection = workspace.loading && !data ? { title: 'Checking sources…', detail: 'Loading workspace', live: false }
+    : telemetry.activeSourceCount ? { title: `${telemetry.activeSourceCount} active ${telemetry.activeSourceCount === 1 ? 'source' : 'sources'}`, detail: telemetry.mode === 'live' ? 'Gmail samples on demand' : 'Controlled data only', live: true }
+      : { title: 'No live monitoring', detail: capabilities?.controlled_ingestion ? 'Controlled data only' : 'No source connected', live: false }
 
   return <div className="app-shell">
-    <aside ref={navigationPanel} inert={compactNavigation && !menuOpen} className={`sidebar ${menuOpen ? 'is-open' : ''}`}><div className="brand"><span><Icons.shield /></span><div><strong>Sentinel<span>SME</span></strong><small>Email security workspace</small></div></div><div className="workspace-label">ANALYST WORKSPACE</div><nav aria-label="Primary navigation"><button className={section === 'overview' ? 'active' : ''} onClick={() => navigate('overview')}><Icons.grid />Overview</button><button className={section === 'incidents' ? 'active' : ''} onClick={() => navigate('incidents')}><Icons.alert />Incidents{(overview?.incidents.active ?? 0) > 0 && <span className="nav-count">{(overview?.incidents.active ?? 0)}</span>}</button><button className={section === 'evidence' ? 'active' : ''} onClick={() => navigate('evidence')}><Icons.search />Evidence workspace</button><button className={section === 'coverage' ? 'active' : ''} onClick={() => navigate('coverage')}><Icons.building />Accounts & sources</button><button className={section === 'analysis' ? 'active' : ''} onClick={() => navigate('analysis')}><Icons.scan />Email analysis</button><span className="nav-section-label">CONFIGURATION</span><button className={section === 'protection' ? 'active' : ''} onClick={() => navigate('protection')}><Icons.shield />Protection coverage</button><button className={section === 'rules' ? 'active' : ''} onClick={() => navigate('rules')}><Icons.shield />Detection catalogue</button></nav><div className="sidebar-bottom"><div className="protection-status"><span className={telemetry.activeSourceCount ? 'pulse' : ''} /><div><strong>{loading ? 'Checking coverage…' : telemetry.activeSourceCount ? `${telemetry.activeSourceCount} active ${telemetry.activeSourceCount === 1 ? 'source' : 'sources'}` : 'No live monitoring'}</strong><small>{telemetry.mode === 'live' ? 'Gmail samples on demand' : capabilities?.controlled_ingestion ? 'Controlled-data ingestion only' : 'No telemetry connected'}</small></div></div><button onClick={() => setSettingsOpen(true)}><Icons.settings />Settings</button></div></aside>
-    {menuOpen && <button aria-label="Close navigation" className="sidebar-scrim" onClick={() => setMenuOpen(false)} />}
-    <div className="app-main"><header className="topbar"><button ref={navigationButton} aria-label="Open navigation" aria-expanded={menuOpen} className="icon-button menu-button" onClick={() => setMenuOpen(true)}><Icons.menu /></button><form className="global-search" onSubmit={(event) => { event.preventDefault(); setSection('incidents') }}><Icons.search /><label className="sr-only" htmlFor="global-search">Search incidents</label><input maxLength={200} id="global-search" onChange={(event) => changeFilters({ q: event.target.value })} placeholder="Search incident titles and summaries" value={filters.q} /></form><div className="top-actions"><button aria-label="Analyse email" className="button button-primary scan-button" disabled={!tenantId} onClick={() => navigate('analysis')}><Icons.scan /><span>Analyse email</span></button><button aria-label="API settings" className="avatar-button" onClick={() => setSettingsOpen(true)}><Icons.settings /></button></div></header>
-
-      {tenantId && <div className="data-scope-bar"><span><Icons.lock />{session?.user ? 'Signed in as' : 'Workspace'} <strong>{session?.user?.email ?? tenantId}</strong></span><span className="mode-tag">{telemetry.mode === 'live' ? 'Gmail samples · on demand' : 'Controlled analysis'}</span><span>Local evidence · human review</span></div>}
-      <main id="main-content">{!tenantId ? <div className="page"><Panel className="state-card"><h1>Open a local workspace</h1><p>Choose your demonstration workspace in Settings.</p><button className="button button-primary" onClick={() => setSettingsOpen(true)}>Configure local workspace</button></Panel></div> : <>
-        {supportError && <div className="support-warning" role="status"><Icons.alert />{supportError}</div>}
-        {section === 'overview' && <OverviewPanel overview={overview} incidents={priorityIncidents} accounts={accounts} sources={sources} profile={capabilities} jobs={scanJobs} loading={loading} error={priorityError} onRefresh={() => void fetchData()} onInspect={inspectIncident} onNavigate={navigate} />}
-        {section === 'evidence' && <EvidenceWorkspace key={tenantId} credentials={credentials} accounts={accounts} sources={sources} onInspect={inspectIncident} />}
-        {section === 'protection' && <><ProtectionCoverage profile={capabilities} sources={sources} onAnalyse={() => navigate('analysis')} /><div className="page page-addon"><PostureCheck key={`posture-${tenantId}`} credentials={credentials} accounts={accounts} onComplete={() => void fetchData()} /></div></>}
-        {section === 'rules' && <><RuleCatalogue key={tenantId} credentials={credentials} /><div className="page page-addon"><TrustedSenders key={`trusted-${tenantId}`} credentials={credentials} /></div></>}
-        {section === 'analysis' && <EmailWorkspace key={tenantId} credentials={credentials} configuration={capabilities?.gmail} accounts={accounts} sources={sources} onRefresh={async () => { await fetchData() }} onAnalyze={analyzeEmail} onInspect={inspectIncident} />}
-
-        {section === 'incidents' && <div className="page page-incidents"><header className="page-header compact"><div><p className="eyebrow">Response workspace</p><h1>Incidents</h1><p>Review cases by severity and recency, then follow their supporting evidence.</p></div><button className="button button-primary" onClick={() => navigate('analysis')}><Icons.scan />Analyse email</button></header><Panel className="filter-bar"><label><span>Severity</span><select onChange={(event) => changeFilters({ severity: event.target.value })} value={filters.severity}><option value="">All severities</option>{severities.map((severity) => <option key={severity} value={severity}>{humanize(severity)}</option>)}</select></label><label><span>Status</span><select onChange={(event) => changeFilters({ status: event.target.value })} value={filters.status}><option value="">All statuses</option>{statuses.map((status) => <option key={status} value={status}>{humanize(status)}</option>)}</select></label><label><span>Account</span><select value={filters.accountId ?? ''} onChange={event => changeFilters({ accountId: event.target.value })}><option value="">All accounts</option>{accounts.map(account => <option key={account.id} value={account.id}>{accountLabel(account)}</option>)}</select></label><label><span>Latest evidence from (local time)</span><input type="datetime-local" value={filters.seenFrom ?? ''} onChange={event => changeFilters({ seenFrom: event.target.value })} /></label><label><span>Latest evidence until (local time)</span><input type="datetime-local" min={filters.seenFrom} value={filters.seenTo ?? ''} onChange={event => changeFilters({ seenTo: event.target.value })} /></label><span className="result-count">{incidentTotal} {incidentTotal === 1 ? 'incident' : 'incidents'}</span></Panel><div className="incident-workspace"><Panel className="incident-rail">{loading ? <LoadingRows count={6} /> : error ? <ErrorState message={error} retry={() => void fetchData()} /> : incidents.length ? <div className="incident-list">{incidents.map((incident) => <IncidentRow incident={{ ...incident, account_name: accountLabel(accounts.find(account => account.id === incident.account_id) ?? { id: incident.account_id ?? "" }) }} key={incident.id} onSelect={() => setSelectedId(incident.id)} selected={incident.id === selectedId} />)}</div> : <EmptyState filtered={Boolean(filters.q || filters.severity || filters.status || filters.accountId || filters.seenFrom || filters.seenTo)} />}<Pagination total={incidentTotal} offset={filters.offset ?? 0} limit={25} busy={loading} onChange={offset => { setSelectedId(''); setFilters(current => ({ ...current, offset })) }} /></Panel><Panel className="detail-panel">{detailLoading ? <LoadingRows count={6} /> : detailError ? <ErrorState message={detailError} retry={() => void fetchData()} /> : selected ? <IncidentDetail key={`${selected.id}:${selected.status}`} incident={selected} loading={detailLoading} onStatus={updateStatus} statusBusy={statusBusy} aiAvailable={Boolean(capabilities?.ai_explanations)} onExplain={explainIncident} explainBusy={explainBusy} /> : <div className="state-card detail-placeholder"><span className="state-icon"><Icons.alert /></span><h3>Select an incident</h3><p>Choose a record to review evidence and response guidance.</p></div>}</Panel></div></div>}
-
-        {section === 'coverage' && <div className="page">
-          <header className="page-header"><div><p className="eyebrow">Connected environment</p><h1>Accounts & sources</h1><p>Manage consent, review processed data, and inspect available detectors.</p></div><div className="page-actions"><button className="button button-secondary" onClick={() => setSourceOpen(true)}>Add source</button><button className="button button-primary" onClick={() => navigate('analysis')}><Icons.scan />Analyse email</button></div></header>
-          {!loading && telemetry.mode === 'none' && <div className="coverage-alert" role="status"><Icons.alert /><div><strong>No live monitoring</strong><p>{capabilities?.controlled_ingestion ? 'This workspace currently supports controlled-data ingestion only. Add or activate a source to establish telemetry coverage.' : 'Add a selected-data source or connect Gmail for on-demand analysis.'}</p></div><button className="button button-secondary" onClick={() => setSourceOpen(true)}>Add source</button></div>}
-          <div className="coverage-layout">
-            <Panel><div className="panel-heading"><div><p className="eyebrow">Telemetry sources</p><h2>Registered accounts</h2></div><span>{telemetry.activeSourceCount} active</span></div>{loading ? <LoadingRows /> : accounts.length ? <div className="source-groups">{accounts.map((account) => { const label = accountLabel(account); const accountSources = sources.filter((source) => source.account_id === account.id); return <section className="source-group" key={account.id}><header><span className="account-avatar">{label.slice(0, 2).toUpperCase()}</span><div><strong>{label}</strong><small>{account.email || account.provider || account.id}</small></div></header>{account.delete_after && <p className="retention-note">Local trial data expires {formatDateTime(account.delete_after)}.</p>}<button className="link-button delete-account-link" onClick={() => setDeleteTarget(account)}>Delete local account data</button>{accountSources.length ? <div className="source-list">{accountSources.map((source) => <article className="source-card" key={source.id}><div><strong>{source.name}</strong><span>{humanize(source.source_type || 'controlled')} · {source.capabilities?.length ?? 0} signal types</span><small>{overview?.source_activity[source.id] ? overview.source_activity[source.id].signal_count + ' signals · ' + relativeTime(overview.source_activity[source.id].last_received_at) : 'No signals processed'}</small></div><div className="source-actions"><StatusBadge status={source.status || 'unknown'} /><button className="link-button" disabled={operationBusy === `source-${source.id}`} onClick={() => void changeSourceStatus(source)}>{operationBusy === `source-${source.id}` ? 'Updating…' : source.status === 'active' ? 'Disconnect' : source.source_type === 'gmail' ? 'Reconnect Gmail' : 'Activate'}</button></div></article>)}</div> : <p className="inline-note">No source registered for this account.</p>}</section>})}</div> : <div className="state-card compact-state"><span className="state-icon"><Icons.building /></span><h3>Add your first controlled source</h3><p>Create an account and define the normalized signal types SentinelSME may accept.</p><button className="button button-primary" onClick={() => setSourceOpen(true)}>Add source</button></div>}</Panel>
-            <Panel><div className="panel-heading"><div><p className="eyebrow">Engine support</p><h2>{capabilities?.service || 'SentinelSME'} capabilities</h2></div><span>{enabledEngineCapabilities} supported</span></div>{loading ? <LoadingRows /> : capabilityItems.length ? <><div className="capability-grid">{capabilityItems.map((capability) => { const connected = capability.id.startsWith('signal-') && telemetry.activeCapabilities.includes(capability.id.replace('signal-', '')); return <article key={capability.id}><span className={`capability-icon ${!capability.enabled ? 'disabled' : ''}`}><Icons.shield /></span><div><strong>{capability.name}</strong><p>{capability.description}</p><span className={connected ? 'control-on' : 'control-off'}>{connected ? 'Source accepts this signal' : capability.enabled ? 'Available detector' : 'Unavailable'}</span></div></article> })}</div>{capabilities && <div className="capability-facts"><span>{capabilities.correlation_window_minutes} min correlation</span><span>{capabilities.source_types.length} source types</span><span>{capabilities.live_connectors.length} live connectors</span><span>{capabilities.privacy.stores_full_bodies || capabilities.privacy.stores_attachments ? 'Content retention enabled' : 'No full bodies or attachments stored'}</span></div>}</> : <div className="state-card compact-state"><h3>No capability profile</h3><p>The API did not report its supported detection contract.</p></div>}</Panel>
-          </div>
-          <Panel className="operations-panel"><div className="panel-heading"><div><p className="eyebrow">Operations</p><h2>Analysis history</h2></div><span>{scanJobs.length} {scanJobs.length === 1 ? 'job' : 'jobs'}</span></div>{loading ? <LoadingRows /> : scanJobs.length ? <div className="scan-history">{scanJobs.slice(0, 12).map((job) => { const source = sources.find((item) => item.id === job.source_id); return <article className="scan-row" key={job.id}><span className={`scan-status scan-status-${job.status}`}><Icons.scan /></span><div className="scan-main"><strong>{source?.name || 'Controlled source'}</strong><span>{humanize(job.trigger)} scan · {formatDateTime(job.created_at)}</span>{job.error && <small className="scan-error">{job.error}</small>}</div><div className="scan-counts"><span><strong>{job.imported_count}</strong> imported</span><span><strong>{job.finding_count}</strong> findings</span><span><strong>{job.duplicate_count}</strong> duplicates</span></div><StatusBadge status={job.status} />{job.status === 'failed' && <button className="button button-secondary button-small" onClick={() => navigate('analysis')}>Run another analysis</button>}</article>})}</div> : <div className="state-card compact-state"><span className="state-icon"><Icons.scan /></span><h3>No analysis yet</h3><p>Inspect a selected email or run a Gmail inbox sample.</p></div>}</Panel>
-        </div>}
-      </>}</main>
+    <a className="skip-link" href="#main-content" onClick={event => { event.preventDefault(); document.getElementById('main-content')?.focus() }}>Skip to main content</a>
+    <Sidebar ref={sidebar} section={section} open={drawerOpen} compact={compactNavigation} openCount={openCount} collection={collection} onNavigate={next => go(next)} onSettings={() => { setMenuOpen(false); setDialog('settings') }} />
+    {menuOpen && compactNavigation && <button aria-label="Close navigation" className="sidebar-scrim" onClick={() => setMenuOpen(false)} tabIndex={-1} type="button" />}
+    <div className="app-main">
+      <Topbar ref={menuButton} menuOpen={drawerOpen} search={filters.q} workspace={session?.user?.email ?? tenantId} signedIn={Boolean(session?.user)} mode={telemetry.mode === 'live' ? 'Gmail samples' : 'Controlled analysis'} canAnalyse={Boolean(tenantId)} searchInput={searchInput}
+        onMenu={() => setMenuOpen(true)} onSearch={value => { changeFilters({ q: value }); if (section !== 'incidents') navigateRoute({ section: 'incidents' }) }} onSearchSubmit={() => navigateRoute({ section: 'incidents' })} onAnalyse={() => go('analysis')} onSettings={() => setDialog('settings')} onShortcuts={() => setDialog('shortcuts')} />
+      <main id="main-content" tabIndex={-1}>
+        {!tenantId ? <div className="page page-narrow"><div className="state-card state-hero"><span className="state-icon"><Icons.lock /></span><h1>Open a workspace</h1><p>Choose the demonstration workspace this tab should use.</p><button className="button button-primary" onClick={() => setDialog('settings')} type="button">Open workspace settings</button></div></div> : <>
+          {data?.supportError && <div className="page-banner"><Notice tone="warning" title={data.supportError} /></div>}
+          {section === 'overview' && <OverviewPanel overview={data?.overview ?? null} incidents={data?.priority ?? []} accounts={accounts} sources={sources} profile={capabilities} jobs={data?.jobs ?? []} loading={workspace.loading || workspace.refreshing} error={data?.priorityError ?? ''} onRefresh={() => void refreshAll()} onInspect={inspectIncident} onNavigate={go} />}
+          {section === 'incidents' && <IncidentsPage filters={filters} incidents={incidents} total={data?.incidentTotal ?? 0} accounts={accounts} loading={workspace.loading} error={data?.incidentError ?? ''} selected={selectedId} detail={detail} detailLoading={detailRequest.loading} detailError={detailRequest.error} compact={compactSplit} statusBusy={statusBusy} explainBusy={explainBusy} aiAvailable={Boolean(capabilities?.ai_explanations)}
+            onFilters={changeFilters} onOffset={offset => { setFilters(current => ({ ...current, offset })); navigateRoute({ section: 'incidents' }, { replace: true }) }} onSelect={id => navigateRoute({ section: 'incidents', id }, { replace: !compactSplit })} onBack={() => navigateRoute({ section: 'incidents' })} onRetry={() => void refreshAll()} onRetryDetail={() => setDetailRevision(value => value + 1)} onStatus={updateStatus} onExplain={explainIncident} onAnalyse={() => go('analysis')} />}
+          {section === 'evidence' && <EvidenceWorkspace key={tenantId} credentials={credentials} accounts={accounts} sources={sources} onInspect={inspectIncident} />}
+          {section === 'sources' && <SourcesPage loading={workspace.loading} accounts={accounts} sources={sources} jobs={data?.jobs ?? []} overview={data?.overview ?? null} capabilities={capabilities} telemetry={telemetry} busy={operationBusy} onAddSource={() => setDialog('source')} onAnalyse={() => go('analysis')} onToggleSource={source => void changeSourceStatus(source)} onDelete={setDeleteTarget} />}
+          {section === 'analysis' && <EmailWorkspace key={tenantId} credentials={credentials} configuration={capabilities?.gmail} accounts={accounts} sources={sources} onRefresh={refreshAll} onAnalyze={analyzeEmail} onInspect={inspectIncident} gmailCallback={gmailCallback} />}
+          {section === 'protection' && <ProtectionCoverage profile={capabilities} sources={sources} onAnalyse={() => go('analysis')}><PostureCheck key={`posture-${tenantId}`} credentials={credentials} accounts={accounts} onComplete={() => void refreshAll()} /></ProtectionCoverage>}
+          {section === 'rules' && <RuleCatalogue key={tenantId} credentials={credentials}><TrustedSenders key={`trusted-${tenantId}`} credentials={credentials} /></RuleCatalogue>}
+        </>}
+      </main>
     </div>
-    {deleteTarget && <Modal title="Delete local account data" description="This removes this account's local sources, tokens, signals, incidents, recommendations, and audit details. It does not delete anything from Gmail." onClose={() => setDeleteTarget(null)}><p className="muted-copy">Disconnect Gmail first to request provider revocation. This deletion cannot be undone.</p><div className="modal-actions"><button className="button button-secondary" onClick={() => setDeleteTarget(null)}>Cancel</button><button className="button button-danger" disabled={operationBusy === 'delete'} onClick={() => void deleteAccount()}>{operationBusy === 'delete' ? 'Deleting…' : 'Delete local data'}</button></div></Modal>}
-    {settingsOpen && (session?.user && onSignOut ? <SessionModal email={session.user.email} hours={session.session_hours} onClose={() => setSettingsOpen(false)} onSignOut={onSignOut} /> : <SettingsModal currentKey={apiKey} currentTenant={tenantId} onClear={disconnect} onClose={() => setSettingsOpen(false)} onSave={connect} />)}
-    {sourceOpen && <AddSourceModal accounts={accounts} onClose={() => setSourceOpen(false)} onCreate={createControlledSource} profile={capabilities} />}
-    {toast && <div aria-live="polite" className="toast" role="status"><Icons.check />{toast}<button aria-label="Dismiss notification" onClick={() => setToast('')}><Icons.close /></button></div>}
+    {deleteTarget && <DeleteAccountModal account={deleteTarget} busy={operationBusy === 'delete'} onClose={() => setDeleteTarget(null)} onConfirm={() => void deleteAccount()} />}
+    {dialog === 'settings' && (session?.user && onSignOut ? <SessionModal email={session.user.email} hours={session.session_hours} onClose={() => setDialog('')} onSignOut={onSignOut} /> : <SettingsModal currentKey={apiKey} currentTenant={tenantId} onClear={disconnect} onClose={() => setDialog('')} onSave={connect} />)}
+    {dialog === 'source' && <AddSourceModal accounts={accounts} onClose={() => setDialog('')} onCreate={createControlledSource} profile={capabilities} />}
+    {dialog === 'shortcuts' && <ShortcutsModal onClose={() => setDialog('')} />}
+    {toast && <div aria-live={toast.tone === 'error' ? 'assertive' : 'polite'} className={`toast toast-${toast.tone}`} role={toast.tone === 'error' ? 'alert' : 'status'}>{toast.tone === 'error' ? <Icons.alert /> : toast.tone === 'info' ? <Icons.info /> : <Icons.check />}<span>{toast.message}</span><button aria-label="Dismiss notification" className="icon-button" onClick={() => setToast(null)} type="button"><Icons.close /></button></div>}
   </div>
 }
