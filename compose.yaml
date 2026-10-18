@@ -35,8 +35,14 @@ services:
     tmpfs: [/tmp]
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
+    # `docker compose up --wait` needs every service to report health. The worker
+    # has no HTTP port, so it is healthy when it can reach its database.
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "-c", "import os, sqlalchemy; sqlalchemy.create_engine(os.environ['AI_SOC_DATABASE_URL']).connect().close()"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
     restart: unless-stopped
 
   db:
