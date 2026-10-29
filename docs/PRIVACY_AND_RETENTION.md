@@ -1,7 +1,7 @@
 # Privacy and Retention
 
 Alerts store incident title, severity, score and rule codes only and are deleted with the
-incident; external alerts send the same minimal summary, never message content
+incident; webhook alerts send the same minimal summary, never message content
 (see [alerts](ALERTS.md)).
 
 Scheduled collection requires separate acknowledgement, defaults to disabled

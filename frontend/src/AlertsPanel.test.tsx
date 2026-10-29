@@ -6,8 +6,8 @@ import type { AlertItem, AlertSettings } from './types'
 
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 const credentials = { tenantId: 'owner', apiKey: '' }
-const settings: AlertSettings = { minimum_severity: 'high', email_enabled: false, email_to: null, webhook_enabled: false, webhook_url: null, email_available: true, email_locked_to_signed_in_user: false }
-const alert: AlertItem = { id: 'a1', incident_id: 'i1', severity: 'critical', title: 'Credential-themed domain', score: 0.9, rule_codes: ['EMAIL-002', 'URL-002'], email_status: 'none', webhook_status: 'none', read: false, created_at: '2026-10-29T10:00:00Z' }
+const settings: AlertSettings = { minimum_severity: 'high', webhook_enabled: false, webhook_url: null }
+const alert: AlertItem = { id: 'a1', incident_id: 'i1', severity: 'critical', title: 'Credential-themed domain', score: 0.9, rule_codes: ['EMAIL-002', 'URL-002'], webhook_status: 'none', read: false, created_at: '2026-10-29T10:00:00Z' }
 
 describe('alerts', () => {
   it('lists alerts without message content and marks them read', async () => {
@@ -22,33 +22,21 @@ describe('alerts', () => {
     await waitFor(() => expect(list).toHaveBeenCalledTimes(2))
   })
 
-  it('saves email and webhook choices and shows server validation errors', async () => {
+  it('saves a webhook choice and shows server validation errors', async () => {
     vi.spyOn(api, 'alertSettings').mockResolvedValue(settings)
     vi.spyOn(api, 'alerts').mockResolvedValue([])
     const save = vi.spyOn(api, 'saveAlertSettings')
       .mockRejectedValueOnce(new Error('Webhook host must resolve to a public address.'))
-      .mockResolvedValue({ ...settings, email_enabled: true, email_to: 'me@example.test' })
+      .mockResolvedValue({ ...settings, webhook_enabled: true, webhook_url: 'https://hooks.example.test/x' })
     render(<AlertsPanel credentials={credentials} />)
+    expect(screen.queryByRole('checkbox', { name: /Email/ })).not.toBeInTheDocument()
     fireEvent.click(await screen.findByRole('checkbox', { name: /Send to a webhook/ }))
     fireEvent.change(screen.getByLabelText(/Webhook URL/), { target: { value: 'https://internal.example.test/x' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save alert settings' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('public address')
-    fireEvent.click(screen.getByRole('checkbox', { name: /Send to a webhook/ }))
-    fireEvent.click(screen.getByRole('checkbox', { name: /Email me/ }))
-    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'me@example.test' } })
+    fireEvent.change(screen.getByLabelText(/Webhook URL/), { target: { value: 'https://hooks.example.test/x' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save alert settings' }))
     expect(await screen.findByText('Alert settings saved.')).toBeInTheDocument()
-    expect(save).toHaveBeenLastCalledWith(credentials, { minimum_severity: 'high', email_enabled: true, email_to: 'me@example.test', webhook_enabled: false, webhook_url: null })
-  })
-
-  it('disables email when the server has no SMTP and locks the address when signed in', async () => {
-    vi.spyOn(api, 'alertSettings').mockResolvedValue({ ...settings, email_available: false })
-    vi.spyOn(api, 'alerts').mockResolvedValue([])
-    render(<AlertsPanel credentials={credentials} />)
-    expect(await screen.findByRole('checkbox', { name: /Email me/ })).toBeDisabled()
-    cleanup()
-    vi.spyOn(api, 'alertSettings').mockResolvedValue({ ...settings, email_enabled: true, email_to: 'me@example.test', email_locked_to_signed_in_user: true })
-    render(<AlertsPanel credentials={credentials} />)
-    expect(await screen.findByLabelText(/Email address/)).toHaveAttribute('readonly')
+    expect(save).toHaveBeenLastCalledWith(credentials, { minimum_severity: 'high', webhook_enabled: true, webhook_url: 'https://hooks.example.test/x' })
   })
 })

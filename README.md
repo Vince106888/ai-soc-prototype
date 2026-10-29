@@ -50,7 +50,7 @@ validates the integration, not threat-detection accuracy. See [Gmail setup](docs
 The dashboard supports selected-email analysis, database-backed workspace totals,
 seven-day activity, readable evidence, and account deletion. Development Gmail trial
 accounts expire after seven days; production keeps connections and applies configurable evidence retention.
-Opt-in scheduled sampling now executes through a leased worker; see [scheduling](docs/SCHEDULING.md). High and critical incidents raise in-app, optional email and optional webhook alerts; see [alerts](docs/ALERTS.md).
+Opt-in scheduled sampling now executes through a leased worker; see [scheduling](docs/SCHEDULING.md). High and critical incidents raise in-app and optional webhook alerts; see [alerts](docs/ALERTS.md).
 Workspace admin telemetry and automatic remediation remain absent. Public deployment uses the separate hardened Compose package described above. Generic jobs record work; selected-email
 submission and the Gmail scan route actually execute analysis.
 

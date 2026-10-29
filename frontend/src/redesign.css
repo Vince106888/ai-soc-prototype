@@ -356,6 +356,8 @@ h3 { color: var(--text-strong); text-wrap: balance; }
 .detection-tabs button { min-height: 42px; padding: 8px 14px; border: 0; border-radius: 7px; background: transparent; color: var(--text-muted); white-space: nowrap; font-weight: 700; }
 .detection-tabs button[aria-selected='true'] { background: #fff; color: var(--primary-strong); box-shadow: 0 2px 7px rgb(21 48 88 / 9%); }
 .detection-tab-panel { padding: 20px; }
+.detection-tab-panel .page { max-width: none; padding: 0; }
+.detection-tab-panel .page-header { display: none; }
 
 /* Settings and dialogs */
 .modal-form { display: grid; gap: 15px; }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { EmptyWorkspaceArt } from './illustrations'
 import { IncidentDetail } from './IncidentDetail'
 import { Icons } from './icons'
@@ -98,6 +98,9 @@ export function IncidentsPage({
     filters.seenTo,
     filters.openOnly,
   ].filter(Boolean).length
+  useEffect(() => {
+    if (compactNavigation && filterCount > 0) setFiltersOpen(true)
+  }, [compactNavigation, filterCount])
   const clearFilters = () => {
     onChangeFilters({ severity: '', status: '', q: '', accountId: '', seenFrom: '', seenTo: '', openOnly: false })
   }

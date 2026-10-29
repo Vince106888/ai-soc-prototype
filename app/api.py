@@ -198,18 +198,12 @@ def schedule_put(source_id: str, payload: ScheduleUpdate, db: DB, context: Conte
         raise _http_error(exc) from exc
 
 
-def _alert_settings_view(
-    db: Session, tenant: str, signed_in_email: str | None
-) -> AlertSettingsView:
+def _alert_settings_view(db: Session, tenant: str) -> AlertSettingsView:
     row = alert_service.get_settings(db, tenant)
     return AlertSettingsView(
         minimum_severity=row.minimum_severity,
-        email_enabled=row.email_enabled,
-        email_to=signed_in_email or row.email_to,
         webhook_enabled=row.webhook_enabled,
         webhook_url=row.webhook_url,
-        email_available=alert_service.smtp_settings() is not None,
-        email_locked_to_signed_in_user=bool(signed_in_email),
     )
 
 
@@ -221,7 +215,6 @@ def _alert_view(row) -> AlertView:
         title=row.title,
         score=row.score,
         rule_codes=row.rule_codes.split(",") if row.rule_codes else [],
-        email_status=row.email_status,
         webhook_status=row.webhook_status,
         read=row.read_at is not None,
         created_at=row.created_at,
@@ -230,7 +223,7 @@ def _alert_view(row) -> AlertView:
 
 @router.get("/alert-settings", response_model=AlertSettingsView)
 def alert_settings_get(db: DB, context: Context) -> AlertSettingsView:
-    return _alert_settings_view(db, context.tenant_id, context.email)
+    return _alert_settings_view(db, context.tenant_id)
 
 
 @router.put("/alert-settings", response_model=AlertSettingsView)
@@ -240,12 +233,11 @@ def alert_settings_put(payload: AlertSettingsUpdate, db: DB, context: Context) -
             db,
             context.tenant_id,
             payload,
-            signed_in_email=context.email,
             actor=context.user_id or "console-user",
         )
     except alert_service.AlertConfigError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return _alert_settings_view(db, context.tenant_id, context.email)
+    return _alert_settings_view(db, context.tenant_id)
 
 
 @router.get("/alerts", response_model=list[AlertView])

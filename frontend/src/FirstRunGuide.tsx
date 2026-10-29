@@ -59,7 +59,7 @@ export function FirstRunGuide({
   const complete = [hasEvidence, hasIncidentHistory, gmailConnected].filter(Boolean).length
 
   return (
-    <section className="first-run-guide" aria-labelledby="first-run-title">
+    <section className="first-run-guide" aria-label="Getting started">
       <div className="first-run-heading">
         <div>
           <p className="eyebrow">Getting started</p>

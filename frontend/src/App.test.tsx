@@ -60,7 +60,7 @@ describe('workspace investigation state', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove filter: Open cases only' }))
     expect(screen.queryByRole('button', { name: 'Remove filter: Open cases only' })).not.toBeInTheDocument()
   })
-  it('keeps keyboard focus inside the mobile drawer and restores it on Escape', () => {
+  it('keeps keyboard focus inside the mobile drawer and restores it on Escape', async () => {
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
     try {
       render(<App />)
@@ -69,7 +69,7 @@ describe('workspace investigation state', () => {
       expect(panel).toHaveAttribute('inert')
       fireEvent.click(opener)
       expect(panel).not.toHaveAttribute('inert')
-      expect(screen.getByRole('button', { name: 'Overview' })).toHaveFocus()
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Overview' })).toHaveFocus())
       screen.getByRole('button', { name: 'Account & settings' }).focus()
       fireEvent.keyDown(window, { key: 'Tab' })
       expect(screen.getByRole('button', { name: 'Overview' })).toHaveFocus()

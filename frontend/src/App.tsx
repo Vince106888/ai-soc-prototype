@@ -125,7 +125,7 @@ export default function App({ session, onSignOut, onLocalDisconnect }: { session
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const controls = navigationPanel.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
-    controls?.[0]?.focus()
+    const focusTimer = window.setTimeout(() => controls?.[0]?.focus(), 30)
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); setMenuOpen(false); return }
       if (event.key !== 'Tab' || !controls?.length) return
@@ -134,7 +134,7 @@ export default function App({ session, onSignOut, onLocalDisconnect }: { session
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
     }
     window.addEventListener('keydown', handleKey)
-    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', handleKey); opener?.focus() }
+    return () => { window.clearTimeout(focusTimer); document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', handleKey); opener?.focus() }
   }, [compactNavigation, menuOpen])
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {

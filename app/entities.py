@@ -397,8 +397,6 @@ class AlertSettings(Base):
     __tablename__ = "alert_settings"
     tenant_id: Mapped[str] = mapped_column(String(100), primary_key=True)
     minimum_severity: Mapped[str] = mapped_column(String(20), default="high", nullable=False)
-    email_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    email_to: Mapped[str | None] = mapped_column(String(254))
     webhook_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     webhook_url: Mapped[str | None] = mapped_column(String(500))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -420,7 +418,6 @@ class Alert(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     rule_codes: Mapped[str] = mapped_column(String(300), default="", nullable=False)
-    email_status: Mapped[str] = mapped_column(String(12), default="none", nullable=False)
     webhook_status: Mapped[str] = mapped_column(String(12), default="none", nullable=False)
     attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -1,4 +1,4 @@
-"""In-app, email and webhook alerts for high-severity incidents."""
+"""In-app and webhook alerts for high-severity incidents."""
 
 import sqlalchemy as sa
 
@@ -15,8 +15,6 @@ def upgrade() -> None:
         "alert_settings",
         sa.Column("tenant_id", sa.String(100), primary_key=True),
         sa.Column("minimum_severity", sa.String(20), nullable=False),
-        sa.Column("email_enabled", sa.Boolean(), nullable=False),
-        sa.Column("email_to", sa.String(254)),
         sa.Column("webhook_enabled", sa.Boolean(), nullable=False),
         sa.Column("webhook_url", sa.String(500)),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
@@ -30,7 +28,6 @@ def upgrade() -> None:
         sa.Column("title", sa.String(200), nullable=False),
         sa.Column("score", sa.Float(), nullable=False),
         sa.Column("rule_codes", sa.String(300), nullable=False),
-        sa.Column("email_status", sa.String(12), nullable=False),
         sa.Column("webhook_status", sa.String(12), nullable=False),
         sa.Column("attempts", sa.Integer(), nullable=False),
         sa.Column("read_at", sa.DateTime(timezone=True)),

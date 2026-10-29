@@ -288,15 +288,11 @@ export interface PostureResult {
 
 export interface AlertSettings {
   minimum_severity: 'medium' | 'high' | 'critical'
-  email_enabled: boolean
-  email_to: string | null
   webhook_enabled: boolean
   webhook_url: string | null
-  email_available: boolean
-  email_locked_to_signed_in_user: boolean
 }
 
-export type AlertSettingsUpdate = Pick<AlertSettings, 'minimum_severity' | 'email_enabled' | 'email_to' | 'webhook_enabled' | 'webhook_url'>
+export type AlertSettingsUpdate = Pick<AlertSettings, 'minimum_severity' | 'webhook_enabled' | 'webhook_url'>
 
 export interface AlertItem {
   id: string
@@ -305,7 +301,6 @@ export interface AlertItem {
   title: string
   score: number
   rule_codes: string[]
-  email_status: string
   webhook_status: string
   read: boolean
   created_at: string
