@@ -30,9 +30,9 @@ from .gmail import (
     _settings,
 )
 
-SESSION_COOKIE = "sentinelsme_session"
-CSRF_COOKIE = "sentinelsme_csrf"
-LOGIN_COOKIE = "sentinelsme_login"
+SESSION_COOKIE = "lindabiz_session"
+CSRF_COOKIE = "lindabiz_csrf"
+LOGIN_COOKIE = "lindabiz_login"
 LOGIN_PATH = "/api/v1/auth/callback"
 GOOGLE_KEYS = "https://www.googleapis.com/oauth2/v3/certs"
 LOGIN_SCOPE = "openid email"

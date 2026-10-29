@@ -46,7 +46,7 @@ companion to this page.
 | Evaluation | Labelled-case confusion matrix and metrics | Implemented | `/api/v1/evaluation` |
 | Evaluation | Representative calibrated research dataset | Not implemented | Current examples and tests are controlled, not representative |
 | Evaluation | Isolated 500-signal local service benchmark | Implemented and measured | Three fresh SQLite runs; median 4.572 s; HTTP/dashboard/Gmail/concurrency excluded; see `BENCHMARK.md` |
-| Storage | SQLite zero-configuration persistence | Implemented | Default `data/sentinelsme.db` |
+| Storage | SQLite zero-configuration persistence | Implemented | Default `data/lindabiz.db` |
 | Storage | PostgreSQL and versioned migrations | Implemented and container-tested | Private URL configuration; production secret files and separate restricted app role; isolated backup restoration passed |
 | Access | Tenant-scoped platform queries | Implemented | Google mode derives workspace from a verified server session; local mode uses caller-supplied `X-Tenant-ID` |
 | Access | Optional shared API key | Local prototype control | `AI_SOC_API_KEY` and `X-API-Key` in local mode only |

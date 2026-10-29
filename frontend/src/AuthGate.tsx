@@ -8,7 +8,7 @@ import { ApiError, type AuthSession } from './types'
 
 function hasLocalWorkspace() {
   try {
-    return Boolean(sessionStorage.getItem('sentinelsme.tenantId'))
+    return Boolean(sessionStorage.getItem('lindabiz.tenantId'))
   } catch {
     return false
   }
@@ -126,8 +126,8 @@ export default function AuthGate() {
       generation.current++
       setSession((current) => current ? { ...current, user: null, csrf_token: '' } : null)
     }
-    window.addEventListener('sentinelsme:session-expired', expired)
-    return () => window.removeEventListener('sentinelsme:session-expired', expired)
+    window.addEventListener('lindabiz:session-expired', expired)
+    return () => window.removeEventListener('lindabiz:session-expired', expired)
   }, [])
 
   useEffect(() => {
@@ -152,8 +152,8 @@ export default function AuthGate() {
     setSession({ ...session, user: null, csrf_token: '' })
     setLocalReady(false)
     try {
-      sessionStorage.removeItem('sentinelsme.tenantId')
-      sessionStorage.removeItem('sentinelsme.apiKey')
+      sessionStorage.removeItem('lindabiz.tenantId')
+      sessionStorage.removeItem('lindabiz.apiKey')
     } catch {
       // The server session is already invalidated.
     }

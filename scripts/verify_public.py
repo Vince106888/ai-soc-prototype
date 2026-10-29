@@ -12,7 +12,7 @@ from .production import connection
 
 def check(directory: Path) -> dict:
     base, env, values = connection(directory)
-    if values.get("AI_SOC_PROJECT") != "sentinelsme-public-acceptance":
+    if values.get("AI_SOC_PROJECT") != "lindabiz-public-acceptance":
         raise ValueError("This acceptance check targets only the controlled local TLS stack.")
     certificate = subprocess.run(
         base + ["exec", "-T", "edge", "cat", "/data/caddy/pki/authorities/local/root.crt"],
@@ -91,7 +91,7 @@ print(json.dumps(identities))
 
     def authenticated(identity, method, path, expected=200, payload=None):
         headers = {
-            "Cookie": "sentinelsme_session=" + identity["token"],
+            "Cookie": "lindabiz_session=" + identity["token"],
             "Origin": values["AI_SOC_PUBLIC_ORIGIN"],
             "X-CSRF-Token": identity["csrf"],
         }
@@ -147,7 +147,7 @@ print(json.dumps(identities))
         from .backup import create, verify
 
         archive = create(connection=(base, env), directory=directory / "backups")
-        restored = verify(archive, connection=(base, env), application_role="sentinelsme_app")
+        restored = verify(archive, connection=(base, env), application_role="lindabiz_app")
         assert restored["restored"]["incidents"] >= 1
     finally:
         for identity in identities:

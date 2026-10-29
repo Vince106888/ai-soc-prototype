@@ -25,7 +25,7 @@ function mockWorkspace() {
 
 describe('workspace investigation state', () => {
   it('submits search deliberately instead of reloading the workspace on each key', async () => {
-    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    sessionStorage.setItem('lindabiz.tenantId', 'a')
     mockWorkspace()
     const pages = vi.spyOn(api, 'incidentPage').mockResolvedValue({ items: [incident], total: 1, offset: 0, limit: 25 })
     render(<App />)
@@ -51,7 +51,7 @@ describe('workspace investigation state', () => {
   })
 
   it('opens critical metrics as visible, removable filters', async () => {
-    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    sessionStorage.setItem('lindabiz.tenantId', 'a')
     mockWorkspace()
     vi.spyOn(api, 'incidentPage').mockResolvedValue({ items: [incident], total: 1, offset: 0, limit: 25 })
     render(<App />)
@@ -97,7 +97,7 @@ describe('workspace investigation state', () => {
   })
 
   it('reports a queue failure instead of showing a clean queue', async () => {
-    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    sessionStorage.setItem('lindabiz.tenantId', 'a')
     mockWorkspace()
     vi.spyOn(api, 'incidentPage').mockImplementation(async (_credentials, filters) => {
       if (filters.openOnly) throw new Error('Queue unavailable')
@@ -109,7 +109,7 @@ describe('workspace investigation state', () => {
   })
 
   it('keeps the overview queue independent of incident filters', async () => {
-    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    sessionStorage.setItem('lindabiz.tenantId', 'a')
     mockWorkspace()
     const pages = vi.spyOn(api, 'incidentPage').mockImplementation(async (_credentials, filters) => ({ items: filters.status === 'resolved' ? [] : [incident], total: filters.status === 'resolved' ? 0 : 1, offset: 0, limit: 25 }))
     render(<App />)
@@ -123,7 +123,7 @@ describe('workspace investigation state', () => {
   })
 
   it('discards an older workspace response after switching tenants', async () => {
-    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    sessionStorage.setItem('lindabiz.tenantId', 'a')
     mockWorkspace()
     let release: (() => void) | undefined
     const pending = new Promise<void>(resolve => { release = resolve })
@@ -139,6 +139,6 @@ describe('workspace investigation state', () => {
     await screen.findByText('No open incidents in this view')
     release?.()
     await waitFor(() => expect(screen.queryByRole('button', { name: /Controlled critical case/ })).not.toBeInTheDocument())
-    expect(sessionStorage.getItem('sentinelsme.tenantId')).toBe('b')
+    expect(sessionStorage.getItem('lindabiz.tenantId')).toBe('b')
   })
 })

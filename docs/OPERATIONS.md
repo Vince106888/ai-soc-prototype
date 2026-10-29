@@ -26,7 +26,7 @@ are consumed through explicit controlled ingestion.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `AI_SOC_DATABASE_URL` | `sqlite:///data/sentinelsme.db` | SQLAlchemy database URL |
+| `AI_SOC_DATABASE_URL` | `sqlite:///data/lindabiz.db` | SQLAlchemy database URL |
 | `AI_SOC_ALLOWED_HOSTS` | `localhost,127.0.0.1,testserver` | Comma-separated accepted Host headers |
 | `AI_SOC_API_KEY` | unset | Shared `X-API-Key` for local data routes; not used in Google mode |
 | `AI_SOC_AUTH_MODE` | `local` | `google` enables invited app sessions; invalid values fail closed |
@@ -105,7 +105,7 @@ docker compose up --build
 The multi-stage image builds the React console, installs the locked Python
 runtime, applies Alembic migrations, and serves the console and API on localhost
 port `8000`. Compose starts a separate opt-in scan worker after API readiness. PostgreSQL is private to the Compose network and stores data in the
-named `sentinelsme-data` volume.
+named `lindabiz-data` volume.
 
 Local Gmail trial expiry is enforced at startup/platform requests; general production retention remains pending. Plan and document deletion before using
 real data; see `PRIVACY_AND_RETENTION.md`.
@@ -350,7 +350,7 @@ alerts retroactively; alerts are raised for new or escalated incidents.
 - Windows PowerShell 5.1 treated Docker's progress output on stderr as an error and
   aborted the script. `restart.ps1` now sets `$ErrorActionPreference = 'Continue'`
   around the Docker calls and relies on its explicit exit-code checks.
-- A second stack (`sentinelsme-public-acceptance`) was also running; it is separate,
+- A second stack (`lindabiz-public-acceptance`) was also running; it is separate,
   uses no ports on 8001, and was left untouched.
 
 ## Restart this laptop deployment

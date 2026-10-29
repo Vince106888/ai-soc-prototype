@@ -63,9 +63,7 @@ def initialise(directory: Path, origin: str, client_file: Path, contact: str, te
         # distinct non-root API/PostgreSQL container users (Compose bind secrets).
         path.chmod(0o444)
     values = {
-        "AI_SOC_PROJECT": "sentinelsme-public-acceptance"
-        if test_local
-        else "sentinelsme-production",
+        "AI_SOC_PROJECT": "lindabiz-public-acceptance" if test_local else "lindabiz-production",
         "AI_SOC_PUBLIC_ORIGIN": origin,
         "AI_SOC_PUBLIC_HOST": urlsplit(origin).hostname,
         "AI_SOC_OPERATOR_CONTACT": contact,
@@ -99,8 +97,8 @@ def connection(directory: Path):
         if line and not line.startswith("#") and "=" in line
     )
     public_origin(values.get("AI_SOC_PUBLIC_ORIGIN", ""))
-    if not re.fullmatch(r"sentinelsme-[a-z0-9_-]{1,50}", values.get("AI_SOC_PROJECT", "")):
-        raise ValueError("Use a dedicated sentinelsme-... production project name.")
+    if not re.fullmatch(r"lindabiz-[a-z0-9_-]{1,50}", values.get("AI_SOC_PROJECT", "")):
+        raise ValueError("Use a dedicated lindabiz-... production project name.")
     docker = find_docker()
     if not docker:
         raise ValueError("Install and start Docker Engine with the Compose plugin first.")
@@ -128,7 +126,7 @@ def main():
         "command", choices=["init", "validate", "up", "down", "status", "backup", "verify-backup"]
     )
     parser.add_argument(
-        "--directory", type=Path, default=Path.home() / ".config/sentinelsme/production"
+        "--directory", type=Path, default=Path.home() / ".config/lindabiz/production"
     )
     parser.add_argument("--origin")
     parser.add_argument("--google-client-file", type=Path)
@@ -170,9 +168,7 @@ def main():
         elif args.archive:
             print(
                 json.dumps(
-                    verify(
-                        args.archive, connection=(base, env), application_role="sentinelsme_app"
-                    ),
+                    verify(args.archive, connection=(base, env), application_role="lindabiz_app"),
                     indent=2,
                 )
             )

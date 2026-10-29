@@ -18,7 +18,7 @@ The mobile drawer also traps focus, closes on Escape and becomes inert when
 hidden. Offset-free SQLite timestamps are interpreted as UTC before being
 formatted in the viewer's local time, preventing false multi-hour collection ages.
 
-The reviewed design specification is `design-system/sentinelsme/MASTER.md`.
+The reviewed design specification is `design-system/lindabiz/MASTER.md`.
 UI/UX Pro Max was installed from
 [its source repository](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill).
 Its data-dashboard, contrast, touch-target, focus and responsive guidance informed

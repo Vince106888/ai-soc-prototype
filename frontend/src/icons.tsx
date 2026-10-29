@@ -40,5 +40,7 @@ export const Icons = {
   link: (props: IconProps) => <IconBase {...props}><path d="m10 13.8 4-4M7.5 15.5l-1 1a3.5 3.5 0 0 1-5-5l3-3a3.5 3.5 0 0 1 5 0M16.5 8.5l1-1a3.5 3.5 0 0 1 5 5l-3 3a3.5 3.5 0 0 1-5 0" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" /></IconBase>,
   key: (props: IconProps) => <IconBase {...props}><circle cx="8" cy="15" r="4" stroke="currentColor" strokeWidth="1.7" /><path d="m11 12 8-8m-3 0h3v3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7" /></IconBase>,
   user: (props: IconProps) => <IconBase {...props}><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.7" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" /></IconBase>,
+  sun: (props: IconProps) => <IconBase {...props}><circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.7" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" /></IconBase>,
+  moon: (props: IconProps) => <IconBase {...props}><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" /></IconBase>,
   sparkle: (props: IconProps) => <IconBase {...props}><path d="m12 3 1.4 4.6L18 9l-4.6 1.4L12 15l-1.4-4.6L6 9l4.6-1.4L12 3Zm7 10 .8 2.2L22 16l-2.2.8L19 19l-.8-2.2L16 16l2.2-.8L19 13Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" /></IconBase>,
 }

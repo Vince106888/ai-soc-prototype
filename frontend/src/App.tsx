@@ -3,6 +3,7 @@ import { api } from './api'
 import { AddSourceModal, type SourceDraft } from './AddSourceModal'
 import { AlertsPanel } from './AlertsPanel'
 import { AssistantWidget } from './AssistantWidget'
+import { ThemeToggle } from './ThemeToggle'
 import { ConnectionsPage } from './ConnectionsPage'
 import { DetectionPage } from './DetectionPage'
 import { type EmailDraft } from './EmailAnalysis'
@@ -18,8 +19,8 @@ import { Brand, InlineNotice, Panel, Toast } from './ui'
 import type { Account, AuthSession, CapabilityProfile, Credentials, Incident, IncidentFilters, IncidentStatus, Overview, ScanJob, Source, TrustChoice } from './types'
 import { incidentTitle, prioritizeIncidents, telemetryCoverage } from './utils'
 
-const KEY_STORAGE = 'sentinelsme.apiKey'
-const TENANT_STORAGE = 'sentinelsme.tenantId'
+const KEY_STORAGE = 'lindabiz.apiKey'
+const TENANT_STORAGE = 'lindabiz.tenantId'
 
 function readSessionValue(key: string) {
   try { return sessionStorage.getItem(key) ?? '' } catch { return '' }
@@ -314,7 +315,7 @@ export default function App({ session, onSignOut, onLocalDisconnect }: { session
           <form className="global-search" onSubmit={(event) => { event.preventDefault(); changeFilters({ q: searchText.trim() }); navigate('incidents') }}>
             <Icons.search /><label className="sr-only" htmlFor="global-search">Search incidents</label><input id="global-search" maxLength={200} onChange={(event) => setSearchText(event.target.value)} placeholder="Search incidents…" value={searchText} /><button className="search-submit" type="submit" aria-label="Search workspace" disabled={!searchText.trim()}><Icons.arrow /></button>
           </form>
-          <div className="top-actions"><button aria-label={unreadAlerts ? `Alerts, ${unreadAlerts} unread` : 'Alerts'} className="icon-button alert-bell" disabled={!tenantId} onClick={() => navigate('connections')} type="button"><Icons.alert />{unreadAlerts > 0 && <span className="alert-count" aria-hidden="true">{unreadAlerts > 9 ? '9+' : unreadAlerts}</span>}</button><button className="button button-primary scan-button" disabled={!tenantId} onClick={() => navigate('analyse', { method: 'selected' })} type="button"><Icons.scan /><span>Analyse message</span></button><button aria-label={session?.user ? 'Your account' : 'Local workspace settings'} className="avatar-button" onClick={() => setSettingsOpen(true)} type="button">{session?.user?.email?.slice(0, 2).toUpperCase() ?? <Icons.settings />}</button></div>
+          <div className="top-actions"><ThemeToggle /><button aria-label={unreadAlerts ? `Alerts, ${unreadAlerts} unread` : 'Alerts'} className="icon-button alert-bell" disabled={!tenantId} onClick={() => navigate('connections')} type="button"><Icons.alert />{unreadAlerts > 0 && <span className="alert-count" aria-hidden="true">{unreadAlerts > 9 ? '9+' : unreadAlerts}</span>}</button><button className="button button-primary scan-button" disabled={!tenantId} onClick={() => navigate('analyse', { method: 'selected' })} type="button"><Icons.scan /><span>Analyse message</span></button><button aria-label={session?.user ? 'Your account' : 'Local workspace settings'} className="avatar-button" onClick={() => setSettingsOpen(true)} type="button">{session?.user?.email?.slice(0, 2).toUpperCase() ?? <Icons.settings />}</button></div>
         </header>
         {tenantId && <div className="data-scope-bar"><span><Icons.lock />{session?.user ? 'Signed in as' : 'Workspace'} <strong>{session?.user?.email ?? tenantId}</strong></span><span className="mode-tag">{telemetry.mode === 'live' ? 'Gmail samples · on demand' : 'Selected-message analysis'}</span><span>Private evidence · human review</span></div>}
         <main id="main-content">
@@ -330,7 +331,7 @@ export default function App({ session, onSignOut, onLocalDisconnect }: { session
         </main>
       </div>
       {deleteTarget && <DeleteAccountDataModal account={deleteTarget} busy={operationBusy === 'delete'} onClose={() => setDeleteTarget(null)} onDelete={() => void deleteAccount()} />}
-      {settingsOpen && (session?.user && onSignOut ? <SessionModal session={session} onClose={() => setSettingsOpen(false)} onSignOut={onSignOut} onDelete={async () => { await api.deleteIdentity(credentials); window.dispatchEvent(new Event('sentinelsme:session-expired')) }} onShowGuide={openGuide} onOpenConnections={() => { setSettingsOpen(false); navigate('connections') }} /> : <LocalSettingsModal currentKey={apiKey} currentTenant={tenantId} onClear={disconnect} onClose={() => setSettingsOpen(false)} onSave={connect} />)}
+      {settingsOpen && (session?.user && onSignOut ? <SessionModal session={session} onClose={() => setSettingsOpen(false)} onSignOut={onSignOut} onDelete={async () => { await api.deleteIdentity(credentials); window.dispatchEvent(new Event('lindabiz:session-expired')) }} onShowGuide={openGuide} onOpenConnections={() => { setSettingsOpen(false); navigate('connections') }} /> : <LocalSettingsModal currentKey={apiKey} currentTenant={tenantId} onClear={disconnect} onClose={() => setSettingsOpen(false)} onSave={connect} />)}
       {sourceOpen && <AddSourceModal accounts={accounts} onClose={() => setSourceOpen(false)} onCreate={createControlledSource} profile={capabilities} />}
       {tenantId && <AssistantWidget credentials={credentials} incidentId={view === 'incidents' && selected ? selected.id : undefined} incidentTitle={view === 'incidents' && selected ? incidentTitle(selected) : undefined} />}
       {toast && <Toast message={toast} onDismiss={() => setToast('')} />}

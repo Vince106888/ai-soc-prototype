@@ -24,7 +24,7 @@ class Base(DeclarativeBase):
     """Declarative base shared by every platform table."""
 
 
-DEFAULT_DATABASE_PATH = Path("data") / "sentinelsme.db"
+DEFAULT_DATABASE_PATH = Path("data") / "lindabiz.db"
 
 
 def _database_url() -> str:
@@ -33,11 +33,11 @@ def _database_url() -> str:
 
         return URL.create(
             "postgresql+psycopg",
-            username="sentinelsme_app",
+            username="lindabiz_app",
             password=deployment.secret("AI_SOC_DB_PASSWORD"),
             host=os.getenv("AI_SOC_DB_HOST", "db"),
             port=5432,
-            database=os.getenv("AI_SOC_DB_NAME", "sentinelsme"),
+            database=os.getenv("AI_SOC_DB_NAME", "lindabiz"),
         ).render_as_string(hide_password=False)
     configured = os.getenv("AI_SOC_DATABASE_URL")
     if configured:

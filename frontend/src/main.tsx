@@ -2,12 +2,15 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/geist'
 import App from './AuthGate'
+import { initTheme } from './theme'
 import './design/tokens.css'
 import './design/base.css'
 import './design/components.css'
 import './design/layout.css'
 import './design/pages.css'
 import './design/welcome.css'
+
+initTheme()
 
 async function start() {
   // Visual-review mock: development server only, never part of a production bundle.

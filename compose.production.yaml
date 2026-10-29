@@ -15,7 +15,7 @@ x-environment: &environment
   AI_SOC_GOOGLE_REDIRECT_URI: ${AI_SOC_PUBLIC_ORIGIN}/api/v1/gmail/callback
   AI_SOC_TOKEN_KEY_FILE: /run/secrets/token_key
   AI_SOC_DB_PASSWORD_FILE: /run/secrets/app_database_password
-  AI_SOC_DB_NAME: sentinelsme
+  AI_SOC_DB_NAME: lindabiz
   AI_SOC_GMAIL_ENABLED: ${AI_SOC_GMAIL_ENABLED:-false}
   AI_SOC_EVIDENCE_RETENTION_DAYS: ${AI_SOC_EVIDENCE_RETENTION_DAYS:-30}
   AI_SOC_EXPLAINER: ${AI_SOC_EXPLAINER:-off}
@@ -25,7 +25,7 @@ x-environment: &environment
   AI_SOC_OPERATOR_CONTACT: ${AI_SOC_OPERATOR_CONTACT:?set operator support email}
 x-application: &application
   build: .
-  image: sentinelsme-public:${AI_SOC_RELEASE:-local}
+  image: lindabiz-public:${AI_SOC_RELEASE:-local}
   environment: *environment
   secrets: [google_client_secret, token_key, app_database_password]
   volumes: ["public-deletion-ledger:/app/deletion-ledger"]
@@ -55,15 +55,15 @@ services:
   db:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: sentinelsme
-      POSTGRES_USER: sentinelsme_admin
+      POSTGRES_DB: lindabiz
+      POSTGRES_USER: lindabiz_admin
       POSTGRES_PASSWORD_FILE: /run/secrets/admin_database_password
     secrets: [admin_database_password, app_database_password]
     volumes:
       - public-postgres-data:/var/lib/postgresql/data
       - ./deploy/init-database.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
     healthcheck:
-      test: [CMD-SHELL, "pg_isready -U sentinelsme_admin -d sentinelsme"]
+      test: [CMD-SHELL, "pg_isready -U lindabiz_admin -d lindabiz"]
       interval: 5s
       timeout: 5s
       retries: 20

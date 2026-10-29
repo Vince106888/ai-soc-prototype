@@ -66,7 +66,7 @@ async function request<T>(path: string, credentials: Credentials, options: Reque
 
   const body: unknown = response.status === 204 ? null : await response.json().catch(() => null)
   if (!response.ok) {
-    if (response.status === 401 && credentials.csrfToken) window.dispatchEvent(new Event('sentinelsme:session-expired'))
+    if (response.status === 401 && credentials.csrfToken) window.dispatchEvent(new Event('lindabiz:session-expired'))
     const parsed = messageFrom(body, `Request failed (${response.status})`)
     throw new ApiError(parsed.message, response.status, parsed.code)
   }

@@ -11,9 +11,9 @@ it('uses same-origin cookies and sends the app CSRF token with mutations', async
 it('notifies the auth gate when an authenticated request expires', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 401 })))
   const listener = vi.fn()
-  window.addEventListener('sentinelsme:session-expired', listener)
+  window.addEventListener('lindabiz:session-expired', listener)
   try {
     await expect(api.accounts({ apiKey: '', tenantId: 'assigned', csrfToken: 'csrf' })).rejects.toMatchObject({ status: 401 })
     expect(listener).toHaveBeenCalledOnce()
-  } finally { window.removeEventListener('sentinelsme:session-expired', listener) }
+  } finally { window.removeEventListener('lindabiz:session-expired', listener) }
 })

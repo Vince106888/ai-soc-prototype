@@ -25,8 +25,10 @@ Typeface: Geist Variable (self-hosted through `@fontsource-variable/geist`, no
 external request). Base size 14px, scale 11.5 / 12.5 / 14 / 15.5 / 17 / 20 px, headings
 at weight 600 with slightly negative tracking. Accent is indigo; severity colours
 are critical rose, high orange, medium amber and low blue and are always paired
-with text, never colour alone. Dark mode follows `prefers-color-scheme` through
-the same tokens (override with `data-theme="light"` on `<html>`).
+with text, never colour alone. Light and dark share the same tokens. The theme
+toggle (sun and moon button in the top bar and on the public pages) sets `data-theme` on `<html>` and
+remembers the choice in `localStorage` (`lindabiz.theme`); until a choice is made the theme follows the
+system's `prefers-color-scheme`.
 
 ## Reusable React components (`frontend/src/ui.tsx`)
 
@@ -37,10 +39,12 @@ the evidence and detection catalogue pages, uses `PageHeader`.
 
 ## Product name
 
-The product is named **LindaBiz**. Only user-facing text uses the name. Internal identifiers keep
-their original `sentinelsme` spelling so existing data and sign-ins keep working: the database name
-and roles, the `sentinelsme_*` cookie names, `sentinelsme.*` browser-storage keys, Docker volumes and
-the `%LOCALAPPDATA%\SentinelSME` secrets folder. Do not rename these without a data migration.
+The product is named **LindaBiz** everywhere, including internal identifiers (database defaults and
+roles, cookie and browser-storage keys, Docker volume, the `%LOCALAPPDATA%\LindaBiz` secrets folder).
+An installation created under the earlier name keeps working by pinning its original database name,
+user and volume in its private env file (`POSTGRES_DB`, `POSTGRES_USER`, `AI_SOC_DATA_VOLUME`); see
+[operations](OPERATIONS.md). Renaming those stored values would need a data migration. Sessions and
+saved browser settings from before the rename are reset once.
 
 ## Accessibility behaviour that tests depend on
 

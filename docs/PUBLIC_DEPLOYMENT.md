@@ -32,7 +32,7 @@ python scripts/production.py up
 python scripts/production.py status
 ```
 
-Initialization creates `~/.config/sentinelsme/production/` and refuses to
+Initialization creates `~/.config/lindabiz/production/` and refuses to
 overwrite it. Keep this directory private. It contains the environment file,
 separate database administrator/application secrets, provider secret and token
 encryption key. Preserve these independently of database backups. Do not commit

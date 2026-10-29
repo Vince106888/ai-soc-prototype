@@ -71,7 +71,7 @@ Gmail supplies email signals only; collection runs on demand.
 
 ## Analyst interface
 
-`console.css` implements the reviewed design in `design-system/sentinelsme/MASTER.md`.
+`console.css` implements the reviewed design in `design-system/lindabiz/MASTER.md`.
 Incident details have keyboard-accessible Overview, Evidence and Activity tabs.
 The Email analysis screen separates selected messages from Gmail consent/sampling;
 Protection coverage documents current limits and missing provider integrations.

@@ -5,7 +5,7 @@ case "$app_password" in ''|*[!0-9a-f]*) echo 'Invalid application database secre
 [ "${#app_password}" -eq 64 ] || exit 1
 # Values are generated hexadecimal; no secrets enter command arguments or logs.
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<SQL
-CREATE ROLE sentinelsme_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD '$app_password';
-GRANT CONNECT ON DATABASE "$POSTGRES_DB" TO sentinelsme_app;
-GRANT USAGE, CREATE ON SCHEMA public TO sentinelsme_app;
+CREATE ROLE lindabiz_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION PASSWORD '$app_password';
+GRANT CONNECT ON DATABASE "$POSTGRES_DB" TO lindabiz_app;
+GRANT USAGE, CREATE ON SCHEMA public TO lindabiz_app;
 SQL

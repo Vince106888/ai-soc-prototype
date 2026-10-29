@@ -110,7 +110,7 @@ LindaBiz is a modular monolith with explicit service boundaries:
 
 ![LindaBiz ingestion and incident sequence](docs/assets/sequence.png)
 
-The default SQLite database is created at `data/sentinelsme.db`. Set
+The default SQLite database is created at `data/lindabiz.db`. Set
 `AI_SOC_DATABASE_URL` to use another SQLAlchemy database URL. The repository
 ships an Alembic migration and a Docker Compose deployment that builds the
 dashboard and API and runs them with PostgreSQL.

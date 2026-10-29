@@ -95,7 +95,7 @@ data before submission rather than using the database as a mailbox archive.
 The default URL is effectively:
 
 ```text
-sqlite:///data/sentinelsme.db
+sqlite:///data/lindabiz.db
 ```
 
 Override it with `AI_SOC_DATABASE_URL`. Foreign-key enforcement is enabled for

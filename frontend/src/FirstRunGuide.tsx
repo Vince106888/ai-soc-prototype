@@ -4,7 +4,7 @@ import type { Overview, Source } from './types'
 export const GUIDE_VERSION = 'v1'
 
 export function guideStorageKey(workspaceId: string) {
-  return `sentinelsme.onboarding.${workspaceId || 'local'}.${GUIDE_VERSION}`
+  return `lindabiz.onboarding.${workspaceId || 'local'}.${GUIDE_VERSION}`
 }
 
 export function shouldShowGuide(workspaceId: string) {

@@ -3,6 +3,7 @@ import { api } from './api'
 import { Icons } from './icons'
 import { PrivacyBoundaryArt, WelcomeStory } from './illustrations'
 import { Brand, InlineNotice } from './ui'
+import { ThemeToggle } from './ThemeToggle'
 import type { AuthSession } from './types'
 
 type Notice = { tone: 'warning' | 'danger'; title: string; message: string }
@@ -102,9 +103,9 @@ export function Welcome({ session, onLocalStart }: { session: AuthSession; onLoc
 
   const localStart = (workspace = `workspace-${crypto.randomUUID()}`, apiKey = '') => {
     try {
-      sessionStorage.setItem('sentinelsme.tenantId', workspace)
-      if (apiKey) sessionStorage.setItem('sentinelsme.apiKey', apiKey)
-      else sessionStorage.removeItem('sentinelsme.apiKey')
+      sessionStorage.setItem('lindabiz.tenantId', workspace)
+      if (apiKey) sessionStorage.setItem('lindabiz.apiKey', apiKey)
+      else sessionStorage.removeItem('lindabiz.apiKey')
       onLocalStart()
     } catch {
       setError('This browser must allow session storage to open a local workspace.')
@@ -121,6 +122,7 @@ export function Welcome({ session, onLocalStart }: { session: AuthSession; onLoc
           <a href="#privacy">Privacy</a>
           <a href="/terms">Terms</a>
         </nav>
+        <ThemeToggle />
         <span className="welcome-mode"><span aria-hidden="true" />{pilot ? 'Private workspaces' : 'Local controlled workspace'}</span>
       </header>
 
