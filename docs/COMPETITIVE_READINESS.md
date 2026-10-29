@@ -5,7 +5,7 @@ Reviewed 4 October 2026 against the executable repository, the corrected CNS
 
 ## Assessment
 
-Both the frontend and backend have been upgraded. SentinelSME now provides a
+Both the frontend and backend have been upgraded. LindaBiz now provides a
 working local investigation workflow with persistent, traceable evidence and an
 implemented personal Gmail adapter. Commercial parity with INKY or Proofpoint
 has not been established. The current deployment is a defensive research
@@ -54,7 +54,7 @@ works when Google services are absent.
 These are comparisons of documented capability, not independent tests of vendor
 claims. Product capabilities can differ by licence and deployment.
 
-| Capability | INKY public description | Proofpoint public description | SentinelSME now |
+| Capability | INKY public description | Proofpoint public description | LindaBiz now |
 |---|---|---|---|
 | Analyst console | Search, email inspection, banner/policy controls and delivery/quarantine decisions | Unified investigation and response | Persistent incident/evidence console and audited review decisions; no delivery controls |
 | Phishing/BEC detection | Intent, visual cues and sender behaviour, including impersonation | Behavioural analysis and threat intelligence across email threats | Twelve deterministic email/posture rules; narrow indicators, no calibrated BEC detection result |

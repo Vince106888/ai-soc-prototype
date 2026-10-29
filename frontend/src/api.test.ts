@@ -55,7 +55,7 @@ describe('API client', () => {
 
   it('parses the aggregate capabilities contract', async () => {
     const capabilityResponse = {
-      service: 'SentinelSME', signal_types: ['email'], source_types: ['controlled'],
+      service: 'LindaBiz', signal_types: ['email'], source_types: ['controlled'],
       live_connectors: [], controlled_ingestion: true, template_explanations: true,
       ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500,
       privacy: { stores_full_bodies: false, stores_attachments: false },

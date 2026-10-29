@@ -48,7 +48,7 @@ def test_missing_google_configuration_never_starts_unauthenticated_workspace(tmp
     result = invoke(installation(tmp_path))
     assert result.returncode != 0
     assert "Saved Google sign-in configuration is missing" in result.stderr
-    assert "Restarting SentinelSME" not in result.stdout
+    assert "Restarting LindaBiz" not in result.stdout
     assert "PRIVATE_MARKER" not in result.stdout + result.stderr
 
 
@@ -68,5 +68,5 @@ def test_port_change_is_rejected_before_restarting_services(tmp_path):
     result = invoke(script, "-Port", "8002")
     assert result.returncode != 0
     assert "saved Google callback uses a different port" in result.stderr
-    assert "Restarting SentinelSME" not in result.stdout
+    assert "Restarting LindaBiz" not in result.stdout
     assert "PRIVATE_MARKER" not in result.stdout + result.stderr

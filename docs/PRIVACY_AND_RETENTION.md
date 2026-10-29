@@ -7,7 +7,7 @@ disconnect, invitation withdrawal and account deletion stop future collection.
 Deletion/expiry also removes schedule/job audit references. An in-flight read may
 finish, but ingestion requires the source still to be active. See [scheduling](SCHEDULING.md).
 
-SentinelSME is designed around data minimisation. Its safe default is controlled
+LindaBiz is designed around data minimisation. Its safe default is controlled
 synthetic data, not live mail. A deployment must have an explicit lawful basis,
 user or administrator authorisation, and a documented retention period before
 processing real organisational data.

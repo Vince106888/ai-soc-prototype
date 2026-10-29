@@ -9,7 +9,7 @@ Configuration (all optional; disabled by default):
 
 * ``AI_SOC_EXPLAINER=ollama`` enables the adapter.
 * ``AI_SOC_OLLAMA_URL`` defaults to ``http://127.0.0.1:11434`` and must be loopback,
-  so incident data never leaves the computer running SentinelSME.
+  so incident data never leaves the computer running LindaBiz.
 * ``AI_SOC_OLLAMA_MODEL`` defaults to ``qwen2.5:3b``.
 * ``AI_SOC_EXPLAINER_TIMEOUT`` defaults to 120 seconds (CPU inference is slow).
 """

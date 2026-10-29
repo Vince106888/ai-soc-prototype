@@ -1,7 +1,7 @@
 # Product coverage and completion plan
 
 Reviewed 4 October 2026 against the user's INKY product list, the executable
-SentinelSME repository, and the corrected CNS 4101 Chapter 4 requirements.
+LindaBiz repository, and the corrected CNS 4101 Chapter 4 requirements.
 Commercial parity has not been measured. Vendor product names describe separate
 capabilities; they are not a checklist that can be satisfied by adding dashboard
 buttons.
@@ -36,7 +36,7 @@ domain from the recipient's address. Existing evidence is not silently re-scored
 
 ## Products
 
-| INKY product | SentinelSME executable coverage | Necessary work to cover the product |
+| INKY product | LindaBiz executable coverage | Necessary work to cover the product |
 |---|---|---|
 | Inbound Mail Protection | Selected-message and bounded read-only Gmail inbox analysis; sender, language, link-host, brand/domain and authentication indicators | Continuous delivery/collection integration, evaluated detection and user-visible mail protection; the current sample cannot prevent delivery |
 | Outbound Mail Protection | None | Separate outbound integration, data-loss policies, appropriate permissions and evaluation |

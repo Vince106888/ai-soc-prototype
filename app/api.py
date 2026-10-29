@@ -1,4 +1,4 @@
-"""Versioned HTTP API for the persistent SentinelSME platform."""
+"""Versioned HTTP API for the persistent LindaBiz platform."""
 
 from __future__ import annotations
 
@@ -128,7 +128,7 @@ def request_context(
     return RequestContext(tenant_id=x_tenant_id)
 
 
-router = APIRouter(prefix="/api/v1", tags=["SentinelSME"], dependencies=[Depends(request_context)])
+router = APIRouter(prefix="/api/v1", tags=["LindaBiz"], dependencies=[Depends(request_context)])
 DB = Annotated[Session, Depends(get_session)]
 Context = Annotated[RequestContext, Depends(request_context)]
 
@@ -146,7 +146,7 @@ def capabilities() -> dict:
     """Describe available adapters without claiming unavailable live integrations."""
 
     return {
-        "service": "SentinelSME",
+        "service": "LindaBiz",
         "signal_types": ["email", "forwarding", "signin", "mfa", "oauth_grant"],
         "source_types": ["controlled", "gmail", "workspace"],
         "live_connectors": ["gmail"] if configuration_status()["configured"] else [],

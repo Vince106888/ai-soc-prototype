@@ -1,4 +1,4 @@
-"""Database configuration for the persistent SentinelSME platform.
+"""Database configuration for the persistent LindaBiz platform.
 
 SQLite is intentionally the zero-configuration development default.  The ORM
 uses portable SQLAlchemy types so the same models can be migrated to

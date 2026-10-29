@@ -13,7 +13,7 @@ does not let somebody on another computer reach this installation.
 
 ## User journey
 
-1. Open SentinelSME and choose **Sign in with Google**.
+1. Open LindaBiz and choose **Sign in with Google**.
 2. Use an account on the operator's invitation list. Google verifies the email;
    the server assigns a new private workspace on first sign-in.
 3. Choose **Gmail sample** to connect the same Gmail account with separate
@@ -45,7 +45,7 @@ The Gmail token validator permits identity scopes alongside `gmail.readonly`
 when Google combines grants for this shared client. It still requires Gmail
 read-only and rejects every other mailbox/provider permission.
 Keep the app in Testing for this pilot. Each participant must be both a Google
-test user and a SentinelSME invitee. These are separate checks.
+test user and a LindaBiz invitee. These are separate checks.
 
 Reuse the privately saved Web client JSON after saving the callback. The client
 ID and secret stay the same; older downloads may not list the added callback.

@@ -1,6 +1,6 @@
 # Local-model explanations (optional)
 
-SentinelSME can ask a small open-weight language model, running on the same
+LindaBiz can ask a small open-weight language model, running on the same
 computer through [Ollama](https://ollama.com), to rewrite an incident's
 explanation in plain language. Detection is unchanged:
 

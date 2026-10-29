@@ -36,7 +36,7 @@ export function PostureCheck({ credentials, accounts, onComplete }: { credential
 
   const findings = result?.ingestion.finding_count ?? 0
   return <section className="panel posture-check" aria-labelledby="posture-heading">
-    <div className="posture-intro"><h2 id="posture-heading">Account security self-check</h2><p>Personal Gmail access cannot read sign-in protection, forwarding or app permissions. Answer from your account’s security settings and SentinelSME checks the answers with the same rules. Results are labelled self-reported. Choose “Not sure” rather than guessing.</p></div>
+    <div className="posture-intro"><h2 id="posture-heading">Account security self-check</h2><p>Personal Gmail access cannot read sign-in protection, forwarding or app permissions. Answer from your account’s security settings and LindaBiz checks the answers with the same rules. Results are labelled self-reported. Choose “Not sure” rather than guessing.</p></div>
     <form onSubmit={event => { event.preventDefault(); void submit() }} className="posture-form">
       <label>Account<select value={selected} onChange={event => setAccountId(event.target.value)}>{accounts.map(account => <option key={account.id} value={account.id}>{account.display_name || account.email || account.id}</option>)}</select></label>
       <Choice name="mfa" legend="Is 2-Step Verification (a second sign-in step) turned on?" value={mfa} onChange={setMfa} options={[['on', 'Yes'], ['off', 'No'], ['unsure', 'Not sure']]} />
