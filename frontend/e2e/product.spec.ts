@@ -91,12 +91,8 @@ async function workspace(page: Page, signedIn = true) {
       '/sources/source-synthetic/schedule': null,
       '/alert-settings': {
         minimum_severity: 'high',
-        email_enabled: false,
-        email_to: null,
         webhook_enabled: false,
         webhook_url: null,
-        email_available: false,
-        email_locked_to_signed_in_user: true,
       },
       '/alerts': [],
       '/alerts/read': null,

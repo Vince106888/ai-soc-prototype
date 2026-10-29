@@ -42,19 +42,19 @@ export function WelcomeStory() {
         <rect x="62" y="92" width="204" height="270" rx="18" fill="url(#story-panel)" stroke="#d5e2f4" />
         <rect x="82" y="114" width="44" height="44" rx="12" fill="#e9f1ff" />
         <path d="M93 128h22M93 136h15M93 144h20" stroke="#2563eb" strokeLinecap="round" strokeWidth="2" />
-        <text x="142" y="132" fill="#0f172a" fontSize="14" fontWeight="700">Selected message</text>
-        <text x="142" y="151" fill="#52627b" fontSize="11">Synthetic example</text>
+        <text x="142" y="132" fill="#0f172a" fontSize="12.6" fontWeight="700">Selected message</text>
+        <text x="142" y="151" fill="#52627b" fontSize="9.9">Synthetic example</text>
 
         <rect x="82" y="180" width="164" height="42" rx="10" fill="#f7faff" stroke="#dce7f5" />
-        <text x="96" y="198" fill="#64748b" fontSize="9" fontWeight="700" letterSpacing=".7">SENDER</text>
-        <text x="96" y="213" fill="#1e293b" fontSize="11">notice@billing-example.test</text>
+        <text x="96" y="198" fill="#64748b" fontSize="8.1" fontWeight="700" letterSpacing=".7">SENDER</text>
+        <text x="96" y="213" fill="#1e293b" fontSize="9.9">notice@billing-example.test</text>
         <rect x="82" y="232" width="164" height="42" rx="10" fill="#f7faff" stroke="#dce7f5" />
-        <text x="96" y="250" fill="#64748b" fontSize="9" fontWeight="700" letterSpacing=".7">SUBJECT</text>
-        <text x="96" y="265" fill="#1e293b" fontSize="11">Verify your account immediately</text>
+        <text x="96" y="250" fill="#64748b" fontSize="8.1" fontWeight="700" letterSpacing=".7">SUBJECT</text>
+        <text x="96" y="265" fill="#1e293b" fontSize="9.9">Verify your account immediately</text>
         <rect x="82" y="286" width="164" height="54" rx="10" fill="#fff8ed" stroke="#f0d8b1" />
-        <text x="96" y="305" fill="#92500c" fontSize="9" fontWeight="700" letterSpacing=".7">BOUNDARY</text>
-        <text x="96" y="320" fill="#70400e" fontSize="10.5">Body reduced to matched phrases</text>
-        <text x="96" y="333" fill="#70400e" fontSize="10.5">Links are never opened</text>
+        <text x="96" y="305" fill="#92500c" fontSize="8.1" fontWeight="700" letterSpacing=".7">BOUNDARY</text>
+        <text x="96" y="320" fill="#70400e" fontSize="9.5">Body reduced to matched phrases</text>
+        <text x="96" y="333" fill="#70400e" fontSize="9.5">Links are never opened</text>
       </g>
 
       <path d="M278 224h62" fill="none" stroke="url(#story-line)" strokeWidth="2" />
@@ -65,24 +65,24 @@ export function WelcomeStory() {
         <rect x="348" y="126" width="210" height="196" rx="18" fill="#0f172a" />
         <rect x="368" y="146" width="34" height="34" rx="9" fill="#1d4ed8" />
         <path d="m378 164 4 4 8-9" fill="none" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.3" />
-        <text x="414" y="160" fill="#f8fafc" fontSize="13" fontWeight="700">Deterministic rules</text>
-        <text x="414" y="177" fill="#9fb2ce" fontSize="10">Two findings corroborate</text>
+        <text x="414" y="160" fill="#f8fafc" fontSize="11.7" fontWeight="700">Deterministic rules</text>
+        <text x="414" y="177" fill="#9fb2ce" fontSize="9">Two findings corroborate</text>
         <rect x="368" y="202" width="170" height="38" rx="9" fill="#18263e" stroke="#2b3d5a" />
-        <text x="382" y="218" fill="#8fa6c8" fontSize="9" fontWeight="700">RULE</text>
-        <text x="382" y="232" fill="#e2e8f0" fontSize="10.5">EMAIL-001 · reply-to mismatch</text>
+        <text x="382" y="218" fill="#8fa6c8" fontSize="8.1" fontWeight="700">RULE</text>
+        <text x="382" y="232" fill="#e2e8f0" fontSize="9.5">EMAIL-001 · reply-to mismatch</text>
         <rect x="368" y="248" width="170" height="38" rx="9" fill="#18263e" stroke="#2b3d5a" />
-        <text x="382" y="264" fill="#8fa6c8" fontSize="9" fontWeight="700">RULE</text>
-        <text x="382" y="278" fill="#e2e8f0" fontSize="10.5">EMAIL-002 · urgency language</text>
+        <text x="382" y="264" fill="#8fa6c8" fontSize="8.1" fontWeight="700">RULE</text>
+        <text x="382" y="278" fill="#e2e8f0" fontSize="9.5">EMAIL-002 · urgency language</text>
         <path d="M368 304h170" stroke="#2b3d5a" />
-        <text x="368" y="319" fill="#93c5fd" fontSize="10" fontWeight="700">Evidence stays traceable</text>
+        <text x="368" y="319" fill="#93c5fd" fontSize="9" fontWeight="700">Evidence stays traceable</text>
       </g>
 
       <g filter="url(#story-shadow)">
         <rect x="312" y="342" width="248" height="64" rx="16" fill="#ffffff" stroke="#d5e2f4" />
         <circle cx="342" cy="374" r="17" fill="#fff1f1" />
         <path d="M342 365v11m0 6h.01" stroke="#b42318" strokeLinecap="round" strokeWidth="2" />
-        <text x="370" y="369" fill="#0f172a" fontSize="12.5" fontWeight="700">Incident · High priority</text>
-        <text x="370" y="386" fill="#52627b" fontSize="10.5">Priority 72/100 · human review required</text>
+        <text x="370" y="369" fill="#0f172a" fontSize="11.2" fontWeight="700">Incident · High priority</text>
+        <text x="370" y="386" fill="#52627b" fontSize="9.5">Priority 72/100 · human review required</text>
         <rect x="516" y="358" width="28" height="28" rx="8" fill="#eff6ff" />
         <path d="m526 372 4 4 7-8" fill="none" stroke="#1d4ed8" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
       </g>
@@ -90,12 +90,12 @@ export function WelcomeStory() {
       <g>
         <rect x="420" y="48" width="142" height="30" rx="15" fill="#ffffff" stroke="#cfe0f7" />
         <circle cx="438" cy="63" r="4" fill="#2563eb" />
-        <text x="450" y="67" fill="#345988" fontSize="10.5" fontWeight="700">Rules decide</text>
+        <text x="450" y="67" fill="#345988" fontSize="9.5" fontWeight="700">Rules decide</text>
       </g>
       <g>
         <rect x="62" y="386" width="206" height="30" rx="15" fill="#ffffff" stroke="#cfe0f7" />
         <circle cx="80" cy="401" r="4" fill="#067647" />
-        <text x="92" y="405" fill="#345988" fontSize="10.5" fontWeight="700">AI may explain, never decide</text>
+        <text x="92" y="405" fill="#345988" fontSize="9.5" fontWeight="700">AI may explain, never decide</text>
       </g>
     </svg>
   )
@@ -130,7 +130,7 @@ export function PrivacyBoundaryArt() {
         <rect x="22" y="168" width="94" height="42" rx="9" />
         <rect x="248" y="166" width="94" height="42" rx="9" />
       </g>
-      <g fill="#52627b" fontSize="10" fontWeight="600">
+      <g fill="#52627b" fontSize="9" fontWeight="600">
         <text x="32" y="57">Selected message</text>
         <text x="274" y="59">Rule evidence</text>
         <text x="36" y="186">No full body</text>
@@ -152,11 +152,11 @@ export function GmailFlowArt() {
       <circle cx="170" cy="100" r="24" fill="#e8f0ff" stroke="#b9d0ef" />
       <path d="M162 94v12m0-6h16m-16 0v-4a3 3 0 0 1 3-3h2m8 10v4a3 3 0 0 1-3 3h-2" fill="none" stroke="#1d4ed8" strokeLinecap="round" strokeWidth="2" />
       <rect x="214" y="40" width="102" height="120" rx="14" fill="#0f172a" />
-      <text x="230" y="64" fill="#93c5fd" fontSize="10" fontWeight="700">READ ONLY</text>
-      <text x="230" y="86" fill="#e2e8f0" fontSize="11">Bounded sample</text>
-      <text x="230" y="104" fill="#9fb2ce" fontSize="10">No send</text>
-      <text x="230" y="120" fill="#9fb2ce" fontSize="10">No delete</text>
-      <text x="230" y="136" fill="#9fb2ce" fontSize="10">No attachments</text>
+      <text x="230" y="64" fill="#93c5fd" fontSize="9" fontWeight="700">READ ONLY</text>
+      <text x="230" y="86" fill="#e2e8f0" fontSize="9.9">Bounded sample</text>
+      <text x="230" y="104" fill="#9fb2ce" fontSize="9">No send</text>
+      <text x="230" y="120" fill="#9fb2ce" fontSize="9">No delete</text>
+      <text x="230" y="136" fill="#9fb2ce" fontSize="9">No attachments</text>
     </svg>
   )
 }
