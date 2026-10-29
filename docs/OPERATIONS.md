@@ -340,7 +340,7 @@ alerts retroactively; alerts are raised for new or escalated incidents.
 
 ### Recovery notes from 29 October 2026
 
-- `restart.ps1` refused to run because `%LOCALAPPDATA%\SentinelSME	oken.key` and
+- `restart.ps1` refused to run because `%LOCALAPPDATA%\SentinelSME\token.key` and
   `google-client-secret` were missing from the host. The running containers still held
   the bind-mounted copies, so they were restored with `docker cp` from the running API
   container (`/run/secrets/local_token_key`, `/run/secrets/local_google_client_secret`)
