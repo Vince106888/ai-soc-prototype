@@ -1,5 +1,6 @@
 """Public sign-in entry points; authenticated data remains behind request_context."""
 
+import logging
 from datetime import UTC
 from typing import Annotated, Literal
 
@@ -16,6 +17,7 @@ from .retention import purge_workspace
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Sign-in"])
 DB = Annotated[Session, Depends(get_session)]
+logger = logging.getLogger(__name__)
 
 
 @router.get("/session")
@@ -68,6 +70,7 @@ def callback(
     code: Annotated[str | None, Query(max_length=4096)] = None,
     error: Annotated[str | None, Query(max_length=200)] = None,
 ) -> RedirectResponse:
+    reason = ""
     try:
         tokens = auth.finish_login(
             db,
@@ -78,9 +81,13 @@ def callback(
             request.cookies.get(auth.SESSION_COOKIE, ""),
         )
         result = "signed-in" if tokens else "cancelled"
-    except auth.SignInError:
+    except auth.SignInError as exc:
+        reason = exc.reason
+        logger.warning("Google sign-in failed (%s)", reason)
         tokens, result = None, "failed"
-    response = RedirectResponse("/?signin=" + result, status_code=303)
+    response = RedirectResponse(
+        "/?signin=" + result + ("&reason=" + reason if reason else ""), status_code=303
+    )
     response.delete_cookie(auth.LOGIN_COOKIE, path=auth.LOGIN_PATH, secure=deployment.production())
     if tokens:
         response.set_cookie(

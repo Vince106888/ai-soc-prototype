@@ -151,7 +151,7 @@ def test_unverified_identity_never_creates_a_session(environment, monkeypatch, c
     query, parameters = start(db, client)
     google_provider(monkeypatch, claims_for(parameters["nonce"], **changed))
     response = client.get("/api/v1/auth/callback", params={"state": query["state"][0], "code": "x"})
-    assert response.headers["location"] == "/?signin=failed"
+    assert response.headers["location"] == "/?signin=failed&reason=identity"
     assert db.scalar(select(func.count()).select_from(AppUser)) == 0
     assert "private" not in response.text
 
@@ -177,7 +177,8 @@ def test_provider_failures_and_unexpected_permissions_are_safe(
         monkeypatch, claims_for(parameters["nonce"]), scope=scope, fail=fail, wrong_key=wrong_key
     )
     response = client.get("/api/v1/auth/callback", params={"state": query["state"][0], "code": "x"})
-    assert response.headers["location"] == "/?signin=failed"
+    reason = "provider" if fail else "identity" if wrong_key else "permissions"
+    assert response.headers["location"] == "/?signin=failed&reason=" + reason
     assert db.scalar(select(func.count()).select_from(AppSession)) == 0
 
 
@@ -186,7 +187,7 @@ def test_invitation_enforced_before_workspace_creation(environment, monkeypatch)
     query, parameters = start(db, client)
     google_provider(monkeypatch, claims_for(parameters["nonce"], "uninvited@gmail.com"))
     response = client.get("/api/v1/auth/callback", params={"state": query["state"][0], "code": "x"})
-    assert response.headers["location"] == "/?signin=failed"
+    assert response.headers["location"] == "/?signin=failed&reason=not_allowed"
     assert db.scalar(select(func.count()).select_from(AppUser)) == 0
 
 
@@ -204,6 +205,62 @@ def test_prior_readonly_grant_is_discarded_during_identity_only_login(environmen
     from app.entities import OAuthCredential
 
     assert db.scalar(select(func.count()).select_from(OAuthCredential)) == 0
+
+
+@pytest.mark.parametrize("offset,accepted", [(5, True), (300, False)])
+def test_small_identity_clock_skew_is_tolerated_but_large_skew_is_rejected(
+    environment, monkeypatch, offset, accepted
+):
+    db, client = environment
+    query, parameters = start(db, client)
+    google_provider(
+        monkeypatch,
+        claims_for(
+            parameters["nonce"],
+            iat=utcnow().timestamp() + offset,
+        ),
+    )
+    result = client.get(
+        "/api/v1/auth/callback",
+        params={
+            "state": query["state"][0],
+            "code": "synthetic-code",
+        },
+    )
+    assert result.headers["location"] == (
+        "/?signin=signed-in" if accepted else "/?signin=failed&reason=clock"
+    )
+    assert db.scalar(select(func.count()).select_from(AppSession)) == int(accepted)
+
+
+def test_wrong_browser_callback_has_safe_reason_without_private_logging(environment, caplog):
+    db, client = environment
+    query, _ = start(db, client)
+    client.cookies.clear()
+    response = client.get(
+        "/api/v1/auth/callback",
+        params={
+            "state": query["state"][0],
+            "code": "private-authorization-code",
+        },
+    )
+    assert response.headers["location"] == "/?signin=failed&reason=expired"
+    assert "Google sign-in failed (expired)" in caplog.text
+    assert "private-authorization-code" not in caplog.text
+    assert query["state"][0] not in caplog.text
+    assert db.scalar(select(func.count()).select_from(AppSession)) == 0
+
+
+def test_failure_reason_is_whitelisted_before_logging(environment, monkeypatch, caplog):
+    _, client = environment
+
+    def fail(*args):
+        raise auth.SignInError("private-provider-message", "private-provider-response")
+
+    monkeypatch.setattr(auth, "finish_login", fail)
+    result = client.get("/api/v1/auth/callback")
+    assert result.headers["location"] == "/?signin=failed&reason=unavailable"
+    assert "private-provider" not in caplog.text + result.headers["location"]
 
 
 def test_state_binding_cancel_expiry_and_replay(environment, monkeypatch):

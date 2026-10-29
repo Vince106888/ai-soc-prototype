@@ -347,3 +347,5 @@ rule guidance remains available immediately. Jobs are bounded and leased, keyed
 to a template revision; stale model responses are discarded. The isolated model
 worker does not collect telemetry or change scoring. Development retains the
 synchronous explanation contract.
+
+Sign-in callback failures include an allow-listed `reason` alongside `signin=failed`; the response and operational log contain no provider payload or credential material. See ONBOARDING.md for codes and recovery.

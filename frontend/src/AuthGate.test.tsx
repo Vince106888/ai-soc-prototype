@@ -10,6 +10,20 @@ const pilot: AuthSession = { mode: 'google', configured: true, invitation_only: 
 const signedIn: AuthSession = { ...pilot, user: { id: 'user-a', email: 'invited@example.test', workspace_id: 'assigned-workspace' }, csrf_token: 'session-csrf' }
 
 describe('onboarding and sign-in boundary', () => {
+  it('explains a callback that returned to a different browser', async () => {
+    window.history.replaceState(null, '', '/?signin=failed&reason=expired')
+    vi.spyOn(api, 'session').mockResolvedValue(pilot)
+    render(<AuthGate />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('complete Google sign-in in the same browser')
+    await waitFor(() => expect(window.location.search).toBe(''))
+  })
+  it('does not display arbitrary failure reasons supplied in the URL', async () => {
+    window.history.replaceState(null, '', '/?signin=failed&reason=private-provider-detail')
+    vi.spyOn(api, 'session').mockResolvedValue(pilot)
+    render(<AuthGate />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Please try again or contact the service operator')
+    expect(screen.queryByText(/private-provider-detail/)).not.toBeInTheDocument()
+  })
   it('welcomes public registration without an invitation or developer setup fields', async () => {
     vi.spyOn(api, 'session').mockResolvedValue({ ...pilot, invitation_only: false, environment: 'production' })
     render(<AuthGate />)

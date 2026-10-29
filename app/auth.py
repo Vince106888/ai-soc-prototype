@@ -36,11 +36,29 @@ LOGIN_COOKIE = "sentinelsme_login"
 LOGIN_PATH = "/api/v1/auth/callback"
 GOOGLE_KEYS = "https://www.googleapis.com/oauth2/v3/certs"
 LOGIN_SCOPE = "openid email"
+IDENTITY_CLOCK_SKEW_SECONDS = 30
 _keys_cache: tuple[float, dict] = (0, {})
 
 
 class SignInError(Exception):
     """Provider details and credentials never enter public errors."""
+
+    def __init__(self, message: str, reason: str = "unavailable"):
+        super().__init__(message)
+        self.reason = (
+            reason
+            if reason
+            in {
+                "expired",
+                "identity",
+                "permissions",
+                "provider",
+                "not_allowed",
+                "configuration",
+                "clock",
+            }
+            else "unavailable"
+        )
 
 
 def required() -> bool:
@@ -192,6 +210,7 @@ def verify_identity(token: str, client_id: str, nonce: str, client: httpx.Client
             algorithms=["RS256"],
             audience=client_id,
             issuer=["https://accounts.google.com", "accounts.google.com"],
+            leeway=IDENTITY_CLOCK_SKEW_SECONDS,
             options={"require": ["iss", "aud", "exp", "iat", "sub", "email", "nonce"]},
         )
         if (
@@ -206,8 +225,14 @@ def verify_identity(token: str, client_id: str, nonce: str, client: httpx.Client
         ):
             raise ValueError
         return {"sub": claims["sub"], "email": claims["email"].casefold()}
+    except jwt.ImmatureSignatureError:
+        raise SignInError(
+            "The identity timestamp is too far ahead of the server clock.", "clock"
+        ) from None
     except (jwt.PyJWTError, ValueError, TypeError, KeyError, AttributeError, GmailError):
-        raise SignInError("Google identity could not be verified. Start sign-in again.") from None
+        raise SignInError(
+            "Google identity could not be verified. Start sign-in again.", "identity"
+        ) from None
 
 
 def finish_login(
@@ -226,17 +251,17 @@ def finish_login(
         or not hmac.compare_digest(attempt.cookie_digest, digest(cookie))
         or attempt.expires_at.replace(tzinfo=UTC) <= utcnow()
     ):
-        raise SignInError("Sign-in expired or did not start in this browser.")
+        raise SignInError("Sign-in expired or did not start in this browser.", "expired")
     try:
         parameters = _decrypt(cipher, attempt.encrypted_parameters)
     except GmailError:
-        raise SignInError("Sign-in expired. Start again.") from None
+        raise SignInError("Sign-in expired. Start again.", "expired") from None
     consumed = db.execute(
         delete(LoginAttempt).where(LoginAttempt.state_digest == attempt.state_digest)
     ).rowcount
     db.commit()
     if not consumed:
-        raise SignInError("Sign-in was already used. Start again.")
+        raise SignInError("Sign-in was already used. Start again.", "expired")
     if denied or not code:
         return None
     try:
@@ -260,12 +285,14 @@ def finish_login(
                 "https://www.googleapis.com/auth/userinfo.email",
                 GMAIL_SCOPE,  # An earlier explicit mailbox grant on this shared client.
             }:
-                raise SignInError("Google returned unexpected sign-in permissions.")
+                raise SignInError("Google returned unexpected sign-in permissions.", "permissions")
             identity = verify_identity(data.get("id_token"), client_id, parameters["nonce"], client)
     except GmailError:
-        raise SignInError("Google sign-in is temporarily unavailable. Try again.") from None
+        raise SignInError(
+            "Google sign-in is temporarily unavailable. Try again.", "provider"
+        ) from None
     if not allowed(identity["email"]):
-        raise SignInError("This account has not been invited to the pilot.")
+        raise SignInError("This account does not have access to this deployment.", "not_allowed")
     dialect = db.get_bind().dialect.name
     if dialect in {"postgresql", "sqlite"}:
         if dialect == "postgresql":
@@ -299,7 +326,9 @@ def finish_login(
         user.email = identity["email"]
     if user.status != "active":
         db.rollback()
-        raise SignInError("Account access is unavailable. Contact the service operator.")
+        raise SignInError(
+            "Account access is unavailable. Contact the service operator.", "not_allowed"
+        )
     if old_session:
         db.execute(delete(AppSession).where(AppSession.token_digest == digest(old_session)))
     session, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(48)

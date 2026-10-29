@@ -15,7 +15,19 @@ function Welcome({ session, onLocalStart }: { session: AuthSession; onLocalStart
   const [key, setKey] = useState('')
   const pilot = session.mode === 'google'
   const [notice] = useState(() => {
-    const result = new URLSearchParams(window.location.search).get('signin')
+    const query = new URLSearchParams(window.location.search)
+    const result = query.get('signin')
+    const messages: Record<string, string> = {
+      clock: 'The service clock differs too much from Google’s clock. Ask the operator to synchronise the server time, then sign in again.',
+      expired: 'Your sign-in expired or returned to a different browser. Open this app and complete Google sign-in in the same browser, then try again.',
+      identity: 'Google’s identity response could not be verified. Try signing in again. If it repeats, contact the service operator.',
+      permissions: 'Google returned permissions outside this app’s sign-in configuration. The service operator needs to review the Google client setup.',
+      provider: 'Google could not complete the sign-in exchange. Try again. If it repeats, the service operator needs to check the Google client settings and connectivity.',
+      not_allowed: 'This Google account does not have access to this deployment. Use an allowed account or contact the service operator.',
+      configuration: 'Google sign-in setup is incomplete. Contact the service operator.',
+    }
+    const reason = query.get('reason') ?? ''
+    if (result === 'failed' && Object.hasOwn(messages, reason)) return messages[reason]
     return result === 'cancelled' ? 'Google sign-in was cancelled. You can try again.' : result === 'failed' ? 'Sign-in could not be completed. Please try again or contact the service operator.' : ''
   })
   useEffect(() => {
