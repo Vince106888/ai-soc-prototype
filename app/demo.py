@@ -25,9 +25,7 @@ DEFAULT_FIXTURE = Path(__file__).parents[1] / "fixtures" / "evaluation" / "scena
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Seed and evaluate the controlled SentinelSME demo"
-    )
+    parser = argparse.ArgumentParser(description="Seed and evaluate the controlled LindaBiz demo")
     parser.add_argument("--database-url", help="SQLAlchemy URL; defaults to AI_SOC_DATABASE_URL")
     parser.add_argument("--fixture", type=Path, default=DEFAULT_FIXTURE)
     parser.add_argument("--tenant", default="demo")
@@ -50,7 +48,7 @@ def main() -> None:
                 args.tenant,
                 AccountCreate(
                     email="security@sentinelsme.example",
-                    display_name="SentinelSME Demo",
+                    display_name="LindaBiz Demo",
                 ),
             )
         source = session.scalar(

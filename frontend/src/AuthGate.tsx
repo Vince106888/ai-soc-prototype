@@ -51,7 +51,7 @@ function Welcome({ session, onLocalStart }: { session: AuthSession; onLocalStart
     } catch { setError('This browser must allow session storage to open a local workspace.') }
   }
   return <main id="main-content" className="onboarding-shell">
-    <header className="onboarding-brand"><Icons.shield /><strong>Sentinel<span>SME</span></strong><span className="onboarding-mode">{pilot ? (session.invitation_only ? 'Private access' : 'Private workspaces') : 'Local workspace'}</span></header>
+    <header className="onboarding-brand"><Icons.shield /><strong>Linda<span>Biz</span></strong><span className="onboarding-mode">{pilot ? (session.invitation_only ? 'Private access' : 'Private workspaces') : 'Local workspace'}</span></header>
     <div className="onboarding-layout">
       <section className="onboarding-intro"><p className="eyebrow">Email security, with evidence</p><h1>Your workspace.<br />A clearer view of email risk.</h1><p>Collect a sample, understand the indicators, and decide what needs attention.</p>
         <ol className="onboarding-steps">
@@ -61,7 +61,7 @@ function Welcome({ session, onLocalStart }: { session: AuthSession; onLocalStart
         </ol>
         <p className="onboarding-boundary"><Icons.lock />Message bodies and attachments are not retained. Gmail scans require your separate consent.</p>
       </section>
-      <section className="panel onboarding-entry" aria-labelledby="welcome-title"><span className="state-icon"><Icons.lock /></span><h2 id="welcome-title">{pilot ? 'Welcome to SentinelSME' : 'Try the console'}</h2>
+      <section className="panel onboarding-entry" aria-labelledby="welcome-title"><span className="state-icon"><Icons.lock /></span><h2 id="welcome-title">{pilot ? 'Welcome to LindaBiz' : 'Try the console'}</h2>
         <p>{pilot ? 'Sign in with Google to open your private workspace. Your first sign-in creates your account.' : 'Use synthetic or authorised samples. Local workspace selection provides no user authentication.'}</p>
         {pilot ? <>
           {!session.configured && <p className="setup-message" role="status">Sign-in setup is awaiting the operator. The service operator needs to finish configuring Google sign-in.</p>}
@@ -124,7 +124,7 @@ export default function AuthGate() {
   if (!session) return <main id="main-content" className="onboarding-status" role="status"><Icons.shield /><p>Checking your workspace…</p></main>
   if (window.location.pathname === '/privacy' || window.location.pathname === '/terms') {
     const privacy = window.location.pathname === '/privacy'
-    return <main id="main-content" className="onboarding-shell"><a href="/">← Back to SentinelSME</a><article className="panel onboarding-entry"><h1>{privacy ? 'Privacy and your data' : 'Using SentinelSME'}</h1>{privacy ? <>
+    return <main id="main-content" className="onboarding-shell"><a href="/">← Back to LindaBiz</a><article className="panel onboarding-entry"><h1>{privacy ? 'Privacy and your data' : 'Using LindaBiz'}</h1>{privacy ? <>
       <h2>Your private workspace</h2><p>Google sign-in supplies your verified email address and account identifier. Your workspace is assigned on the server and is accessible through your signed-in account. Service operators with infrastructure access can administer stored data.</p>
       <h2>What is retained</h2><p>We store minimised email and account indicators, rule findings, incidents, review decisions, and audit records. Message bodies and attachments are not retained. Submitted links are analysed as text and are never opened by the service.</p>
       <h2>Optional services</h2><p>Gmail access needs separate read-only consent and is available only when configured by the operator. Stored provider credentials are encrypted. Optional AI receives redacted structured findings and cannot change findings or scores.</p>
@@ -132,7 +132,7 @@ export default function AuthGate() {
     </> : <>
       <h2>Authorised use</h2><p>Analyse only messages and account data you own or have permission to inspect. Do not submit passwords, secret keys, attachments, or unrelated sensitive information.</p>
       <h2>Understand the assessment</h2><p>Findings are deterministic indicators requiring human review. Scores set review priority; they are not probabilities of an attack. A result with no matched indicators does not establish that a message is safe. AI explanations may be unavailable and do not create evidence.</p>
-      <h2>You control decisions</h2><p>SentinelSME does not block mail, change account settings, revoke access, or perform remediation. Verify recommendations through your provider and organisation's procedures. Coverage is limited to the information supplied or explicitly collected with your consent.</p>
+      <h2>You control decisions</h2><p>LindaBiz does not block mail, change account settings, revoke access, or perform remediation. Verify recommendations through your provider and organisation's procedures. Coverage is limited to the information supplied or explicitly collected with your consent.</p>
     </>}<h2>Contact</h2>{session.operator_contact ? <p>Contact the service operator at <a href={`mailto:${session.operator_contact}`}>{session.operator_contact}</a> for support or data requests.</p> : <p>The deployment operator provides support and handles data requests.</p>}</article></main>
   }
   if (session.mode === 'google' && session.user) return <Dashboard key={session.user.id} session={session} onSignOut={signOut} />

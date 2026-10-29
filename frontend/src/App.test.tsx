@@ -12,7 +12,7 @@ function mockWorkspace() {
   vi.spyOn(api, 'accounts').mockResolvedValue([{ id: 'account-a', email: 'owner@example.test' }])
   vi.spyOn(api, 'allSources').mockResolvedValue([])
   vi.spyOn(api, 'scanJobs').mockResolvedValue([])
-  vi.spyOn(api, 'capabilities').mockResolvedValue({ service: 'SentinelSME', signal_types: ['email'], source_types: ['controlled'], live_connectors: [], controlled_ingestion: true, template_explanations: true, ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500, privacy: { stores_full_bodies: false, stores_attachments: false } })
+  vi.spyOn(api, 'capabilities').mockResolvedValue({ service: 'LindaBiz', signal_types: ['email'], source_types: ['controlled'], live_connectors: [], controlled_ingestion: true, template_explanations: true, ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500, privacy: { stores_full_bodies: false, stores_attachments: false } })
   vi.spyOn(api, 'overview').mockResolvedValue({ incidents: { active: 1, critical: 1, under_review: 0, resolved: 0, false_positive: 0 }, accounts: 1, active_sources: 0, retained_signals: 1, source_activity: {}, activity: [], latest_job: null })
   vi.spyOn(api, 'incident').mockResolvedValue(incident)
 }

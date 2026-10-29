@@ -1,10 +1,10 @@
 # Data Model and Evidence Chain
 
-SentinelSME stores the minimum structured evidence needed to reproduce a
+LindaBiz stores the minimum structured evidence needed to reproduce a
 finding, explain an incident, and evaluate the rules. SQLite is the development
 default; the ORM is designed to remain portable to PostgreSQL.
 
-![SentinelSME database schema from the Chapter 4 design](assets/database-schema.png)
+![LindaBiz database schema from the Chapter 4 design](assets/database-schema.png)
 
 The diagram is the research design. The executable model adds explicit tenant,
 source, confidence, fingerprint, and timestamp fields and intentionally omits

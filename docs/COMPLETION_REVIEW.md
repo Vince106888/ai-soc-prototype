@@ -15,7 +15,7 @@ Functional and non-functional acceptance intent was compared with executable
 paths. The corrected Chapter 4 file and the completed Chapters 1–3 were not
 altered. Earlier corrected image assets remain available.
 
-SentinelSME's completion boundary is deterministic, evidence-backed monitoring
+LindaBiz's completion boundary is deterministic, evidence-backed monitoring
 of selected/controlled email and authorised bounded Gmail samples, with supplied
 account-posture events and human decisions. Commercial parity with INKY is not
 a CNS 4101 completion requirement. Outbound/internal interception, encryption,

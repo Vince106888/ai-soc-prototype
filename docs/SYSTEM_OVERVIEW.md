@@ -1,6 +1,6 @@
 # System Overview
 
-SentinelSME is a browser-accessible defensive monitoring prototype for
+LindaBiz is a browser-accessible defensive monitoring prototype for
 resource-constrained organisations. Its implemented controlled-data path turns
 email and account-security signals into evidence-backed incidents and advisory
 response guidance.
