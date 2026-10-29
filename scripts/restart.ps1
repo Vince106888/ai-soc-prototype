@@ -1,6 +1,7 @@
 param(
     [ValidateRange(1, 65535)][int]$Port = 8001,
     [switch]$Build,
+    [switch]$LocalWorkspace,
     [switch]$NoBrowser
 )
 
@@ -47,6 +48,9 @@ $restartCompose = @('compose', '--project-name', 'ai-soc-prototype', '--env-file
 $restartGoogle = Join-Path $restartRoot 'data\compose.google.json'
 $restartHostModels = Join-Path $restartRoot 'data\compose.host-models.json'
 $restartExpectedGoogle = $false
+if (-not (Test-Path -LiteralPath $restartGoogle) -and -not $LocalWorkspace) {
+    throw 'Saved Google sign-in configuration is missing: data\compose.google.json. Restore it before restarting. Use -LocalWorkspace only for an intentionally unauthenticated local workspace.'
+}
 if (Test-Path -LiteralPath $restartGoogle) {
     $restartSettings = Get-Content -LiteralPath $restartGoogle -Raw | ConvertFrom-Json
     $restartCallback = [uri]$restartSettings.services.api.environment.AI_SOC_GOOGLE_LOGIN_REDIRECT_URI

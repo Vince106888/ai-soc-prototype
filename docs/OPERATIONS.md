@@ -312,5 +312,7 @@ credential mounts and the existing token encryption key. It never downloads a
 model or silently falls back to unauthenticated local mode. Missing configuration
 or a mismatched OAuth callback port fails with an actionable error.
 Use `-Build` after source changes; the normal restart reuses installed images.
-Use `-NoBrowser` to leave the browser closed. Live Google consent still requires
+Use `-NoBrowser` to leave the browser closed. Google configuration is required
+by default; `-LocalWorkspace` explicitly permits an unauthenticated local
+workspace when no Google configuration exists. Live Google consent still requires
 the registered callbacks and provider account approval.
