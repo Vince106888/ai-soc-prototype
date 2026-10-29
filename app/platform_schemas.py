@@ -42,6 +42,7 @@ class AccountView(AccountCreate):
     status: Literal["active", "disconnected"]
     created_at: datetime
     updated_at: datetime
+    delete_after: datetime | None = None
 
 
 class SourceCreate(APIModel):
@@ -66,6 +67,26 @@ class SourceStatusUpdate(APIModel):
 class ScanJobCreate(APIModel):
     source_id: str
     trigger: Literal["user", "schedule"] = "user"
+
+
+class ScheduleUpdate(APIModel):
+    enabled: bool
+    acknowledged: bool
+    interval_minutes: Annotated[int, Field(ge=15, le=1440)] = 60
+    maximum_messages: Annotated[int, Field(ge=1, le=50)] = 20
+    recent_days: Annotated[int, Field(ge=1, le=30)] = 7
+
+
+class ScheduleView(APIModel):
+    source_id: str
+    enabled: bool
+    interval_minutes: int
+    maximum_messages: int
+    recent_days: int
+    next_run_at: datetime
+    failure_count: int
+    last_job_id: str | None
+    updated_at: datetime
 
 
 class CompatibilityScanCreate(APIModel):
@@ -283,12 +304,49 @@ class FindingView(APIModel):
     created_at: datetime
 
 
+class SignalListItem(APIModel):
+    id: str
+    account_id: str
+    source_id: str
+    signal_type: str
+    occurred_at: datetime
+    received_at: datetime
+    sender: str
+    subject: str
+    finding_count: int
+    incident_ids: list[str]
+
+
+class SignalPage(APIModel):
+    items: list[SignalListItem]
+    total: int
+    limit: int
+    offset: int
+
+
+class SignalDetail(SignalView):
+    findings: list[FindingView]
+    incidents: list[IncidentListItem]
+
+
+class ReasonView(APIModel):
+    rule_code: str
+    indicator: str
+    why: str
+    legitimate_if: str
+
+
 class ExplanationView(APIModel):
     source: Literal["template", "ai"]
     what_happened: str
     why_it_matters: str
     severity: str
     next_step: str
+    # Older stored explanations predate these fields, so they are optional.
+    reasons: list[ReasonView] = Field(default_factory=list)
+    warning_signs: int | None = None
+    warning_level: Literal["few", "some", "many"] | None = None
+    warning_note: str = ""
 
 
 class RecommendationView(APIModel):
@@ -323,7 +381,14 @@ class IncidentListItem(APIModel):
     updated_at: datetime
 
 
+class ExplanationJobView(APIModel):
+    status: Literal["queued", "running", "succeeded", "failed"]
+    reason: str | None = None
+    updated_at: datetime
+
+
 class IncidentDetail(IncidentListItem):
+    explanation_job: ExplanationJobView | None = None
     findings: list[FindingView]
     signals: list[SignalView]
     explanation: ExplanationView
@@ -331,10 +396,53 @@ class IncidentDetail(IncidentListItem):
     audit: list[AuditView]
 
 
+class IncidentPage(APIModel):
+    items: list[IncidentListItem]
+    total: int
+    limit: int
+    offset: int
+
+
 class IncidentTransition(APIModel):
     status: IncidentStatus
     actor: Annotated[str, Field(min_length=1, max_length=200)] = "user"
     note: Annotated[str, Field(max_length=500)] = ""
+    # Optional: when marking a false positive, trust the sender for new evidence.
+    trust_sender: Literal["none", "address", "domain"] = "none"
+
+
+class PostureApp(APIModel):
+    name: Annotated[str, Field(min_length=1, max_length=200)]
+    full_mailbox_access: bool
+    from_known_developer: bool
+
+
+class PostureCheck(APIModel):
+    """Self-reported account posture for providers that expose no posture telemetry."""
+
+    mfa: Literal["on", "off", "unsure"]
+    forwarding: Literal["none", "approved", "unapproved", "unsure"]
+    forwarding_domain: Annotated[str, Field(max_length=253)] = ""
+    apps: Annotated[list[PostureApp], Field(max_length=10)] = Field(default_factory=list)
+
+
+class PostureResult(APIModel):
+    source_id: str
+    submitted: list[str]
+    skipped: list[str]
+    ingestion: IngestionResult
+
+
+class TrustedSenderCreate(APIModel):
+    kind: Literal["address", "domain"]
+    value: Annotated[str, Field(min_length=3, max_length=320)]
+    note: Annotated[str, Field(max_length=200)] = ""
+
+
+class TrustedSenderView(TrustedSenderCreate):
+    id: str
+    created_by: str
+    created_at: datetime
 
 
 class RuleView(APIModel):

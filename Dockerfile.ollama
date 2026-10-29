@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1.7
+# CPU-only runtime assembled from the checksum-verified official release.
+# Keep GPU SDKs out of this private laptop deployment.
+FROM ubuntu:24.04 AS extract
+ARG TARGETARCH
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl zstd \
+    && rm -rf /var/lib/apt/lists/*
+RUN set -eu; case "$TARGETARCH" in \
+      amd64) digest=f8adcb7e08d272283a4bd3abc18cf581afe37e64b2aee04fda4f407f215485ba; bytes=1525425005 ;; \
+      arm64) digest=eab411c311611fe0fcddf5ba73c68ea94a9571007b520d8708112348b87c0bd6; bytes=1582120565 ;; \
+      *) echo "Unsupported CPU architecture"; exit 1 ;; \
+    esac \
+    && mkdir /tmp/parts \
+    && chunk=$(( (bytes + 7) / 8 )); i=0; pids=""; failed=0; \
+    while [ "$i" -lt 8 ]; do \
+      start=$((i * chunk)); end=$((start + chunk - 1)); \
+      [ "$end" -lt "$bytes" ] || end=$((bytes - 1)); \
+      expected=$((end - start + 1)); \
+      (curl --retry 5 --retry-all-errors -fsSL --max-filesize "$expected" \
+        --range "$start-$end" \
+        "https://github.com/ollama/ollama/releases/download/v0.40.12/ollama-linux-${TARGETARCH}.tar.zst" \
+        -o "/tmp/parts/$i" \
+        && [ "$(wc -c < "/tmp/parts/$i")" -eq "$expected" ] \
+        && echo "Verified release chunk $i size") & \
+      pids="$pids $!"; i=$((i + 1)); \
+    done; \
+    for pid in $pids; do wait "$pid" || failed=1; done; \
+    [ "$failed" -eq 0 ] || exit 1; \
+    i=0; : > /tmp/ollama.tar.zst; \
+    while [ "$i" -lt 8 ]; do \
+      cat "/tmp/parts/$i" >> /tmp/ollama.tar.zst && rm "/tmp/parts/$i" || exit 1; \
+      i=$((i + 1)); \
+    done \
+    && echo "$digest  /tmp/ollama.tar.zst" | sha256sum -c - \
+    && mkdir -p /opt/ollama \
+    && tar --zstd -xf /tmp/ollama.tar.zst -C /opt/ollama \
+       --exclude='*/cuda*' --exclude='*/rocm*' --exclude='*/vulkan*' --exclude='*/mlx*' \
+    && rm /tmp/ollama.tar.zst
+
+FROM ubuntu:24.04
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates libopenblas0 libgomp1 libstdc++6 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 ollama \
+    && useradd --uid 10001 --gid 10001 --no-create-home ollama \
+    && mkdir /models && chown 10001:10001 /models
+COPY --from=extract /opt/ollama/bin/ollama /usr/bin/ollama
+COPY --from=extract /opt/ollama/lib/ollama /usr/lib/ollama
+ENV HOME=/tmp \
+    OLLAMA_MODELS=/models \
+    OLLAMA_HOST=127.0.0.1:11434 \
+    OLLAMA_NO_CLOUD=1
+USER 10001:10001
+ENTRYPOINT ["/usr/bin/ollama"]
+CMD ["serve"]

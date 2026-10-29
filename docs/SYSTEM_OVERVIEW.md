@@ -33,7 +33,8 @@ register controlled account and source
     -> preserve audit/evaluation evidence
 ```
 
-The dashboard has overview, incidents, and coverage views. Incident detail
+The dashboard has overview, incidents, evidence workspace, accounts/sources,
+email analysis and detection catalogue views. Incident detail
 answers four questions: what happened, why it matters, how severe it is, and
 what to do next. Evidence remains visible so the explanation is reviewable.
 
@@ -48,15 +49,23 @@ what to do next. Evidence remains visible so the explanation is reviewable.
   defaults, and fingerprints.
 - `app/platform.py`: orchestration, persistence, correlation, lifecycle,
   explanations, recommendations, and evaluation.
+- `app/gmail.py` and `app/gmail_api.py`: browser-bound read-only OAuth, encrypted
+  tokens, bounded synchronous collection, refresh, and disconnect.
+- `app/overview.py`: tenant-scoped totals and seven-day retained activity.
+- `app/evidence.py`: tenant-scoped retained-signal page/detail and finding links.
+- `app/benchmark.py`: synthetic 500-signal runs in temporary isolated databases.
+- `app/retention.py`: whole-account local deletion and Gmail trial expiry.
 - `frontend/src/`: React dashboard, API client, UI states, and tests.
 
 ## System boundary
 
 Implemented: controlled inputs, all five signal types, deterministic rules,
 persistence, correlation, lifecycle, audit, template guidance, evaluation, and
-dashboard review.
+dashboard review, selected-email submission, and a read-only Gmail adapter
+tested against mocked Google responses. Real Google consent/scan validation
+requires operator credentials and remains pending.
 
-Not implemented: live Gmail/Workspace access, OAuth tokens, a scheduler/worker,
+Not implemented: Workspace administrator access, a opt-in scheduler/worker,
 external model calls, automated remediation, production identity, or enterprise
 SIEM/endpoint/network coverage.
 
@@ -64,3 +73,7 @@ See `CAPABILITY_MATRIX.md` for the precise status, `DATA_MODEL.md` for the
 evidence chain, `RULE_CATALOG.md` for decision logic, and `API.md` for the
 executable interface.
 
+
+## Executed scheduled path
+
+The opt-in polling worker claims a due source using an atomic expiring lease, creates a scheduled job, reads bounded Gmail samples or the explicitly enabled controlled fixture, and uses the same normalisation/rule/correlation/guidance services as user ingestion. Failures roll back, are safely recorded, back off and pause after three attempts. No external AI or remediation was added.

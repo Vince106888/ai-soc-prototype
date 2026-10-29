@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,9 +13,32 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  public-deployment:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
+    needs: [test, dashboard]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare synthetic public TLS deployment
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from scripts.production import initialise
+          client=Path('/tmp/sentinelsme-synthetic-google.json')
+          client.write_text(json.dumps({'web': {'client_id':'synthetic-client', 'client_secret':'synthetic-secret', 'redirect_uris':['https://sentinel.example.test:8443/api/v1/auth/callback']}}))
+          initialise(Path('/tmp/sentinelsme-acceptance'), 'https://sentinel.example.test:8443', client, 'operator@example.test', True)
+          PY
+      - run: python scripts/production.py up --directory /tmp/sentinelsme-acceptance
+      - run: python -m scripts.verify_public --directory /tmp/sentinelsme-acceptance
+      - if: always()
+        run: python scripts/production.py down --directory /tmp/sentinelsme-acceptance
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -28,6 +50,11 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest --cov=app --cov-report=term-missing
+      - name: Audit locked runtime dependencies
+        if: runner.os == 'Linux'
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project --output-file requirements-audit.txt
+          uvx pip-audit --disable-pip --no-deps -r requirements-audit.txt
 
   dashboard:
     runs-on: ubuntu-latest
@@ -43,10 +70,12 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
-      - run: npm audit --audit-level=high
+      - run: npm audit --audit-level=moderate
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
 
   container:
     runs-on: ubuntu-latest
@@ -55,4 +84,21 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: docker build --tag sentinelsme:test .
+      - name: Execute controlled Compose scan and worker smoke test
+        env:
+          AI_SOC_API_KEY: ci-controlled-synthetic-key
+        run: |
+          printf 'AI_SOC_API_KEY=ci-controlled-synthetic-key\nPOSTGRES_PASSWORD=ci-controlled-synthetic-password\nAI_SOC_AUTH_MODE=local\n' > .env
+          docker compose up --build --wait --wait-timeout 180
+          docker compose exec -T api python -m app.demo --tenant container-acceptance
+          docker compose exec -T api python -m app.worker --once --enable-demo --tenant container-acceptance
+          docker compose exec -T api python -m scripts.verify_worker
+          python -m pip install httpx
+          python scripts/verify_container.py
+          docker compose exec -T api python scripts/smoke.py
+          mkdir -p data
+          cp .env data/docker.env
+          python -c 'import json; from scripts.backup import create, verify; print(json.dumps(verify(create())))'
+      - if: always()
+        run: docker compose down --volumes
 

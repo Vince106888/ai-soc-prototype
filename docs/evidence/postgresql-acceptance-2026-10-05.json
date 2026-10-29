@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-05",
+  "platform": "Windows 11 x64 development host",
+  "postgresql": "17.6, official EDB Windows binary distribution",
+  "database": "fresh isolated controlled acceptance database, localhost port 55432",
+  "migration_head": "9d213bf807a2",
+  "user_scan": {"status": "completed", "imported": 5, "duplicates": 0},
+  "scheduled_worker_scan": {"status": "completed", "imported": 0, "duplicates": 5},
+  "backup_format": "pg_dump custom",
+  "restore": "pg_restore --exit-on-error into a separately created database",
+  "restored_signal_count": 5,
+  "restored_user_and_scheduled_job_counts": 2,
+  "restored_migration_head": "9d213bf807a2",
+  "boundary": "Native PostgreSQL migration, ingestion, scheduled execution and restore were executed. Container image/Compose runtime, production roles/TLS, concurrency/load and private-data restore were not tested. Synthetic data only. The temporary server is stopped after verification."
+}

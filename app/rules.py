@@ -26,6 +26,47 @@ URGENT_TERMS = [
     "confirm your identity",
 ]
 CREDENTIAL_LABELS = ["account", "login", "secure", "verify"]
+PAYMENT_CHANGE_TERMS = [
+    "new bank details",
+    "updated bank details",
+    "change bank account",
+    "change of bank details",
+    "update payment details",
+    "new payment instructions",
+    # Kenyan mobile-money equivalents of a changed payment destination.
+    "new paybill",
+    "new paybill number",
+    "new till number",
+    "change of paybill",
+    "paybill has changed",
+    "till number has changed",
+]
+PAYMENT_ACTION_TERMS = [
+    "wire transfer",
+    "bank transfer",
+    "transfer the payment",
+    "send payment",
+    "pay the invoice",
+    "payment to",
+    "pay via mpesa",
+    "pay through mpesa",
+    "paybill number",
+    "till number",
+    "account number",
+]
+# Kenyan mobile-money and tax pressure wording. These phrases also appear in
+# legitimate mail, so the rule is a low-weight review indicator, not a verdict.
+# "m-pesa" and "m pesa" are folded to "mpesa" before matching.
+LOCAL_SCAM_TERMS = [
+    "mpesa reversal",
+    "reverse the transaction",
+    "sent to you by mistake",
+    "sent by mistake",
+    "kra penalty",
+    "tax refund",
+    "itax account suspended",
+    "fuliza limit",
+]
 BROAD_OAUTH_SCOPES = [
     "mail.google.com",
     "gmail.modify",
@@ -43,7 +84,33 @@ BRAND_DOMAINS = {
     "google": ["google.com"],
     "microsoft": ["microsoft.com", "microsoftonline.com", "outlook.com"],
     "strathmore": ["strathmore.edu"],
+    # Kenyan brands commonly impersonated in payment and tax lures. Domains
+    # were checked against each organisation's public website (October 2026).
+    "safaricom": ["safaricom.co.ke"],
+    "kra": ["kra.go.ke"],
+    "ecitizen": ["ecitizen.go.ke"],
+    "equity bank": ["equitybank.com", "equitybank.co.ke"],
+    "kcb": ["kcbgroup.com"],
+    "co-operative bank": ["co-opbank.co.ke"],
 }
+# Display-name phrases that claim a brand. Multi-word bank names avoid matching
+# ordinary words such as "equity" in an unrelated newsletter name.
+BRAND_ALIASES = {
+    "google": ["google"],
+    "microsoft": ["microsoft"],
+    "strathmore": ["strathmore"],
+    "safaricom": ["safaricom", "mpesa"],
+    "kra": ["kra", "kenya revenue authority"],
+    "ecitizen": ["ecitizen", "e citizen"],
+    "equity bank": ["equity bank"],
+    "kcb": ["kcb", "kcb bank"],
+    "co-operative bank": ["co operative bank", "coop bank", "co op bank"],
+}
+# Feature flags a rule may list in ``suppress_if``. A trusted sender silences
+# only content-style indicators; authentication, lookalike, brand and payment
+# redirection rules always run because a trusted supplier can be compromised.
+SUPPRESSION_FLAGS = {"trusted_sender"}
+TRUST_SUPPRESSIBLE = ["trusted_sender"]
 
 # The matching behaviour, evidence fields, weights, and confidence values are
 # all data. Adding another instance of a supported matcher does not require a
@@ -55,7 +122,9 @@ DEFAULT_RULES = [
         "title": "Reply-to domain mismatch",
         "weight": 0.45,
         "confidence": 0.95,
+        "version": 2,
         "configuration": {
+            "suppress_if": TRUST_SUPPRESSIBLE,
             "matcher": "different_nonempty",
             "fields": ["sender_domain", "reply_to_domain"],
             "evidence": ["sender_domain", "reply_to_domain"],
@@ -67,7 +136,9 @@ DEFAULT_RULES = [
         "title": "Urgent or credential-seeking language",
         "weight": 0.30,
         "confidence": 0.85,
+        "version": 2,
         "configuration": {
+            "suppress_if": TRUST_SUPPRESSIBLE,
             "matcher": "nonempty",
             "field": "matched_terms",
             "evidence": ["matched_terms"],
@@ -79,7 +150,9 @@ DEFAULT_RULES = [
         "title": "Shortened URL",
         "weight": 0.30,
         "confidence": 0.98,
+        "version": 2,
         "configuration": {
+            "suppress_if": TRUST_SUPPRESSIBLE,
             "matcher": "host_suffix_in",
             "field": "url_hosts",
             "values": SHORTENERS,
@@ -92,7 +165,9 @@ DEFAULT_RULES = [
         "title": "Credential-themed link domain",
         "weight": 0.45,
         "confidence": 0.80,
+        "version": 2,
         "configuration": {
+            "suppress_if": TRUST_SUPPRESSIBLE,
             "matcher": "host_label_untrusted",
             "field": "url_hosts",
             "values": CREDENTIAL_LABELS,
@@ -136,6 +211,43 @@ DEFAULT_RULES = [
             "matcher": "nonempty",
             "field": "authentication_failures",
             "evidence": ["authentication_failures"],
+        },
+    },
+    {
+        "code": "EMAIL-006",
+        "signal_type": "email",
+        "title": "Payment redirection request",
+        "weight": 0.50,
+        "confidence": 0.75,
+        "configuration": {
+            "matcher": "all_nonempty",
+            "fields": ["payment_change_terms", "payment_action_terms"],
+            "evidence": ["payment_change_terms", "payment_action_terms"],
+        },
+    },
+    {
+        "code": "EMAIL-007",
+        "signal_type": "email",
+        "title": "First-contact sender requesting a payment change",
+        "weight": 0.35,
+        "confidence": 0.80,
+        "configuration": {
+            "matcher": "all_nonempty",
+            "fields": ["first_contact", "payment_change_terms"],
+            "evidence": ["first_contact", "sender_domain", "payment_change_terms"],
+        },
+    },
+    {
+        "code": "EMAIL-008",
+        "signal_type": "email",
+        "title": "Mobile-money or tax pressure wording",
+        "weight": 0.30,
+        "confidence": 0.70,
+        "configuration": {
+            "suppress_if": TRUST_SUPPRESSIBLE,
+            "matcher": "nonempty",
+            "field": "local_scam_terms",
+            "evidence": ["local_scam_terms"],
         },
     },
     {
@@ -213,6 +325,16 @@ def seed_rules(session: Session) -> None:
     """Insert the versioned defaults while preserving deliberate DB overrides."""
 
     existing = set(session.scalars(select(DetectionRule.code)).all())
+    missing = [item for item in DEFAULT_RULES if item["code"] not in existing]
+    dialect = session.get_bind().dialect.name
+    if missing and dialect in {"postgresql", "sqlite"}:
+        if dialect == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert
+        else:
+            from sqlalchemy.dialects.sqlite import insert
+        session.execute(insert(DetectionRule).values(missing).on_conflict_do_nothing())
+        session.flush()
+        return
     for item in DEFAULT_RULES:
         if item["code"] not in existing:
             session.add(DetectionRule(**item))
@@ -235,11 +357,16 @@ def _host(value: object) -> str:
     return (urlparse(candidate).hostname or "").casefold().rstrip(".")
 
 
-def _matched_terms(text: str) -> list[str]:
-    folded = text.casefold()
-    return sorted(
-        term for term in URGENT_TERMS if re.search(rf"(?<!\w){re.escape(term)}(?!\w)", folded)
-    )
+MPESA_VARIANTS = re.compile(r"(?<!\w)m[\s-]?pesa(?!\w)")
+
+
+def _fold(text: str) -> str:
+    return MPESA_VARIANTS.sub("mpesa", text.casefold())
+
+
+def _matched_terms(text: str, terms: list[str] = URGENT_TERMS) -> list[str]:
+    folded = _fold(text)
+    return sorted(term for term in terms if re.search(rf"(?<!\w){re.escape(term)}(?!\w)", folded))
 
 
 def _edit_distance(left: str, right: str, maximum: int = 2) -> int:
@@ -300,8 +427,15 @@ def normalise_signal(signal_type: str, raw: dict) -> tuple[str, dict]:
             for claimed in claimed_domains
         )
         display_name = str(raw.get("display_name", ""))[:200]
-        display_words = set(re.findall(r"[a-z0-9]+", display_name.casefold()))
-        claimed_brand = next((brand for brand in BRAND_DOMAINS if brand in display_words), "")
+        display_text = " " + " ".join(re.findall(r"[a-z0-9]+", _fold(display_name))) + " "
+        claimed_brand = next(
+            (
+                brand
+                for brand, aliases in BRAND_ALIASES.items()
+                if any(f" {alias} " in display_text for alias in aliases)
+            ),
+            "",
+        )
         brand_mismatch = bool(
             claimed_brand
             and sender_domain
@@ -327,6 +461,14 @@ def normalise_signal(signal_type: str, raw: dict) -> tuple[str, dict]:
             if key in {"spf", "dkim", "dmarc"}
             and str(value).casefold() in {"fail", "failed", "softfail"}
         )
+        authentication_results = {
+            key: str(authentication[key]).casefold()
+            for key in ("spf", "dkim", "dmarc")
+            if key in authentication
+            and str(authentication[key]).casefold()
+            in {"pass", "fail", "failed", "softfail", "neutral", "none", "temperror", "permerror"}
+        }
+        text = f"{subject} {body}"
         return signal_type, {
             "sender": sender,
             "sender_domain": sender_domain,
@@ -337,12 +479,16 @@ def normalise_signal(signal_type: str, raw: dict) -> tuple[str, dict]:
             "labels": [str(item)[:100] for item in raw.get("labels", [])][:50],
             "url_hosts": url_hosts[:50],
             # Store only the matched phrases, never the complete message body.
-            "matched_terms": _matched_terms(f"{subject} {body}"),
+            "matched_terms": _matched_terms(text),
+            "payment_change_terms": _matched_terms(text, PAYMENT_CHANGE_TERMS),
+            "payment_action_terms": _matched_terms(text, PAYMENT_ACTION_TERMS),
+            "local_scam_terms": _matched_terms(text, LOCAL_SCAM_TERMS),
             "claimed_domains": claimed_domains,
             "lookalike_domain": lookalike_domain,
             "claimed_brand": claimed_brand,
             "brand_mismatch": brand_mismatch,
             "authentication_failures": authentication_failures,
+            "authentication_results": authentication_results,
         }
     if signal_type == "forwarding":
         target, target_domain = _address_domain(raw.get("target"))
@@ -413,13 +559,55 @@ def signal_fingerprint(signal_type: str, features: dict) -> str:
     return hashlib.sha256(serialised.encode()).hexdigest()
 
 
+def apply_context(features: dict, context: SenderContext | None) -> dict:
+    """Add workspace context (trusted senders, sender history) to email features.
+
+    Context is evaluated at ingestion and stored as booleans, so a later change to
+    the trusted list never re-scores retained evidence.
+    """
+
+    if context is None:
+        return features
+    features = dict(features)
+    sender = features.get("sender", "")
+    domain = features.get("sender_domain", "")
+    trusted_match = bool(sender) and (
+        sender in context.trusted_addresses
+        or any(_is_same_or_subdomain(domain, item) for item in context.trusted_domains)
+    )
+    # A failed SPF/DKIM/DMARC result means the From address may be forged, so it
+    # cannot earn trust.
+    features["trusted_sender"] = trusted_match and not features.get("authentication_failures")
+    features["first_contact"] = bool(sender) and context.first_contact and not trusted_match
+    claimed = set(features.get("claimed_domains", []))
+    claimed.update(context.trusted_domains)
+    claimed.update(address.rsplit("@", 1)[-1] for address in context.trusted_addresses)
+    features["claimed_domains"] = sorted(claimed)[:20]
+    features["lookalike_domain"] = any(
+        not _is_same_or_subdomain(domain, item) and _edit_distance(domain, item) <= 2
+        for item in features["claimed_domains"]
+    )
+    return features
+
+
+@dataclass(frozen=True)
+class SenderContext:
+    trusted_addresses: frozenset[str]
+    trusted_domains: frozenset[str]
+    first_contact: bool
+
+
 def _matches(configuration: dict, features: dict) -> bool:
+    if any(features.get(flag) for flag in configuration.get("suppress_if", [])):
+        return False
     matcher = configuration.get("matcher")
     if matcher == "different_nonempty":
         left, right = (features.get(field) for field in configuration["fields"])
         return bool(left and right and left != right)
     if matcher == "nonempty":
         return bool(features.get(configuration["field"]))
+    if matcher == "all_nonempty":
+        return all(features.get(field) for field in configuration["fields"])
     if matcher == "equals":
         return features.get(configuration["field"]) == configuration.get("value")
     if matcher == "all_equal":

@@ -7,12 +7,18 @@ export const severityOrder: Record<Severity, number> = {
   low: 1,
 }
 
+// SQLite API timestamps without an offset still represent UTC.
+function parseApiTime(value: string): number {
+  const utcValue = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value) ? `${value}Z` : value
+  return Date.parse(utcValue)
+}
+
 export function prioritizeIncidents(incidents: Incident[]): Incident[] {
   return [...incidents].sort((a, b) => {
     const severityDifference = severityOrder[b.severity] - severityOrder[a.severity]
     if (severityDifference) return severityDifference
-    const aTime = Date.parse(a.detected_at ?? a.last_seen_at ?? a.created_at ?? '') || 0
-    const bTime = Date.parse(b.detected_at ?? b.last_seen_at ?? b.created_at ?? '') || 0
+    const aTime = parseApiTime(a.detected_at ?? a.last_seen_at ?? a.created_at ?? '') || 0
+    const bTime = parseApiTime(b.detected_at ?? b.last_seen_at ?? b.created_at ?? '') || 0
     return bTime - aTime
   })
 }
@@ -67,7 +73,7 @@ export function telemetryCoverage(
 
 export function relativeTime(value?: string): string {
   if (!value) return 'Time unknown'
-  const milliseconds = Date.now() - Date.parse(value)
+  const milliseconds = Date.now() - parseApiTime(value)
   if (!Number.isFinite(milliseconds)) return value
   const minutes = Math.round(milliseconds / 60_000)
   if (Math.abs(minutes) < 1) return 'just now'
@@ -80,10 +86,16 @@ export function relativeTime(value?: string): string {
 
 export function formatDateTime(value?: string): string {
   if (!value) return 'Not recorded'
-  const date = new Date(value)
+  const date = new Date(parseApiTime(value))
   if (Number.isNaN(date.getTime())) return value
   return new Intl.DateTimeFormat('en', {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
+}
+
+export function formatUtc(value?: string): string {
+  if (!value) return '—'
+  const date = new Date(parseApiTime(value))
+  return Number.isNaN(date.getTime()) ? '—' : `${date.toISOString().replace('T', ' ').slice(0, 19)} UTC`
 }

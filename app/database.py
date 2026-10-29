@@ -17,6 +17,8 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from alembic import command
 
+from . import deployment
+
 
 class Base(DeclarativeBase):
     """Declarative base shared by every platform table."""
@@ -26,6 +28,17 @@ DEFAULT_DATABASE_PATH = Path("data") / "sentinelsme.db"
 
 
 def _database_url() -> str:
+    if deployment.production():
+        from sqlalchemy.engine import URL
+
+        return URL.create(
+            "postgresql+psycopg",
+            username="sentinelsme_app",
+            password=deployment.secret("AI_SOC_DB_PASSWORD"),
+            host=os.getenv("AI_SOC_DB_HOST", "db"),
+            port=5432,
+            database=os.getenv("AI_SOC_DB_NAME", "sentinelsme"),
+        ).render_as_string(hide_password=False)
     configured = os.getenv("AI_SOC_DATABASE_URL")
     if configured:
         return configured
@@ -35,7 +48,7 @@ def _database_url() -> str:
 
 def _make_engine(url: str) -> Engine:
     options = {"check_same_thread": False} if url.startswith("sqlite") else {}
-    created = create_engine(url, connect_args=options, pool_pre_ping=True)
+    created = create_engine(url, connect_args=options, pool_pre_ping=True, hide_parameters=True)
     if url.startswith("sqlite"):
 
         @event.listens_for(created, "connect")

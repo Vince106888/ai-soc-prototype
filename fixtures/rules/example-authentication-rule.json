@@ -1,0 +1,13 @@
+{
+  "code": "CUSTOM-AUTH-001",
+  "signal_type": "email",
+  "title": "Controlled authentication failure review",
+  "weight": 0.55,
+  "confidence": 0.8,
+  "version": 1,
+  "configuration": {
+    "matcher": "nonempty",
+    "field": "authentication_failures",
+    "evidence": ["authentication_failures"]
+  }
+}

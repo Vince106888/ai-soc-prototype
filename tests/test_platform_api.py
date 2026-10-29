@@ -169,7 +169,11 @@ async def test_lifecycle_audit_and_tenant_boundary(platform_client: AsyncClient)
     audit = await platform_client.get(
         "/api/v1/audit", headers=headers, params={"incident_id": incident_id}
     )
-    assert len(audit.json()) == 5  # creation plus four accepted transitions
+    actions = [item["action"] for item in audit.json()]
+    assert actions.count("incident_created") == 1
+    assert actions.count("incident_status_changed") == 3
+    assert actions.count("incident_reopened") == 1
+    assert actions.count("guidance_updated") == 1
 
 
 async def test_api_key_guard_is_enabled_only_when_configured(
@@ -242,7 +246,7 @@ async def test_account_source_scan_listing_and_error_paths(platform_client: Asyn
     assert (await platform_client.get("/api/v1/sources", headers=headers)).json()[0][
         "id"
     ] == source_id
-    assert len((await platform_client.get("/api/v1/rules", headers=headers)).json()) == 11
+    assert len((await platform_client.get("/api/v1/rules", headers=headers)).json()) == 14
     assert (await platform_client.get("/api/v1/capabilities", headers=headers)).json()[
         "controlled_ingestion"
     ]

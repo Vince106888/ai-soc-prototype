@@ -14,5 +14,7 @@ htmlcov/
 dist/
 build/
 node_modules/
+frontend/test-results/
+frontend/playwright-report/
 data/
 .DS_Store

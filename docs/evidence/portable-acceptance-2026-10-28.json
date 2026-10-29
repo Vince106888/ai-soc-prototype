@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-28",
+  "data_boundary": "Synthetic controlled incidents only",
+  "native": {
+    "dashboard": "visually verified populated overview and incident detail",
+    "http_acceptance": "passed readiness, assets, ingestion, completed jobs, idempotency, privacy, tenant isolation, lifecycle and audit",
+    "worker_once": {
+      "completed": 1,
+      "failed": 0
+    },
+    "local_model_ui": "labelled explanation displayed with deterministic score unchanged",
+    "launcher_from_outside_checkout": "running on 127.0.0.1:8000 using separate portable-demo.db"
+  },
+  "checks": {
+    "backend_suite": {
+      "passed": 192,
+      "coverage_percent": 93.54
+    },
+    "frontend_tests": 55,
+    "frontend_lint_build": "passed",
+    "ruff_lint_format": "passed",
+    "npm_audit_known_vulnerabilities": 0,
+    "runtime_python_audit_known_vulnerabilities": 0,
+    "lock_check": "passed",
+    "backup_and_launcher_regressions": "10 passed, included in full 192-test suite"
+  },
+  "dependency_updates": {
+    "vite": "7.3.7",
+    "vitest": "5.0.5",
+    "cryptography": "50.0.2",
+    "certifi": "2026.10.19"
+  },
+  "containers": {
+    "docker_desktop": "4.97.0 installed from signature-validated official installer",
+    "compose_base": "configuration validation passed",
+    "compose_ollama": "configuration validation passed",
+    "runtime_acceptance": "passed private HTTP workflow, live polling worker, restart persistence and isolated non-empty PostgreSQL restoration",
+    "engine": "healthy after Docker Desktop restart; server query succeeded",
+    "private_hardening": "UID/GID 10001; root-owned application code; read-only application containers; bounded logs, memory, scratch space and processes",
+    "backup_tooling": "private and controlled public restoration executed; original databases untouched"
+  },
+  "limits": [
+    "No production readiness claim",
+    "No new live Gmail consent or collection tested",
+    "Synthetic model validation does not measure detection accuracy or participant usefulness",
+    "Public deployment acceptance is recorded separately; live domain/VPS/Google remain operator inputs"
+  ]
+}

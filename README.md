@@ -14,6 +14,16 @@ create evidence, change a score, or take action on an account.
 
 ![SentinelSME system architecture](docs/assets/architecture.png)
 
+## Public product deployment
+
+Public Google registration, server-owned private workspaces, secure sessions,
+account deletion, configurable evidence retention and a standalone HTTPS Docker
+stack are implemented. The deployment package targets a VPS/domain selected
+later. See [public deployment](docs/PUBLIC_DEPLOYMENT.md) for initialization,
+Google configuration, backups, recovery and the final live-release checks.
+Optional Gmail remains disabled until the actual deployment is approved for its
+scope. Optional AI explanations run independently of collection.
+
 ## Platform status
 
 This repository now contains an end-to-end **controlled-data** workflow:
@@ -31,12 +41,24 @@ This repository now contains an end-to-end **controlled-data** workflow:
 - a labelled-case evaluation endpoint that reports a confusion matrix and
   accuracy, precision, recall, specificity, and F1 score.
 
-Some interfaces intentionally stop short of live operations. Gmail/Google
-Workspace OAuth and collection, a running scheduler/worker, external AI
-explanations, automatic remediation, and production identity management are
-**not implemented**. Creating a scan job records work; it does not fetch a
-mailbox. See the [capability matrix](docs/CAPABILITY_MATRIX.md) for the exact
-boundary.
+A read-only personal Gmail adapter now implements OAuth consent, encrypted
+tokens, refresh, bounded on-demand inbox scans, separately acknowledged scheduled samples, and disconnect. It requires your
+Google Web OAuth client. Mocked provider tests cover its contracts, and an
+authorised local consent-and-scan trial succeeded on 4 October 2026. That trial
+validates the integration, not threat-detection accuracy. See [Gmail setup](docs/GMAIL_SETUP.md).
+
+The dashboard supports selected-email analysis, database-backed workspace totals,
+seven-day activity, readable evidence, and account deletion. Development Gmail trial
+accounts expire after seven days; production keeps connections and applies configurable evidence retention.
+Opt-in scheduled sampling now executes through a leased worker; see [scheduling](docs/SCHEDULING.md).
+Workspace admin telemetry and automatic remediation remain absent. Public deployment uses the separate hardened Compose package described above. Generic jobs record work; selected-email
+submission and the Gmail scan route actually execute analysis.
+
+Google app sign-in is implemented behind `AI_SOC_AUTH_MODE=google`,
+with verified identity, private server-assigned workspaces, eight-hour sessions
+and CSRF protection. Public deployments support self-registration; private pilots may retain an invitation list. A guided welcome page separates sign-in from optional
+Gmail consent; local demos remain available. Synthetic tests cover access and
+isolation; controlled public HTTPS deployment acceptance passed. Live Google sign-in on the final public domain remains a release check. Configure the extra callback once using [onboarding](docs/ONBOARDING.md).
 
 ## Why it exists
 
@@ -84,7 +106,7 @@ SentinelSME is a modular monolith with explicit service boundaries:
 | HTTP/API | FastAPI health, compatibility analysis, and `/api/v1` platform routes |
 | Processing | Normalisation, configurable rules, scoring, correlation, lifecycle, templates, evaluation |
 | Persistence | SQLAlchemy; SQLite by default and PostgreSQL-compatible configuration |
-| External integrations | Modelled as capabilities; live Google and LLM connectors are not included |
+| External integrations | Read-only personal Gmail adapter; optional loopback Ollama explainer validated on synthetic laptop incidents; Workspace admin absent |
 
 ![SentinelSME ingestion and incident sequence](docs/assets/sequence.png)
 
@@ -97,6 +119,46 @@ See [DATA_MODEL.md](docs/DATA_MODEL.md) for the persisted evidence chain and
 [OPERATIONS.md](docs/OPERATIONS.md) for deployment boundaries.
 
 ## Quick start
+
+### Portable launch (Windows, Linux, macOS)
+
+With Docker Desktop/Engine running and Python 3 available, run from the checkout:
+
+```bash
+python scripts/run.py docker --demo
+```
+
+This builds the dashboard/API image, starts private PostgreSQL and the worker,
+waits for readiness, seeds only synthetic tenant `demo`, and runs HTTP acceptance
+checks. It creates persistent random deployment secrets in ignored
+`data/docker.env`; preserve this private file with your database volume. Open
+`http://127.0.0.1:8000`, choose **Open an existing local workspace**, enter `demo`
+and the deployment key from that private file. No Google setup is needed.
+Use `python3` if that is your platform's Python command.
+
+```bash
+python scripts/run.py doctor
+python scripts/run.py check
+python scripts/run.py down
+```
+
+Stopping retains database volumes. `--port 8001` selects another host port.
+For optional container-local AI, add `--model` to launch/check/down commands;
+launch downloads `qwen2.5:3b` into its own named model volume. The API, worker
+and Ollama share a network namespace so model traffic remains loopback-only;
+no Ollama port is published. Host-installed models are separate from that volume.
+
+Without Docker, use Python 3.13, uv and Node.js/npm:
+
+```bash
+python scripts/run.py local --demo --model
+```
+
+This builds and serves the console and API together, using the separate
+`data/portable-demo.db`; it does not seed your existing application database.
+Omit `--model` for templates only. After the first build, `--skip-build` reuses
+the dashboard. Keep the terminal open; Ctrl+C stops the local server.
+See [operations](docs/OPERATIONS.md) for backup and deployment limits.
 
 ### Prerequisites
 
@@ -111,7 +173,7 @@ git clone https://github.com/Vince106888/ai-soc-prototype.git
 cd ai-soc-prototype
 uv sync --dev --frozen
 uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload --no-access-log
 ```
 
 Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) for the generated
@@ -145,7 +207,7 @@ served together at [http://localhost:8000](http://localhost:8000).
 
 ### 3. Create controlled data
 
-The fastest guided path is the API documentation. A minimal sequence is:
+The Email analysis dashboard provides selected-message submission; [Gmail setup](docs/GMAIL_SETUP.md) covers live personal Gmail. The API batch path follows. A minimal sequence is:
 
 1. `POST /api/v1/accounts`
 2. `POST /api/v1/accounts/{account_id}/sources`
@@ -167,7 +229,7 @@ Full request examples and endpoint semantics are in [API.md](docs/API.md).
 
 ## Detection catalogue
 
-The persistent pipeline seeds eleven versioned deterministic rules:
+The persistent pipeline seeds fourteen versioned deterministic rules:
 
 | Rule | Signal | Indicator | Weight | Confidence |
 |---|---|---|---:|---:|
@@ -178,10 +240,17 @@ The persistent pipeline seeds eleven versioned deterministic rules:
 | `EMAIL-003` | email | Sender domain resembles a declared trusted domain | 0.65 | 0.85 |
 | `EMAIL-004` | email | Recognised brand name conflicts with the sender domain | 0.55 | 0.85 |
 | `EMAIL-005` | email | SPF, DKIM, or DMARC authentication failure | 0.55 | 0.95 |
+| `EMAIL-006` | email | Payment-change phrase plus payment instruction (bank or mobile money) | 0.50 | 0.75 |
+| `EMAIL-007` | email | First message from a sender already asks for a payment change | 0.35 | 0.80 |
+| `EMAIL-008` | email | Mobile-money reversal or tax-penalty pressure wording | 0.30 | 0.70 |
 | `FORWARD-001` | forwarding | Enabled, external, unauthorised forwarding | 0.70 | 0.95 |
 | `SIGNIN-001` | sign-in | Unusual, new-device, impossible-travel, or high-risk sign-in | 0.65 | 0.80 |
 | `MFA-001` | MFA | Multi-factor authentication disabled | 0.60 | 0.99 |
 | `OAUTH-001` | OAuth grant | Broad or unverified third-party grant | 0.80 | 0.90 |
+
+`EMAIL-001`, `EMAIL-002`, `URL-001`, `URL-002` and `EMAIL-008` are skipped for a
+workspace-trusted sender whose authentication did not fail; see
+[RULE_CATALOG.md](docs/RULE_CATALOG.md#trusted-senders-and-first-contact).
 
 Rules persist only the evidence fields they need. For email signals, the body is
 reduced to matched phrases; URLs are reduced to canonical hostnames. Submitted
@@ -246,8 +315,7 @@ Implemented safeguards include:
 
 Important limitations remain: `X-Tenant-ID` is caller-supplied, the API key is a
 shared deployment secret, database encryption and TLS depend on the operator,
-and there is no production identity provider, rate limiter, automated retention
-job, or OAuth token vault. Read [PRIVACY_AND_RETENTION.md](docs/PRIVACY_AND_RETENTION.md)
+and there is no production identity provider or rate limiter. Gmail tokens are encrypted; seven-day local trial expiry is enforced when the app runs. General production retention remains pending. Read [PRIVACY_AND_RETENTION.md](docs/PRIVACY_AND_RETENTION.md)
 and [SECURITY.md](SECURITY.md) before deployment.
 
 ## Evaluation
@@ -301,6 +369,8 @@ or screenshots containing private data. Read [AGENTS.md](AGENTS.md) and
 | [Threat model](docs/THREAT_MODEL.md) | Assets, trust boundaries, threats, and mitigations |
 | [Requirements traceability](docs/REQUIREMENTS_TRACEABILITY.md) | Chapter 4 requirements mapped to implementation evidence |
 | [Roadmap](docs/ROADMAP.md) | Completed work and remaining delivery phases |
+| [Competitive readiness](docs/COMPETITIVE_READINESS.md) | Frontend/backend upgrades, INKY/Proofpoint comparison and necessary remaining work |
+| [Local benchmark](docs/BENCHMARK.md) | Reproducible 500-signal results and performance limits |
 
 ## Scope and limitations
 
@@ -309,13 +379,13 @@ sensor, malware sandbox, phishing simulator, compliance product, or substitute
 for professional incident response. A rule match is an indicator for human
 review, not proof of malicious activity. Recommendations remain advisory.
 
-The design supports three input profiles, but only the controlled profile is
-operational today:
+Controlled data works without external services. Personal Gmail requires operator
+setup; the authorised local trial is documented in [EVALUATION.md](docs/EVALUATION.md):
 
 | Input profile | Status | Intended signals |
 |---|---|---|
 | Controlled evaluation data | Implemented | Email, link, forwarding, sign-in, MFA, and OAuth-grant scenarios |
-| Personal Gmail | Not connected | Authorised message metadata, sender data, links, labels |
+| Personal Gmail | Adapter implemented; local consent/sample validated; operator setup required | Read-only bounded inbox sample; email signals only |
 | Workspace administrator | Not connected | Mailbox plus permitted login, forwarding, grant, and posture data |
 
 ## Research provenance
@@ -330,3 +400,41 @@ paths and integrity hashes.
 
 Research diagrams describe the intended architecture. This README and the
 capability matrix are the authority for what the repository actually executes.
+
+The dashboard also provides an **Evidence workspace** for paged sender/subject
+search, account/type/result filters, no-match records and linked incidents, plus
+a read-only **Detection catalogue** of the current backend rules. Incident
+pages show server totals and the overview priority queue remains independent
+of list filters. The isolated local benchmark is reproducible with
+`uv run python -m app.benchmark --runs 3`; see the results and limits above.
+
+
+## Analyst-console and product coverage review
+
+The console now has incident investigation tabs, compact rule/evidence rows,
+separate selected-message and Gmail workflows, declared trusted-domain input,
+and an explicit protection coverage screen. `EMAIL-006` adds a deterministic
+payment-redirection indicator with phrase-only evidence and advisory guidance.
+See [product coverage and completion milestones](docs/PRODUCT_SCOPE.md) for the
+full INKY product/use-case/platform mapping and remaining research requirements.
+
+## Restart this laptop deployment
+
+Run this single PowerShell command from any folder:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\HP\OneDrive\Desktop\y4\ai-soc-prototype\scripts\restart.ps1"
+```
+
+It starts Docker Desktop when needed, restarts the API/website,
+collection worker, PostgreSQL and the installed optional model service, waits for
+container health checks and API readiness, and opens
+http://127.0.0.1:8001/. It preserves database/model volumes, private Google
+credential mounts and the existing token encryption key. It never downloads a
+model or silently falls back to unauthenticated local mode. Missing configuration
+or a mismatched OAuth callback port fails with an actionable error.
+Use `-Build` after source changes; the normal restart reuses installed images.
+Use `-NoBrowser` to leave the browser closed. Google configuration is required
+by default; `-LocalWorkspace` explicitly permits an unauthenticated local
+workspace when no Google configuration exists. Live Google consent still requires
+the registered callbacks and provider account approval.
