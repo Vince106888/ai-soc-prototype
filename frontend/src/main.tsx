@@ -4,6 +4,7 @@ import App from './AuthGate'
 import './styles.css'
 import './console.css'
 import './onboarding.css'
+import './product.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

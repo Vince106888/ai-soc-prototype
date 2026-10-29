@@ -18,6 +18,43 @@ function mockWorkspace() {
 }
 
 describe('workspace investigation state', () => {
+  it('submits search deliberately instead of reloading the workspace on each key', async () => {
+    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    mockWorkspace()
+    const pages = vi.spyOn(api, 'incidentPage').mockResolvedValue({ items: [incident], total: 1, offset: 0, limit: 25 })
+    render(<App />)
+    await screen.findByRole('button', { name: /Controlled critical case/ })
+    const calls = pages.mock.calls.length
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search incidents' }), { target: { value: '  sender  ' } })
+    expect(pages.mock.calls).toHaveLength(calls)
+    fireEvent.click(screen.getByRole('button', { name: 'Search workspace' }))
+    await screen.findByRole('heading', { name: 'Incidents' })
+    await waitFor(() => expect(pages.mock.calls.some(([, filters]) => filters.q === 'sender')).toBe(true))
+  })
+
+  it('opens selected-message analysis separately from Gmail setup for signed-in users', async () => {
+    mockWorkspace()
+    vi.spyOn(api, 'incidentPage').mockResolvedValue({ items: [], total: 0, offset: 0, limit: 25 })
+    render(<App session={{ mode: 'google', configured: true, invitation_only: false, session_hours: 8, mailbox_consent_separate: true, csrf_token: 'synthetic', user: { id: 'a', email: 'owner@example.test', workspace_id: 'a' } }} />)
+    await screen.findByRole('heading', { name: 'Security overview' })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Analyse email' })[0])
+    expect(await screen.findByLabelText('Selected message text')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Overview' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Set up Gmail' }))
+    expect(await screen.findByRole('button', { name: 'Connect Gmail' })).toBeVisible()
+    expect(screen.queryByLabelText('Selected message text')).not.toBeInTheDocument()
+  })
+
+  it('opens critical metrics as visible, removable filters', async () => {
+    sessionStorage.setItem('sentinelsme.tenantId', 'a')
+    mockWorkspace()
+    vi.spyOn(api, 'incidentPage').mockResolvedValue({ items: [incident], total: 1, offset: 0, limit: 25 })
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'View critical priority' }))
+    expect(screen.getByLabelText('Severity')).toHaveValue('critical')
+    fireEvent.click(screen.getByRole('button', { name: 'Show all incident statuses' }))
+    expect(screen.queryByRole('button', { name: 'Show all incident statuses' })).not.toBeInTheDocument()
+  })
   it('keeps keyboard focus inside the mobile drawer and restores it on Escape', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
     try {
