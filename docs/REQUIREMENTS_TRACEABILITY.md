@@ -76,3 +76,26 @@ both payment-change and payment-action groups (weight 0.50, confidence 0.75).
 Findings remain deterministic and traceable; existing signals are not re-scored.
 No database migration or new connector scope is required. Shared screenshots and
 evaluation exports must use controlled data; unit tests do not establish accuracy.
+
+
+### Portable operations acceptance (28 October 2026)
+
+The portable launcher (`scripts/run.py`), synthetic HTTP acceptance
+(`scripts/smoke.py`), launcher regression tests, Compose base and optional
+loopback-only Ollama configuration are mapped to the
+[acceptance record](evidence/portable-acceptance-2026-10-28.json).
+Native browser/API/worker execution was verified. Container configuration
+validation passed; image build and runtime acceptance remain pending for disk
+capacity. These checks do not close production, representative-dataset, or
+participant-study requirements.
+
+## Public product release additions
+
+| Requirement | Executable path | Evidence |
+|---|---|---|
+| Google registration/private workspace | app/auth.py, auth_api.py | test_public_accounts.py |
+| Fail-closed public config | app/deployment.py | test_deployment.py |
+| Permanent deletion and safe restores | deletion_ledger.py, retention.py | test_public_accounts.py, test_public_runtime.py |
+| Bounded background AI | explanation_jobs.py, explanation_worker.py | test_explanation_jobs.py, stale-response test |
+| HTTPS deployment/DB privileges | compose.production.yaml, deploy/ | scripts.verify_public, public acceptance JSON |
+| Operator initialization/recovery | scripts/production.py, PUBLIC_DEPLOYMENT.md | test_production_launcher.py, isolated restore |

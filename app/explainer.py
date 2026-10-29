@@ -28,7 +28,9 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from . import deployment
 from .entities import AuditRecord, Incident, IncidentExplanation, utcnow
+from .platform import ConflictError, NotFoundError, _load_incident, lock_account, workspace_write
 
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 MAX_TEXT = 320
@@ -243,25 +245,63 @@ def explain_incident(
     """Try to add a model explanation; returns 'explained' or a failure reason."""
 
     config = config or settings()
+    incident_id, tenant_id, account_id = incident.id, incident.tenant_id, incident.account_id
+
+    def current():
+        if deployment.production():
+            workspace_write(session, tenant_id)
+        lock_account(session, tenant_id, account_id)
+        session.expire_all()
+        return _load_incident(session, tenant_id, incident_id)
+
+    try:
+        incident = current()
+    except (NotFoundError, ConflictError):
+        session.rollback()
+        return "unavailable"
     template = _latest(incident)
     if template is None or template.source != "template":
+        session.commit()
         return "not_template"
+    template_id = template.id
     actions = [item.action for item in sorted(incident.recommendations, key=lambda r: r.position)]
     payload = build_payload(incident, actions)
+    session.commit()  # No account/user lock or write transaction spans model inference.
+    failure = None
     try:
         result = generate(payload, config, client)
     except ExplainerError as exc:
+        failure = exc.reason
+    try:
+        incident = current()
+    except (NotFoundError, ConflictError):
+        session.rollback()
+        return "unavailable"
+    template = _latest(incident)
+    if template is None or template.id != template_id or template.source != "template":
         session.add(
             AuditRecord(
-                tenant_id=incident.tenant_id,
-                incident_id=incident.id,
+                tenant_id=tenant_id,
+                incident_id=incident_id,
                 actor="system",
-                action="ai_explanation_failed",
-                detail=f"Local model explanation unavailable ({exc.reason}); template retained.",
+                action="ai_explanation_discarded",
+                detail="Model response discarded because its supporting guidance changed.",
             )
         )
         session.commit()
-        return exc.reason
+        return "evidence_changed"
+    if failure:
+        session.add(
+            AuditRecord(
+                tenant_id=tenant_id,
+                incident_id=incident_id,
+                actor="system",
+                action="ai_explanation_failed",
+                detail=f"Local model explanation unavailable ({failure}); template retained.",
+            )
+        )
+        session.commit()
+        return failure
     base = template.created_at
     now = utcnow() if base.tzinfo else utcnow().replace(tzinfo=None)  # SQLite stores naive UTC
     created = max(now, base + timedelta(microseconds=1))

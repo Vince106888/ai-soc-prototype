@@ -76,3 +76,21 @@ cross-user resource IDs, sign-out and removed invitations. Public TLS/Secure
 cookies, rate limiting, identity deletion and independent target-host isolation
 testing remain release requirements. Local mode retains its explicitly weaker
 header boundary and must not be exposed as authenticated access.
+
+## Public release controls
+
+Canonical HTTPS configuration fails closed; Google identities own private
+workspaces. Secure HttpOnly cookies, exact-Origin CSRF, revocable sessions,
+per-user database-backed budgets and proxy limits constrain public access.
+Public signup is separate from disabled-by-default Gmail scope collection.
+Only the HTTPS edge exposes host ports. Application and collection processes
+run without root/capabilities on read-only filesystems. A restricted DB role
+limits privilege; bootstrap/admin secrets are separate.
+
+Account locking serializes ingestion and lifecycle writes; incident correlation
+cannot chain beyond a total 30-minute window. AI inference releases database
+locks, then validates its original template revision before persistence. A
+bounded leased queue isolates inference from collection and HTTP requests.
+Independent deletion receipts prevent deleted workspaces returning after restore.
+Provider/account verification, host maintenance, offsite backup configuration,
+traffic sizing and live DNS/TLS checks remain operator release responsibilities.

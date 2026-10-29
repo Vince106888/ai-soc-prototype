@@ -17,6 +17,7 @@ from fastapi import HTTPException, Request
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from . import deployment
 from .entities import AppSession, AppUser, LoginAttempt, new_id, utcnow
 from .gmail import (
     AUTHORIZE_URL,
@@ -44,7 +45,14 @@ class SignInError(Exception):
 
 def required() -> bool:
     # An invalid mode fails closed instead of silently enabling header access.
-    return os.getenv("AI_SOC_AUTH_MODE", "local") != "local"
+    return deployment.production() or os.getenv("AI_SOC_AUTH_MODE", "local") != "local"
+
+
+def allowed(email: str) -> bool:
+    try:
+        return deployment.signup_policy() == "public" or email in invitations()
+    except deployment.DeploymentError:
+        return False
 
 
 def invitations() -> set[str]:
@@ -60,16 +68,19 @@ def settings() -> tuple[str, str, str, object]:
         raise SignInError("Google sign-in has not been enabled by the operator.")
     try:
         client_id, secret, gmail_redirect, cipher = _settings()
-    except GmailError:
+    except (GmailError, deployment.DeploymentError):
         raise SignInError("The operator must finish Google sign-in setup.") from None
     callback = os.getenv(
         "AI_SOC_GOOGLE_LOGIN_REDIRECT_URI",
         gmail_redirect.replace("/gmail/callback", "/auth/callback"),
     )
     parsed, mailbox = urlparse(callback), urlparse(gmail_redirect)
+    try:
+        valid = deployment.valid_callback(callback, LOGIN_PATH)
+    except deployment.DeploymentError:
+        valid = False
     if (
-        parsed.scheme != "http"
-        or parsed.hostname not in {"localhost", "127.0.0.1"}
+        not valid
         or parsed.netloc != mailbox.netloc
         or parsed.path != LOGIN_PATH
         or parsed.query
@@ -77,22 +88,31 @@ def settings() -> tuple[str, str, str, object]:
         or parsed.username
         or parsed.password
     ):
-        raise SignInError("The pilot sign-in callback must use the same localhost origin.")
-    if not invitations():
+        raise SignInError("The sign-in callback must use the configured application origin.")
+    try:
+        policy = deployment.signup_policy()
+    except deployment.DeploymentError:
+        raise SignInError("The sign-up policy is not configured correctly.") from None
+    if policy == "invite_only" and not invitations():
         raise SignInError("The operator must configure the pilot invitation list.")
     return client_id, secret, callback, cipher
 
 
 def configuration() -> dict:
+    invitation_only = True
     try:
         settings()
+        invitation_only = deployment.signup_policy() != "public"
         configured = True
     except SignInError:
         configured = False
     return {
         "mode": "google" if required() else "local",
         "configured": configured,
-        "invitation_only": True,
+        "invitation_only": invitation_only,
+        "environment": "production" if deployment.production() else "development",
+        "operator_contact": os.getenv("AI_SOC_OPERATOR_CONTACT", ""),
+        "evidence_retention_days": deployment.retention_days() if deployment.production() else 7,
         "session_hours": 8,
         "mailbox_consent_separate": True,
     }
@@ -244,9 +264,31 @@ def finish_login(
             identity = verify_identity(data.get("id_token"), client_id, parameters["nonce"], client)
     except GmailError:
         raise SignInError("Google sign-in is temporarily unavailable. Try again.") from None
-    if identity["email"] not in invitations():
+    if not allowed(identity["email"]):
         raise SignInError("This account has not been invited to the pilot.")
-    user = db.scalar(select(AppUser).where(AppUser.google_subject == identity["sub"]))
+    dialect = db.get_bind().dialect.name
+    if dialect in {"postgresql", "sqlite"}:
+        if dialect == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert
+        else:
+            from sqlalchemy.dialects.sqlite import insert
+        statement = insert(AppUser).values(
+            id=new_id(),
+            google_subject=identity["sub"],
+            email=identity["email"],
+            tenant_id="user-" + new_id(),
+            status="active",
+        )
+        user = db.scalar(
+            statement.on_conflict_do_update(
+                index_elements=[AppUser.google_subject],
+                set_={"email": identity["email"]},
+            )
+            .returning(AppUser)
+            .execution_options(populate_existing=True)
+        )
+    else:
+        user = db.scalar(select(AppUser).where(AppUser.google_subject == identity["sub"]))
     if user is None:
         user = AppUser(
             google_subject=identity["sub"], email=identity["email"], tenant_id="user-" + new_id()
@@ -255,9 +297,19 @@ def finish_login(
         db.flush()
     else:
         user.email = identity["email"]
+    if user.status != "active":
+        db.rollback()
+        raise SignInError("Account access is unavailable. Contact the service operator.")
     if old_session:
         db.execute(delete(AppSession).where(AppSession.token_digest == digest(old_session)))
     session, csrf = secrets.token_urlsafe(48), secrets.token_urlsafe(48)
+    excess = (
+        select(AppSession.token_digest)
+        .where(AppSession.user_id == user.id)
+        .order_by(AppSession.expires_at.desc(), AppSession.token_digest)
+        .offset(19)
+    )
+    db.execute(delete(AppSession).where(AppSession.token_digest.in_(excess)))
     db.add(
         AppSession(
             token_digest=digest(session),
@@ -278,15 +330,24 @@ class Principal:
     email: str
 
 
-def principal(db: Session, request: Request, *, check_csrf: bool = True) -> Principal:
+def principal(
+    db: Session,
+    request: Request,
+    *,
+    check_csrf: bool = True,
+    lock_user: bool = False,
+) -> Principal:
     if os.getenv("AI_SOC_AUTH_MODE", "local") != "google":
         raise HTTPException(503, "Sign-in setup is unavailable.")
     token = request.cookies.get(SESSION_COOKIE, "")
     record = db.get(AppSession, digest(token)) if token and len(token) <= 256 else None
     if not record or record.expires_at.replace(tzinfo=UTC) <= utcnow():
         raise HTTPException(401, "Sign in to SentinelSME to continue.")
-    user = db.get(AppUser, record.user_id)
-    if not user or user.email not in invitations():
+    statement = select(AppUser).where(AppUser.id == record.user_id)
+    if lock_user or request.method not in {"GET", "HEAD", "OPTIONS"}:
+        statement = statement.with_for_update().execution_options(populate_existing=True)
+    user = db.scalar(statement)
+    if not user or user.status != "active" or not allowed(user.email):
         raise HTTPException(401, "Your pilot access is no longer active.")
     if check_csrf and request.method not in {"GET", "HEAD", "OPTIONS"}:
         csrf = request.headers.get("x-csrf-token", "")
@@ -301,6 +362,24 @@ def principal(db: Session, request: Request, *, check_csrf: bool = True) -> Prin
             or len(csrf) > 256
             or not hmac.compare_digest(digest(csrf), record.csrf_digest)
             or (origin and origin != f"{configured.scheme}://{configured.netloc}")
+            or (deployment.production() and origin != deployment.public_origin())
         ):
             raise HTTPException(403, "Refresh the page before submitting this action.")
     return Principal(user.id, user.tenant_id, user.email)
+
+
+def workspace_allowed(db: Session, tenant_id: str, email: str) -> bool:
+    if not allowed(email):
+        return False
+    if not deployment.production():
+        return True
+    return (
+        db.scalar(
+            select(AppUser.id).where(
+                AppUser.tenant_id == tenant_id,
+                AppUser.email == email,
+                AppUser.status == "active",
+            )
+        )
+        is not None
+    )

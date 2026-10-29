@@ -5,6 +5,12 @@ import { IncidentDetail } from './IncidentDetail'
 
 afterEach(cleanup)
 
+it('shows queued work without allowing duplicate requests', () => {
+  render(<IncidentDetail incident={{ ...base, explanation: template, explanation_job: { status: 'queued', updated_at: '2026-10-28T12:00:00Z' } }} loading={false} onStatus={vi.fn()} statusBusy={false} aiAvailable onExplain={vi.fn()} />)
+  expect(screen.getByRole('button', { name: 'Explanation queued…' })).toBeDisabled()
+  expect(screen.getByText('Rule title.')).toBeVisible()
+})
+
 const base = { id: 'case-ai', status: 'new' as const, severity: 'critical' as const, score: 0.8, recommendations: [{ position: 1, action: 'Verify the activity.' }] }
 const template = { source: 'template' as const, what_happened: 'Rule title.', why_it_matters: 'Generic reason.', severity: 'Severity is critical.', next_step: 'Verify the activity.' }
 
@@ -18,7 +24,7 @@ it('offers a local-model explanation only when the capability is enabled', async
   await user.click(screen.getByRole('button', { name: 'Explain in plain language (local model)' }))
   expect(explain).toHaveBeenCalledOnce()
   rerender(<IncidentDetail incident={{ ...base, explanation: template }} loading={false} onStatus={vi.fn()} statusBusy={false} aiAvailable onExplain={explain} explainBusy />)
-  expect(screen.getByRole('button', { name: /Explaining locally/ })).toBeDisabled()
+  expect(screen.getByRole('button', { name: /Requesting explanation/ })).toBeDisabled()
 })
 
 it('labels model-written explanations and keeps the approved next step', () => {

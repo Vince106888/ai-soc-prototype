@@ -13,13 +13,14 @@ from datetime import UTC, datetime, timedelta
 from email.utils import parseaddr
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 
 import httpx
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from . import deployment
 from .entities import (
     Account,
     AuditRecord,
@@ -58,7 +59,10 @@ class GmailError(Exception):
 
 def _settings() -> tuple[str, str, str, Fernet]:
     client_id = os.getenv("AI_SOC_GOOGLE_CLIENT_ID", "")
-    client_secret = os.getenv("AI_SOC_GOOGLE_CLIENT_SECRET", "")
+    try:
+        client_secret = deployment.secret("AI_SOC_GOOGLE_CLIENT_SECRET")
+    except deployment.DeploymentError:
+        raise GmailError("The Google client secret file could not be read.") from None
     redirect = os.getenv(
         "AI_SOC_GOOGLE_REDIRECT_URI", "http://127.0.0.1:5173/api/v1/gmail/callback"
     )
@@ -68,16 +72,12 @@ def _settings() -> tuple[str, str, str, Fernet]:
             key = Path(key_path).read_text(encoding="ascii").strip()
         except (OSError, UnicodeError):
             raise GmailError("The token encryption key file could not be read.") from None
-    parsed = urlparse(redirect)
-    if (
-        parsed.hostname not in {"127.0.0.1", "localhost"}
-        or parsed.scheme != "http"
-        or parsed.path != COOKIE_PATH
-        or parsed.query
-        or parsed.fragment
-        or parsed.username
-    ):
-        raise GmailError("This Gmail integration requires a localhost callback URL.")
+    try:
+        valid = deployment.valid_callback(redirect, COOKIE_PATH)
+    except deployment.DeploymentError:
+        valid = False
+    if not valid:
+        raise GmailError("The Gmail callback must use the configured application origin.")
     if not client_id or not client_secret or not key:
         raise GmailError("Configure the Google OAuth client and token encryption key first.")
     try:
@@ -89,6 +89,8 @@ def _settings() -> tuple[str, str, str, Fernet]:
 
 def configuration_status() -> dict:
     try:
+        if not deployment.gmail_enabled():
+            raise GmailError("Gmail collection is not enabled for this deployment.")
         _settings()
         configured, message = True, "Ready for Google consent."
     except GmailError as exc:
@@ -101,6 +103,8 @@ def configuration_status() -> dict:
         "maximum_messages": 50,
         "signal_types": ["email"],
         "automatic_scanning": False,
+        "evidence_retention_days": deployment.retention_days() if deployment.production() else 7,
+        "trial": not deployment.production(),
     }
 
 
@@ -122,6 +126,8 @@ def _encrypt(cipher: Fernet, value: dict) -> str:
 
 
 def begin_consent(db: Session, tenant: str, email: str) -> tuple[str, str]:
+    if not deployment.gmail_enabled():
+        raise GmailError("Gmail collection is not enabled for this deployment.")
     client_id, _secret, redirect, cipher = _settings()
     state, cookie, verifier = (secrets.token_urlsafe(48) for _ in range(3))
     db.execute(delete(OAuthAttempt).where(OAuthAttempt.expires_at < utcnow()))
@@ -211,6 +217,8 @@ def finish_consent(
     denied: bool = False,
     expected_tenant: str | None = None,
 ) -> str:
+    if not deployment.gmail_enabled():
+        raise GmailError("Gmail collection is not enabled for this deployment.")
     client_id, secret, redirect, cipher = _settings()
     attempt = db.get(OAuthAttempt, _digest(state))
     if (
@@ -269,7 +277,7 @@ def finish_consent(
             AccountCreate(email=expected_email, provider="google", profile="personal_gmail"),
         )
     external_id = "gmail:" + _digest(expected_email)
-    if account.delete_after is None:
+    if account.delete_after is None and not deployment.production():
         account.delete_after = utcnow() + timedelta(days=7)
     account.provider, account.profile = "google", "personal_gmail"
     source = db.scalar(
@@ -440,6 +448,8 @@ def message_signal(message: dict) -> SignalInput:
 def scan_mailbox(
     db: Session, tenant: str, source_id: str, limit: int, days: int, *, job_id: str | None = None
 ) -> dict:
+    if not deployment.gmail_enabled():
+        raise GmailError("Gmail collection is not enabled for this deployment.")
     source = get_source(db, tenant, source_id)
     if source.source_type != "gmail" or source.status != "active":
         raise ConflictError("Select an active Gmail source with read-only consent.")

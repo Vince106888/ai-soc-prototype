@@ -1,0 +1,149 @@
+# Standalone public stack: never merge with the local development Compose file.
+x-logging: &logs
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+x-environment: &environment
+  AI_SOC_ENVIRONMENT: production
+  AI_SOC_DELETION_LEDGER_DIR: /app/deletion-ledger
+  AI_SOC_AUTH_MODE: google
+  AI_SOC_PUBLIC_ORIGIN: ${AI_SOC_PUBLIC_ORIGIN:?set public HTTPS origin}
+  AI_SOC_SIGNUP_POLICY: public
+  AI_SOC_ALLOWED_HOSTS: ${AI_SOC_PUBLIC_HOST:?set public hostname},127.0.0.1,localhost
+  AI_SOC_GOOGLE_CLIENT_ID: ${AI_SOC_GOOGLE_CLIENT_ID:?set Google Web client ID}
+  AI_SOC_GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
+  AI_SOC_GOOGLE_LOGIN_REDIRECT_URI: ${AI_SOC_PUBLIC_ORIGIN}/api/v1/auth/callback
+  AI_SOC_GOOGLE_REDIRECT_URI: ${AI_SOC_PUBLIC_ORIGIN}/api/v1/gmail/callback
+  AI_SOC_TOKEN_KEY_FILE: /run/secrets/token_key
+  AI_SOC_DB_PASSWORD_FILE: /run/secrets/app_database_password
+  AI_SOC_DB_NAME: sentinelsme
+  AI_SOC_GMAIL_ENABLED: ${AI_SOC_GMAIL_ENABLED:-false}
+  AI_SOC_EVIDENCE_RETENTION_DAYS: ${AI_SOC_EVIDENCE_RETENTION_DAYS:-30}
+  AI_SOC_EXPLAINER: ${AI_SOC_EXPLAINER:-off}
+  AI_SOC_OLLAMA_URL: http://127.0.0.1:11434
+  AI_SOC_OLLAMA_MODEL: qwen2.5:3b
+  AI_SOC_EXPLAINER_TIMEOUT: "180"
+  AI_SOC_OPERATOR_CONTACT: ${AI_SOC_OPERATOR_CONTACT:?set operator support email}
+x-application: &application
+  build: .
+  image: sentinelsme-public:${AI_SOC_RELEASE:-local}
+  environment: *environment
+  secrets: [google_client_secret, token_key, app_database_password]
+  volumes: ["public-deletion-ledger:/app/deletion-ledger"]
+  init: true
+  read_only: true
+  tmpfs: ["/tmp:size=64m,mode=1777"]
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  pids_limit: 256
+  logging: *logs
+  stop_grace_period: 150s
+services:
+  api:
+    <<: *application
+    mem_limit: 768m
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, "8000", --no-access-log, --no-proxy-headers, --limit-concurrency, "64"]
+    depends_on:
+      db: {condition: service_healthy}
+  worker:
+    <<: *application
+    mem_limit: 512m
+    command: [python, -m, app.worker, --collection-only]
+    healthcheck: {disable: true}
+    depends_on:
+      api: {condition: service_healthy}
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sentinelsme
+      POSTGRES_USER: sentinelsme_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/admin_database_password
+    secrets: [admin_database_password, app_database_password]
+    volumes:
+      - public-postgres-data:/var/lib/postgresql/data
+      - ./deploy/init-database.sh:/docker-entrypoint-initdb.d/10-app-role.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U sentinelsme_admin -d sentinelsme"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 1g
+    pids_limit: 256
+    logging: *logs
+    restart: unless-stopped
+    stop_grace_period: 60s
+  gateway:
+    image: nginx:stable-alpine
+    environment:
+      AI_SOC_PROXY_SUBNET: ${AI_SOC_PROXY_SUBNET:-172.30.255.0/24}
+      NGINX_ENVSUBST_OUTPUT_DIR: /tmp
+    command: [nginx, -c, /tmp/nginx.conf, -g, "daemon off;"]
+    volumes:
+      - ./deploy/nginx.conf.template:/etc/nginx/templates/nginx.conf.template:ro
+      - ./deploy/proxy-public.conf:/etc/nginx/proxy-public.conf:ro
+    networks: [default, edge]
+    depends_on:
+      api: {condition: service_healthy}
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777", "/var/cache/nginx:size=16m,mode=1777", "/var/run:size=1m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    user: "101:101"
+    mem_limit: 128m
+    pids_limit: 64
+    logging: *logs
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://127.0.0.1:8080/gateway-health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+  edge:
+    image: caddy:2-alpine
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    environment:
+      AI_SOC_PUBLIC_HOST: ${AI_SOC_PUBLIC_HOST}
+      AI_SOC_PUBLIC_ORIGIN: ${AI_SOC_PUBLIC_ORIGIN}
+      AI_SOC_ACME_EMAIL: ${AI_SOC_OPERATOR_CONTACT}
+    volumes:
+      - ${AI_SOC_CADDYFILE:-./deploy/Caddyfile}:/etc/caddy/Caddyfile:ro
+      - public-caddy-data:/data
+      - public-caddy-config:/config
+    networks: [edge]
+    ports:
+      - "${AI_SOC_BIND_ADDRESS:-0.0.0.0}:${AI_SOC_HTTP_PORT:-80}:80"
+      - "${AI_SOC_BIND_ADDRESS:-0.0.0.0}:${AI_SOC_HTTPS_PORT:-443}:443"
+    depends_on:
+      gateway: {condition: service_healthy}
+    mem_limit: 128m
+    pids_limit: 128
+    logging: *logs
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://127.0.0.1:2020/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: ${AI_SOC_PROXY_SUBNET:-172.30.255.0/24}
+volumes:
+  public-deletion-ledger:
+  public-postgres-data:
+  public-caddy-data:
+  public-caddy-config:
+secrets:
+  google_client_secret:
+    file: ${AI_SOC_SECRETS_DIR:?set private secrets directory}/google-client-secret
+  token_key:
+    file: ${AI_SOC_SECRETS_DIR}/token-key
+  app_database_password:
+    file: ${AI_SOC_SECRETS_DIR}/app-database-password
+  admin_database_password:
+    file: ${AI_SOC_SECRETS_DIR}/admin-database-password

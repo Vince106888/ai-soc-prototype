@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-29",
+  "backend": {
+    "passed": 235,
+    "coverage_percent": 92.06
+  },
+  "frontend": {
+    "passed": 58,
+    "lint": "passed",
+    "production_build": "passed"
+  },
+  "restart": {
+    "powershell_5_parse": "passed",
+    "rebuilt_services": "passed",
+    "cached_images_from_outside_checkout": "passed",
+    "website_api_database_worker_ollama": "running",
+    "google_configuration": "preserved; no local fallback",
+    "live_google_consent": "not verified"
+  },
+  "served_frontend": "demo/pilot wording absent; updated bundle served",
+  "data_boundary": "no private content or credentials in this report"
+}

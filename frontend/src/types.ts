@@ -64,6 +64,7 @@ export interface Recommendation {
 }
 
 export interface Incident {
+  explanation_job?: { status: 'queued' | 'running' | 'succeeded' | 'failed'; reason?: string | null; updated_at: string } | null
   id: string
   title?: string
   summary?: string
@@ -161,6 +162,9 @@ export interface Credentials {
 }
 
 export interface AuthSession {
+  operator_contact?: string
+  environment?: 'development' | 'production'
+  evidence_retention_days?: number
   mode: 'local' | 'google'
   configured: boolean
   invitation_only: boolean
@@ -230,6 +234,8 @@ export interface IngestionResult {
 }
 
 export interface GmailConfiguration {
+  trial?: boolean
+  evidence_retention_days?: number
   implemented: boolean
   configured: boolean
   message: string

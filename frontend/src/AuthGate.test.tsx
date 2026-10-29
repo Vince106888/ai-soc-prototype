@@ -10,6 +10,23 @@ const pilot: AuthSession = { mode: 'google', configured: true, invitation_only: 
 const signedIn: AuthSession = { ...pilot, user: { id: 'user-a', email: 'invited@example.test', workspace_id: 'assigned-workspace' }, csrf_token: 'session-csrf' }
 
 describe('onboarding and sign-in boundary', () => {
+  it('welcomes public registration without an invitation or developer setup fields', async () => {
+    vi.spyOn(api, 'session').mockResolvedValue({ ...pilot, invitation_only: false, environment: 'production' })
+    render(<AuthGate />)
+    expect(await screen.findByRole('button', { name: 'Sign in with Google' })).toBeEnabled()
+    expect(screen.getByText(/first sign-in creates your account/)).toBeVisible()
+    expect(screen.queryByText(/Ask the pilot operator/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Workspace ID')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy')
+  })
+  it('explains production retention and operator contact on the privacy page', async () => {
+    window.history.replaceState(null, '', '/privacy')
+    vi.spyOn(api, 'session').mockResolvedValue({ ...pilot, evidence_retention_days: 30, operator_contact: 'ops@example.test' })
+    render(<AuthGate />)
+    expect(await screen.findByRole('heading', { name: 'Privacy and your data' })).toBeVisible()
+    expect(screen.getByText(/30 days from case creation/)).toBeVisible()
+    expect(screen.getByRole('link', { name: 'ops@example.test' })).toHaveAttribute('href', 'mailto:ops@example.test')
+  })
   it('checks the server before opening stored workspaces and shows Google sign-in', async () => {
     sessionStorage.setItem('sentinelsme.tenantId', 'somebody-else')
     vi.spyOn(api, 'session').mockResolvedValue(pilot)
@@ -24,7 +41,7 @@ describe('onboarding and sign-in boundary', () => {
     vi.spyOn(api, 'session').mockResolvedValue({ ...pilot, configured: false })
     render(<AuthGate />)
     expect(await screen.findByRole('button', { name: 'Sign in with Google' })).toBeDisabled()
-    expect(screen.getByRole('alert')).toHaveTextContent('operator has invited')
+    expect(screen.getByRole('alert')).toHaveTextContent('contact the service operator')
     await waitFor(() => expect(window.location.search).toBe(''))
   })
   it('reports login errors without losing the welcome screen', async () => {
@@ -78,15 +95,15 @@ describe('onboarding and sign-in boundary', () => {
     release?.(signedIn)
     await waitFor(() => expect(screen.queryByText('Workspace: assigned-workspace')).not.toBeInTheDocument())
   })
-  it('keeps the local demo available without Google and explains its access limit', async () => {
+  it('keeps the local workspace available without Google and explains its access limit', async () => {
     vi.spyOn(api, 'session').mockResolvedValue({ ...pilot, mode: 'local', configured: false })
     render(<AuthGate />)
-    await screen.findByRole('button', { name: 'Start a local demo' })
+    await screen.findByRole('button', { name: 'Open local workspace' })
     expect(screen.getByText(/no user authentication/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Start a local demo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open local workspace' }))
     expect(await screen.findByText('Workspace: local')).toBeInTheDocument()
-    expect(sessionStorage.getItem('sentinelsme.tenantId')).toMatch(/^demo-/)
+    expect(sessionStorage.getItem('sentinelsme.tenantId')).toMatch(/^workspace-/)
     fireEvent.click(screen.getByRole('button', { name: 'Close test session' }))
-    await screen.findByRole('button', { name: 'Start a local demo' })
+    await screen.findByRole('button', { name: 'Open local workspace' })
   })
 })

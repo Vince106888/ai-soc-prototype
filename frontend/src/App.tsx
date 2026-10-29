@@ -141,7 +141,7 @@ function AddSourceModal({ accounts, profile, onClose, onCreate }: { accounts: Ac
     <div className="scope-note"><Icons.shield /><div><strong>Controlled data only</strong><p>This records source metadata and accepted signal types. It does not authorize or create a live mailbox connection.</p></div></div>
     <label htmlFor="source-account">Protected account</label><select id="source-account" onChange={(event) => setAccountId(event.target.value)} value={accountId}>{accounts.map((account) => <option key={account.id} value={account.id}>{accountLabel(account)}</option>)}<option value="__new__">Create a new account</option></select>
     {creatingAccount && <div className="form-grid"><label htmlFor="account-name">Display name <span>(optional)</span><input id="account-name" onChange={(event) => setDisplayName(event.target.value)} placeholder="Finance team" value={displayName} /></label><label htmlFor="account-email">Account email<input id="account-email" onChange={(event) => setEmail(event.target.value)} placeholder="security@example.test" required type="email" value={email} /></label></div>}
-    <div className="form-grid"><label htmlFor="source-name">Source name<input id="source-name" onChange={(event) => setName(event.target.value)} required value={name} /></label><label htmlFor="source-external-id">External ID<input id="source-external-id" onChange={(event) => setExternalId(event.target.value)} placeholder="controlled-demo-01" required value={externalId} /></label></div>
+    <div className="form-grid"><label htmlFor="source-name">Source name<input id="source-name" onChange={(event) => setName(event.target.value)} required value={name} /></label><label htmlFor="source-external-id">External ID<input id="source-external-id" onChange={(event) => setExternalId(event.target.value)} placeholder="source-01" required value={externalId} /></label></div>
     <fieldset className="capability-picker"><legend>Accepted signal types</legend>{supported.map((capability) => <label className="capability-check" key={capability}><input checked={selected.includes(capability)} onChange={() => toggle(capability)} type="checkbox" /><span><strong>{humanize(capability)}</strong><small>Normalized metadata only</small></span></label>)}</fieldset>
     <label className="check-field"><input checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} type="checkbox" /><span>I confirm this source contains only synthetic, controlled, or explicitly authorized data.</span></label>
     {formError && <p className="form-error" role="alert">{formError}</p>}
@@ -149,12 +149,14 @@ function AddSourceModal({ accounts, profile, onClose, onCreate }: { accounts: Ac
   </form></Modal>
 }
 
-function SessionModal({ email, hours, onClose, onSignOut }: { email: string; hours: number; onClose: () => void; onSignOut: () => Promise<void> }) {
+function SessionModal({ email, hours, onClose, onSignOut, onDelete }: { email: string; hours: number; onClose: () => void; onSignOut: () => Promise<void>; onDelete: () => Promise<void> }) {
+  const [confirmation, setConfirmation] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   return <Modal title="Your account" description="Your workspace is assigned to your Google identity." onClose={onClose}>
-    <div className="session-account"><Icons.lock /><div><strong>{email}</strong><p>Invited pilot · session lasts up to {hours} hours</p></div></div>
+    <div className="session-account"><Icons.lock /><div><strong>{email}</strong><p>Private workspace · session lasts up to {hours} hours</p></div></div>
     <p className="session-help">Signing out closes this app session. To revoke Gmail access or delete collected evidence, use Accounts &amp; sources.</p>
+    <details><summary>Delete your account and workspace</summary><p>This permanently deletes your app account and retained workspace data and signs out every session. To revoke Google permissions, disconnect Gmail first or remove access in your Google account settings.</p><label htmlFor="delete-confirmation">Type DELETE to confirm</label><input id="delete-confirmation" value={confirmation} onChange={event => setConfirmation(event.target.value)} autoComplete="off" /><button className="button button-secondary" disabled={busy || confirmation !== 'DELETE'} onClick={() => { setBusy(true); setError(''); void onDelete().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Could not delete your account.')).finally(() => setBusy(false)) }}>Delete account permanently</button></details>
     {error && <p className="form-error" role="alert">{error}</p>}
     <footer className="modal-actions"><button className="button button-secondary" onClick={onClose}>Close</button><button className="button button-primary" disabled={busy} onClick={() => { setBusy(true); setError(''); void onSignOut().catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Could not sign out.')).finally(() => setBusy(false)) }}>{busy ? 'Signing out…' : 'Sign out'}</button></footer>
   </Modal>
@@ -339,6 +341,23 @@ export default function App({ session, onSignOut, onLocalDisconnect }: { session
     setSettingsOpen(false)
     onLocalDisconnect?.()
   }
+  const explanationPending = detail?.explanation_job?.status === 'queued' || detail?.explanation_job?.status === 'running'
+  useEffect(() => {
+    if (!explanationPending || !selectedId) return
+    const controller = new AbortController()
+    let timer: ReturnType<typeof setTimeout>
+    const refresh = async () => {
+      try {
+        const result = await api.incident(credentials, selectedId, controller.signal)
+        if (!controller.signal.aborted) setDetail(result)
+      } catch (reason) {
+        if (!controller.signal.aborted) setToast(reason instanceof Error ? reason.message : 'Could not refresh explanation status.')
+      }
+      if (!controller.signal.aborted) timer = setTimeout(() => void refresh(), 5000)
+    }
+    timer = setTimeout(() => void refresh(), 3000)
+    return () => { controller.abort(); clearTimeout(timer) }
+  }, [explanationPending, selectedId, credentials])
   const [explainBusy, setExplainBusy] = useState(false)
   const explainIncident = async () => {
     if (!detail) return
@@ -348,7 +367,7 @@ export default function App({ session, onSignOut, onLocalDisconnect }: { session
       if (activeCredentials.current.tenantId !== credentials.tenantId || activeCredentials.current.apiKey !== credentials.apiKey) return
       setDetail(updated)
       const explanation = typeof updated.explanation === 'object' ? updated.explanation : null
-      setToast(explanation?.source === 'ai' ? 'Plain-language explanation added' : 'The local model was unavailable; the template explanation was kept.')
+      setToast(updated.explanation_job?.status === 'queued' || updated.explanation_job?.status === 'running' ? 'Explanation requested. You can continue working while it is prepared.' : explanation?.source === 'ai' ? 'Plain-language explanation added' : 'The local model was unavailable; the template explanation was kept.')
     } catch (reason) {
       setToast(reason instanceof Error ? reason.message : 'Could not explain the incident.')
     } finally {
@@ -464,7 +483,7 @@ export default function App({ session, onSignOut, onLocalDisconnect }: { session
     <div className="app-main"><header className="topbar"><button ref={navigationButton} aria-label="Open navigation" aria-expanded={menuOpen} className="icon-button menu-button" onClick={() => setMenuOpen(true)}><Icons.menu /></button><form className="global-search" onSubmit={(event) => { event.preventDefault(); setSection('incidents') }}><Icons.search /><label className="sr-only" htmlFor="global-search">Search incidents</label><input maxLength={200} id="global-search" onChange={(event) => changeFilters({ q: event.target.value })} placeholder="Search incident titles and summaries" value={filters.q} /></form><div className="top-actions"><button aria-label="Analyse email" className="button button-primary scan-button" disabled={!tenantId} onClick={() => navigate('analysis')}><Icons.scan /><span>Analyse email</span></button><button aria-label="API settings" className="avatar-button" onClick={() => setSettingsOpen(true)}><Icons.settings /></button></div></header>
 
       {tenantId && <div className="data-scope-bar"><span><Icons.lock />{session?.user ? 'Signed in as' : 'Workspace'} <strong>{session?.user?.email ?? tenantId}</strong></span><span className="mode-tag">{telemetry.mode === 'live' ? 'Gmail samples · on demand' : 'Controlled analysis'}</span><span>Local evidence · human review</span></div>}
-      <main id="main-content">{!tenantId ? <div className="page"><Panel className="state-card"><h1>Open a local workspace</h1><p>Choose your demonstration workspace in Settings.</p><button className="button button-primary" onClick={() => setSettingsOpen(true)}>Configure local workspace</button></Panel></div> : <>
+      <main id="main-content">{!tenantId ? <div className="page"><Panel className="state-card"><h1>Open a local workspace</h1><p>Choose your workspace in Settings.</p><button className="button button-primary" onClick={() => setSettingsOpen(true)}>Configure local workspace</button></Panel></div> : <>
         {supportError && <div className="support-warning" role="status"><Icons.alert />{supportError}</div>}
         {section === 'overview' && <OverviewPanel overview={overview} incidents={priorityIncidents} accounts={accounts} sources={sources} profile={capabilities} jobs={scanJobs} loading={loading} error={priorityError} onRefresh={() => void fetchData()} onInspect={inspectIncident} onNavigate={navigate} />}
         {section === 'evidence' && <EvidenceWorkspace key={tenantId} credentials={credentials} accounts={accounts} sources={sources} onInspect={inspectIncident} />}
@@ -486,7 +505,7 @@ export default function App({ session, onSignOut, onLocalDisconnect }: { session
       </>}</main>
     </div>
     {deleteTarget && <Modal title="Delete local account data" description="This removes this account's local sources, tokens, signals, incidents, recommendations, and audit details. It does not delete anything from Gmail." onClose={() => setDeleteTarget(null)}><p className="muted-copy">Disconnect Gmail first to request provider revocation. This deletion cannot be undone.</p><div className="modal-actions"><button className="button button-secondary" onClick={() => setDeleteTarget(null)}>Cancel</button><button className="button button-danger" disabled={operationBusy === 'delete'} onClick={() => void deleteAccount()}>{operationBusy === 'delete' ? 'Deleting…' : 'Delete local data'}</button></div></Modal>}
-    {settingsOpen && (session?.user && onSignOut ? <SessionModal email={session.user.email} hours={session.session_hours} onClose={() => setSettingsOpen(false)} onSignOut={onSignOut} /> : <SettingsModal currentKey={apiKey} currentTenant={tenantId} onClear={disconnect} onClose={() => setSettingsOpen(false)} onSave={connect} />)}
+    {settingsOpen && (session?.user && onSignOut ? <SessionModal email={session.user.email} hours={session.session_hours} onClose={() => setSettingsOpen(false)} onSignOut={onSignOut} onDelete={async () => { await api.deleteIdentity(credentials); window.dispatchEvent(new Event('sentinelsme:session-expired')) }} /> : <SettingsModal currentKey={apiKey} currentTenant={tenantId} onClear={disconnect} onClose={() => setSettingsOpen(false)} onSave={connect} />)}
     {sourceOpen && <AddSourceModal accounts={accounts} onClose={() => setSourceOpen(false)} onCreate={createControlledSource} profile={capabilities} />}
     {toast && <div aria-live="polite" className="toast" role="status"><Icons.check />{toast}<button aria-label="Dismiss notification" onClick={() => setToast('')}><Icons.close /></button></div>}
   </div>

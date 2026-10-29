@@ -164,3 +164,19 @@ expiry. Trusted-sender entries are deliberate user configuration; audit records
 reference them by ID, not by address. Posture self-check answers become ordinary
 minimised signals (MFA flag, forwarding domain, app name and two flags) under a
 source named "self-reported"; nothing is read from the provider.
+
+## Public deployment contract
+
+Production uses configured evidence retention (30 days by default), measured
+from case creation. Expiry deletes whole cases so retained scores never silently
+change. Connections and encrypted provider consent remain until disconnected or
+deleted. Sender-history retention bounds first-contact knowledge; it does not
+establish that a sender has never contacted the user historically.
+
+Users can delete their app identity and complete private workspace; all sessions
+are revoked. Durable deletion receipts contain only opaque workspace IDs and
+are replayed before a restored database becomes ready. Backups are private and
+may retain older evidence until operator expiry; preserve the current deletion
+ledger independently and never serve a restore without it. Account deletion
+does not claim to revoke Google grants; disconnect first or use Google settings.
+Public /privacy and /terms explain the actual product boundary and operator contact.

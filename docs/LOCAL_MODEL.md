@@ -82,3 +82,18 @@ The model improves wording, not detection. It cannot see attachments, links or
 message bodies and does not change priority. Its explanations have not been
 evaluated with participants; the structured review and the participant study
 in the report apply to both template and model text.
+
+## Laptop verification — 28 October 2026
+
+The synthetic end-to-end check completed with 4/4 validated explanations and no
+fallbacks. An initial run took median 11.985 s (max 13.21 s); a repeat while
+other development tasks were running took median 27.62 s (max 47.17 s). The
+latest generated report is `data/explainer-check-2026-10-28.json`, intentionally
+ignored by Git. Hardware/load affect timing. A browser check also produced a
+labelled local-model explanation without changing the deterministic score.
+
+For Docker, `python scripts/run.py docker --demo --model` uses the optional
+`compose.ollama.yaml` profile. It has its own model volume and uses CPU inference.
+Ollama shares the API network namespace and listens only on its loopback;
+the worker joins the same namespace, and port 11434 is not published.
+This container profile still requires runtime acceptance on a Docker host.

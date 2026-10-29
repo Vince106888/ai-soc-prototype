@@ -50,3 +50,20 @@ Keep it on trusted loopback until the documented HTTPS, identity lifecycle,
 Google production and operations gates are complete. See `docs/ONBOARDING.md`,
 `docs/PRIVACY_AND_RETENTION.md` and `docs/OPERATIONS.md`.
 
+
+
+## Private container deployment
+
+The portable Compose deployment publishes only the API on host loopback; neither
+PostgreSQL nor Ollama publishes a host port. Application containers use a
+non-root image user, read-only root filesystem, bounded scratch storage,
+no-new-privileges and no Linux capabilities. Logs, memory and process counts
+are bounded. This private deployment continues to use the documented local
+shared-key/tenant model; it does not establish public multi-user isolation.
+
+`data/docker.env` and `data/backups` are ignored, never image inputs, and must
+remain private. Backup verification uses a fresh temporary database and does
+not overwrite application evidence. Encryption keys are backed up separately.
+Only trusted operator-created database archives may be restored. See the
+operations runbook for commands and the distinction between tested tooling
+and completed runtime acceptance.

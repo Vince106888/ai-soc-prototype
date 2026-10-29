@@ -330,3 +330,20 @@ changes and applies to new evidence only. Incident explanations add `reasons[]`
 (`rule_code`, `indicator`, `why`, `legitimate_if`), `warning_signs`,
 `warning_level` (`few`/`some`/`many`) and `warning_note`; older stored
 explanations return empty defaults.
+
+## Public identity and asynchronous explanations
+
+Production requires a server-side Google app session. Tenant headers and shared
+API keys grant no public access. Public registration assigns a private workspace.
+Unsafe requests require the session CSRF token and the exact configured Origin.
+Per-user read/write/collection/explanation budgets return 429 with Retry-After.
+DELETE /api/v1/auth/account accepts only {"confirmation":"DELETE"}; it revokes
+all sessions and removes the workspace. The durable deletion ledger is replayed
+before readiness after a database restore.
+
+Production POST /api/v1/incidents/{id}/explanation returns 202 with an
+explanation_job status (queued/running/succeeded/failed). Poll incident detail;
+rule guidance remains available immediately. Jobs are bounded and leased, keyed
+to a template revision; stale model responses are discarded. The isolated model
+worker does not collect telemetry or change scoring. Development retains the
+synchronous explanation contract.

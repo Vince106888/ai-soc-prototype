@@ -1,0 +1,26 @@
+{
+    admin off
+    email {$AI_SOC_ACME_EMAIL}
+    log {
+        format filter {
+            wrap json
+            fields {
+                request>uri delete
+                request>headers delete
+            }
+        }
+    }
+}
+
+http://{$AI_SOC_PUBLIC_HOST} {
+    redir {$AI_SOC_PUBLIC_ORIGIN}{uri} permanent
+}
+
+https://{$AI_SOC_PUBLIC_HOST} {
+    encode zstd gzip
+    reverse_proxy gateway:8080
+}
+
+http://127.0.0.1:2020 {
+    respond /health 200
+}

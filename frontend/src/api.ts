@@ -75,6 +75,9 @@ function arrayFrom<T>(body: T[] | { items?: T[] } | null | undefined): T[] {
 }
 
 export const api = {
+  deleteIdentity(credentials: Credentials): Promise<void> {
+    return request('/api/v1/auth/account', credentials, { method: 'DELETE', body: JSON.stringify({ confirmation: 'DELETE' }) })
+  },
   schedule(credentials: Credentials, sourceId: string, signal?: AbortSignal): Promise<ScanSchedule | null> {
     return request(`/api/v1/sources/${encodeURIComponent(sourceId)}/schedule`, credentials, { signal })
   },

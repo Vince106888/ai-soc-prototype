@@ -13,7 +13,7 @@ from pathlib import Path
 from secrets import token_hex
 from typing import Any
 
-from fastapi import FastAPI, Request, status
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -22,6 +22,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.responses import Response
 
+from . import deployment
+from .api import request_context
 from .api import router as platform_router
 from .auth import purge_expired
 from .auth_api import router as auth_router
@@ -115,8 +117,14 @@ def _allowed_hosts() -> list[str]:
 async def lifespan(_app: FastAPI):
     """Upgrade the configured database before accepting requests."""
 
+    deployment.validate()
+    if deployment.production() and not (FRONTEND_DIST / "index.html").is_file():
+        raise deployment.DeploymentError("Production requires the built dashboard.")
     migrate_schema()
     with SessionLocal() as session:
+        from .deletion_ledger import reconcile
+
+        reconcile(session)
         expire_trials(session)
         purge_expired(session)
     yield
@@ -127,6 +135,9 @@ app = FastAPI(
     description="Evidence-backed security-signal analysis and incident management.",
     version="1.0.0",
     lifespan=lifespan,
+    docs_url=None if deployment.production() else "/docs",
+    redoc_url=None if deployment.production() else "/redoc",
+    openapi_url=None if deployment.production() else "/openapi.json",
 )
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts())
 app.add_middleware(RequestBodyLimitMiddleware, max_bytes=MAX_REQUEST_BYTES)
@@ -225,6 +236,8 @@ async def apply_api_guards(
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
+    if deployment.production():
+        response.headers["Strict-Transport-Security"] = "max-age=31536000"
     return response
 
 
@@ -251,7 +264,7 @@ def health_ready() -> dict[str, str]:
     return {"status": "ok", "database": "reachable"}
 
 
-@app.post("/analyze", response_model=AnalysisResult)
+@app.post("/analyze", response_model=AnalysisResult, dependencies=[Depends(request_context)])
 def analyze(message: MessageInput) -> AnalysisResult:
     """Validate one controlled message and return its deterministic analysis."""
 
@@ -267,6 +280,8 @@ if FRONTEND_DIST.is_dir():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="dashboard-assets")
 
     @app.get("/", include_in_schema=False)
+    @app.get("/privacy", include_in_schema=False)
+    @app.get("/terms", include_in_schema=False)
     def dashboard() -> FileResponse:
         return FileResponse(FRONTEND_DIST / "index.html")
 else:
