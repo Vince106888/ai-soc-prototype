@@ -16,6 +16,7 @@ companion to this page.
 | Scanning | User or schedule-labelled scan-job records | Implemented | Scan jobs can be created, listed, and inspected |
 | Scanning | Bounded Gmail fetch performed by a worker | Implemented; mocked worker/provider contract | Opt-in recurring sample; no real-time interception; `app/worker.py`, `SCHEDULING.md` |
 | Scanning | Periodic scheduler process | Implemented and controlled execution verified | Atomic lease, bounded retry/backoff, pause after three failures; controlled CLI fallback |
+| Alerting | In-app, SMTP email and webhook alerts for new or escalated incidents | Implemented; delivery verified with mocked SMTP/HTTP | One alert per incident severity; minimal payload; worker-delivered with bounded attempts; see [alerts](ALERTS.md). No signed webhooks, no production SMTP secret wiring |
 | Detection | Fourteen deterministic email/account rules | Implemented | Seeded rule catalogue and evidence-backed findings |
 | Detection | Workspace trusted senders (address or domain) | Implemented | `/api/v1/trusted-senders`, false-positive "trust this sender"; silences content-only rules for authenticated senders, never authentication/lookalike/brand/payment rules; new evidence only |
 | Detection | Lookalike checks against trusted domains | Implemented | Trusted domains become `claimed_domains`, so `EMAIL-003` works for Gmail samples |

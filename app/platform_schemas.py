@@ -89,6 +89,40 @@ class ScheduleView(APIModel):
     updated_at: datetime
 
 
+AlertSeverity = Literal["medium", "high", "critical"]
+
+
+class AlertSettingsUpdate(APIModel):
+    minimum_severity: AlertSeverity = "high"
+    email_enabled: bool = False
+    email_to: Annotated[str, Field(max_length=254)] | None = None
+    webhook_enabled: bool = False
+    webhook_url: Annotated[str, Field(max_length=500)] | None = None
+
+
+class AlertSettingsView(APIModel):
+    minimum_severity: AlertSeverity
+    email_enabled: bool
+    email_to: str | None
+    webhook_enabled: bool
+    webhook_url: str | None
+    email_available: bool
+    email_locked_to_signed_in_user: bool
+
+
+class AlertView(APIModel):
+    id: str
+    incident_id: str
+    severity: Severity
+    title: str
+    score: float
+    rule_codes: list[str]
+    email_status: str
+    webhook_status: str
+    read: bool
+    created_at: datetime
+
+
 class CompatibilityScanCreate(APIModel):
     """Dashboard-friendly scan request; a controlled source is created as needed."""
 

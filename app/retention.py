@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from . import deployment
 from .entities import (
     Account,
+    Alert,
+    AlertSettings,
     AppSession,
     AppUser,
     AuditRecord,
@@ -65,6 +67,7 @@ def delete_account_data(
     db.execute(delete(Finding).where(Finding.signal_id.in_(signals)))
     db.execute(delete(IncidentExplanation).where(IncidentExplanation.incident_id.in_(incidents)))
     db.execute(delete(Recommendation).where(Recommendation.incident_id.in_(incidents)))
+    db.execute(delete(Alert).where(Alert.incident_id.in_(incidents)))
     db.execute(delete(AuditRecord).where(AuditRecord.incident_id.in_(incidents)))
     db.execute(delete(Signal).where(Signal.account_id == account_id, Signal.tenant_id == tenant))
     db.execute(
@@ -109,6 +112,7 @@ def purge_workspace(db: Session, tenant: str) -> None:
     for account_id in account_ids:
         delete_account_data(db, tenant, account_id, commit=False)
     db.execute(delete(TrustedSender).where(TrustedSender.tenant_id == tenant))
+    db.execute(delete(AlertSettings).where(AlertSettings.tenant_id == tenant))
     db.execute(delete(OAuthAttempt).where(OAuthAttempt.tenant_id == tenant))
     db.execute(delete(RequestBudget).where(RequestBudget.tenant_id == tenant))
     db.execute(delete(AuditRecord).where(AuditRecord.tenant_id == tenant))
@@ -156,6 +160,7 @@ def expire_workspace_evidence(db: Session, tenant: str) -> int:
         db.execute(delete(Finding).where(Finding.incident_id.in_(ids), Finding.tenant_id == tenant))
         db.execute(delete(IncidentExplanation).where(IncidentExplanation.incident_id.in_(ids)))
         db.execute(delete(Recommendation).where(Recommendation.incident_id.in_(ids)))
+        db.execute(delete(Alert).where(Alert.incident_id.in_(ids)))
         db.execute(
             delete(AuditRecord).where(
                 AuditRecord.incident_id.in_(ids), AuditRecord.tenant_id == tenant

@@ -82,6 +82,11 @@ routes; `/analyze` cannot retrieve persistent data.
 | `GET` | `/api/v1/sources` | List sources, optionally by `account_id` |
 | `PATCH` | `/api/v1/sources/{source_id}` | Set source status to `active` or `disconnected` |
 
+### Alerts
+
+`GET`/`PUT /api/v1/alert-settings`, `GET /api/v1/alerts` and the `read` actions are
+tenant/session scoped; see [alerts](ALERTS.md).
+
 ### Scan and ingestion
 
 | Method | Path | Purpose |

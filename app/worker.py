@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
-from . import auth, database, deployment, explainer
+from . import alerts, auth, database, deployment, explainer
 from .auth import purge_expired
 from .demo import DEFAULT_FIXTURE
 from .entities import Account, ScanSchedule, Source, utcnow
@@ -80,6 +80,12 @@ def run_due(*, maximum_jobs: int = 10, maximum_explanations: int = 3) -> dict:
                 mark_scan_job_failed(db, tenant, job_id, source_id, exc)
                 complete_lease(db, source_id, lease, succeeded=False)
                 counts["failed"] += 1
+    # External alerts go out after evidence has committed; failures never block collection.
+    with database.SessionLocal() as db:
+        delivered = alerts.deliver_pending(db)
+    if delivered["sent"] or delivered["failed"]:
+        counts["alerts_sent"] = delivered["sent"]
+        counts["alerts_failed"] = delivered["failed"]
     if explainer.settings().enabled and maximum_explanations > 0:
         # Explanations run after collection has committed, so a slow or absent model
         # never delays or blocks evidence; the template stays visible until replaced.

@@ -21,6 +21,8 @@ unprotected OAuth credentials; the personal Gmail adapter encrypts tokens.
 | `sources` | Controlled or authorised Gmail input | account, type, external ID, status, capabilities |
 | `scan_jobs` | Requested unit of collection work | source, trigger, status, attempts, counts, error, timestamps |
 | `scan_schedules` | Opt-in recurring bounded samples | source PK/FK, tenant, enabled, interval/sample limits, next eligibility, internal lease/expiry, failure count, last-job FK and update time |
+| `alert_settings` | Workspace alert preferences | tenant PK, minimum severity, email/webhook switches and targets |
+| `alerts` | One alert per incident severity | tenant, incident FK (cascade), severity, title, score, rule codes, channel statuses, attempts, read time |
 | `signals` | Privacy-minimised normalised event | source/account, external ID, type, time, correlation key, JSON features, fingerprint |
 | `detection_rules` | Versioned deterministic rule configuration | code, signal type, title, weight, confidence, enabled, configuration, version |
 | `findings` | One rule match against one signal | signal, rule code, optional incident, evidence, weight, confidence |

@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, R
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import alerts as alert_service
 from . import auth, budgets, deployment, explainer
 from .database import get_session
 from .entities import AuditRecord, ScanSchedule
@@ -53,6 +54,9 @@ from .platform import (
 from .platform_schemas import (
     AccountCreate,
     AccountView,
+    AlertSettingsUpdate,
+    AlertSettingsView,
+    AlertView,
     AuditView,
     CanonicalSignalType,
     CompatibilityScanCreate,
@@ -192,6 +196,77 @@ def schedule_put(source_id: str, payload: ScheduleUpdate, db: DB, context: Conte
         return ScheduleView.model_validate(schedule)
     except (ConflictError, NotFoundError) as exc:
         raise _http_error(exc) from exc
+
+
+def _alert_settings_view(
+    db: Session, tenant: str, signed_in_email: str | None
+) -> AlertSettingsView:
+    row = alert_service.get_settings(db, tenant)
+    return AlertSettingsView(
+        minimum_severity=row.minimum_severity,
+        email_enabled=row.email_enabled,
+        email_to=signed_in_email or row.email_to,
+        webhook_enabled=row.webhook_enabled,
+        webhook_url=row.webhook_url,
+        email_available=alert_service.smtp_settings() is not None,
+        email_locked_to_signed_in_user=bool(signed_in_email),
+    )
+
+
+def _alert_view(row) -> AlertView:
+    return AlertView(
+        id=row.id,
+        incident_id=row.incident_id,
+        severity=row.severity,
+        title=row.title,
+        score=row.score,
+        rule_codes=row.rule_codes.split(",") if row.rule_codes else [],
+        email_status=row.email_status,
+        webhook_status=row.webhook_status,
+        read=row.read_at is not None,
+        created_at=row.created_at,
+    )
+
+
+@router.get("/alert-settings", response_model=AlertSettingsView)
+def alert_settings_get(db: DB, context: Context) -> AlertSettingsView:
+    return _alert_settings_view(db, context.tenant_id, context.email)
+
+
+@router.put("/alert-settings", response_model=AlertSettingsView)
+def alert_settings_put(payload: AlertSettingsUpdate, db: DB, context: Context) -> AlertSettingsView:
+    try:
+        alert_service.configure(
+            db,
+            context.tenant_id,
+            payload,
+            signed_in_email=context.email,
+            actor=context.user_id or "console-user",
+        )
+    except alert_service.AlertConfigError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _alert_settings_view(db, context.tenant_id, context.email)
+
+
+@router.get("/alerts", response_model=list[AlertView])
+def alerts_list(
+    db: DB, context: Context, unread: bool = False, limit: int = Query(50, ge=1, le=200)
+) -> list[AlertView]:
+    rows = alert_service.list_alerts(db, context.tenant_id, unread_only=unread, limit=limit)
+    return [_alert_view(row) for row in rows]
+
+
+@router.post("/alerts/read", status_code=204)
+def alerts_read_all(db: DB, context: Context) -> Response:
+    alert_service.mark_read(db, context.tenant_id)
+    return Response(status_code=204)
+
+
+@router.post("/alerts/{alert_id}/read", status_code=204)
+def alerts_read_one(alert_id: str, db: DB, context: Context) -> Response:
+    if not alert_service.mark_read(db, context.tenant_id, alert_id):
+        raise HTTPException(status_code=404, detail="Alert not found or already read.")
+    return Response(status_code=204)
 
 
 @router.get("/accounts", response_model=list[AccountView])

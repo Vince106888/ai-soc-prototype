@@ -1,5 +1,9 @@
 # Privacy and Retention
 
+Alerts store incident title, severity, score and rule codes only and are deleted with the
+incident; external alerts send the same minimal summary, never message content
+(see [alerts](ALERTS.md)).
+
 Scheduled collection requires separate acknowledgement, defaults to disabled
 and keeps the same minimal evidence boundary. Worker/API must share the protected
 token key. Sign-out leaves a separately authorised schedule in effect; pause,
