@@ -59,7 +59,7 @@ export function AlertsPanel({ credentials, onChanged, onOpenIncident }: { creden
 
   return <Panel className="alerts-panel" aria-labelledby="alerts-heading">
     <SectionHeading eyebrow="Notifications" title="Alerts" meta={<span id="alerts-heading" className="sr-only">Alerts</span>} />
-    <p>An in-app alert is always raised when a new or escalated incident reaches your chosen level. Alerts name the incident and matched rules only. Email alerts are not offered because email is the evidence SentinelSME analyses. They never include message text, senders or links.</p>
+    <p>An in-app alert is always raised when a new or escalated incident reaches your chosen level. Alerts name the incident and matched rules only. Email alerts are not offered because email is the evidence LindaBiz analyses. They never include message text, senders or links.</p>
     {error && <InlineNotice tone="danger" title="Alerts">{error}</InlineNotice>}
     {settings && <form onSubmit={event => { event.preventDefault(); void save() }}>
       <label>Alert me for<select value={settings.minimum_severity} onChange={event => patch({ minimum_severity: event.target.value as AlertSettings['minimum_severity'] })}>{levels.map(level => <option key={level.value} value={level.value}>{level.label}</option>)}</select></label>

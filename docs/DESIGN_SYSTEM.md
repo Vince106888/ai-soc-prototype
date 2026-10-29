@@ -35,6 +35,13 @@ the same tokens (override with `data-theme="light"` on `<html>`).
 `FilterChip`, `SegmentedControl`, `Modal`, `Toast`. Every page header, including
 the evidence and detection catalogue pages, uses `PageHeader`.
 
+## Product name
+
+The product is named **LindaBiz**. Only user-facing text uses the name. Internal identifiers keep
+their original `sentinelsme` spelling so existing data and sign-ins keep working: the database name
+and roles, the `sentinelsme_*` cookie names, `sentinelsme.*` browser-storage keys, Docker volumes and
+the `%LOCALAPPDATA%\SentinelSME` secrets folder. Do not rename these without a data migration.
+
 ## Accessibility behaviour that tests depend on
 
 Visible 2px focus ring on every control; the 900px breakpoint switches the

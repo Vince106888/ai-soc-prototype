@@ -1,4 +1,4 @@
-"""Relational evidence and operational models for SentinelSME."""
+"""Relational evidence and operational models for LindaBiz."""
 
 from __future__ import annotations
 

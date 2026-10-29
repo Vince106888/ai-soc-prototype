@@ -62,7 +62,7 @@ async function workspace(page: Page, signedIn = true) {
       '/sources': [{ id: 'source-synthetic', account_id: 'account-synthetic', name: 'Selected messages', source_type: 'controlled', status: 'active', capabilities: ['email'] }],
       '/scan-jobs': [],
       '/capabilities': {
-        service: 'SentinelSME',
+        service: 'LindaBiz',
         signal_types: ['email'],
         source_types: ['controlled'],
         live_connectors: [],

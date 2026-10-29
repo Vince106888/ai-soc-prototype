@@ -10,7 +10,7 @@ export function WelcomeStory() {
       role="img"
       aria-labelledby={`${titleId} ${descriptionId}`}
     >
-      <title id={titleId}>How SentinelSME turns a selected message into reviewable evidence</title>
+      <title id={titleId}>How LindaBiz turns a selected message into reviewable evidence</title>
       <desc id={descriptionId}>
         A synthetic email flows through deterministic rules into a prioritised incident. The illustration labels the
         rule evidence, review priority and human decision without showing a real mailbox.

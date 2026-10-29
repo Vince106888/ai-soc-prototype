@@ -116,6 +116,20 @@ class AlertView(APIModel):
     created_at: datetime
 
 
+class AssistantRequest(APIModel):
+    question: Annotated[str, Field(min_length=2, max_length=500)]
+    incident_id: Annotated[str, Field(min_length=1, max_length=36)] | None = None
+
+
+class AssistantReply(APIModel):
+    answer: str
+    topic: str
+    references: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
+    grounded_in: Literal["incident", "general"]
+    source: Literal["grounded"] = "grounded"
+
+
 class CompatibilityScanCreate(APIModel):
     """Dashboard-friendly scan request; a controlled source is created as needed."""
 

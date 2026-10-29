@@ -305,3 +305,12 @@ export interface AlertItem {
   read: boolean
   created_at: string
 }
+
+export interface AssistantReply {
+  answer: string
+  topic: string
+  references: string[]
+  suggestions: string[]
+  grounded_in: 'incident' | 'general'
+  source: 'grounded'
+}

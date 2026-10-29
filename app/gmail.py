@@ -571,5 +571,5 @@ def disconnect_gmail(db: Session, tenant: str, source_id: str) -> dict:
         "provider_revoked": revoked,
         "message": "Local tokens removed."
         if revoked
-        else "Local tokens removed. Remove SentinelSME access in Google to confirm revocation.",
+        else "Local tokens removed. Remove LindaBiz access in Google to confirm revocation.",
     }

@@ -4,7 +4,7 @@ These instructions apply to the entire repository.
 
 ## Product boundary
 
-SentinelSME is a defensive research prototype. Keep detection deterministic and
+LindaBiz is a defensive research prototype. Keep detection deterministic and
 evidence-backed. AI may explain structured findings, but it must not create
 findings, change scores, infer unavailable telemetry, or perform remediation.
 

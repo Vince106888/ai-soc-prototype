@@ -1,4 +1,4 @@
-"""Versioned HTTP API for the persistent SentinelSME platform."""
+"""Versioned HTTP API for the persistent LindaBiz platform."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import alerts as alert_service
+from . import assistant as assistant_service
 from . import auth, budgets, deployment, explainer
 from .database import get_session
 from .entities import AuditRecord, ScanSchedule
@@ -57,6 +58,8 @@ from .platform_schemas import (
     AlertSettingsUpdate,
     AlertSettingsView,
     AlertView,
+    AssistantReply,
+    AssistantRequest,
     AuditView,
     CanonicalSignalType,
     CompatibilityScanCreate,
@@ -132,7 +135,7 @@ def request_context(
     return RequestContext(tenant_id=x_tenant_id)
 
 
-router = APIRouter(prefix="/api/v1", tags=["SentinelSME"], dependencies=[Depends(request_context)])
+router = APIRouter(prefix="/api/v1", tags=["LindaBiz"], dependencies=[Depends(request_context)])
 DB = Annotated[Session, Depends(get_session)]
 Context = Annotated[RequestContext, Depends(request_context)]
 
@@ -150,7 +153,7 @@ def capabilities() -> dict:
     """Describe available adapters without claiming unavailable live integrations."""
 
     return {
-        "service": "SentinelSME",
+        "service": "LindaBiz",
         "signal_types": ["email", "forwarding", "signin", "mfa", "oauth_grant"],
         "source_types": ["controlled", "gmail", "workspace"],
         "live_connectors": ["gmail"] if configuration_status()["configured"] else [],
@@ -259,6 +262,22 @@ def alerts_read_one(alert_id: str, db: DB, context: Context) -> Response:
     if not alert_service.mark_read(db, context.tenant_id, alert_id):
         raise HTTPException(status_code=404, detail="Alert not found or already read.")
     return Response(status_code=204)
+
+
+@router.post("/assistant", response_model=AssistantReply)
+def assistant_ask(payload: AssistantRequest, db: DB, context: Context) -> AssistantReply:
+    """Answer from stored findings only; no model, no stored question."""
+
+    try:
+        return assistant_service.ask(
+            db,
+            context.tenant_id,
+            payload.question,
+            payload.incident_id,
+            actor=context.user_id or "console-user",
+        )
+    except NotFoundError as exc:
+        raise _http_error(exc) from exc
 
 
 @router.get("/accounts", response_model=list[AccountView])

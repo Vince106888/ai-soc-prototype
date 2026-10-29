@@ -16,6 +16,7 @@ companion to this page.
 | Scanning | User or schedule-labelled scan-job records | Implemented | Scan jobs can be created, listed, and inspected |
 | Scanning | Bounded Gmail fetch performed by a worker | Implemented; mocked worker/provider contract | Opt-in recurring sample; no real-time interception; `app/worker.py`, `SCHEDULING.md` |
 | Scanning | Periodic scheduler process | Implemented and controlled execution verified | Atomic lease, bounded retry/backoff, pause after three failures; controlled CLI fallback |
+| Explanation | "Ask LindaBiz" grounded Q&A panel | Implemented; deterministic, no model | Answers from stored findings, rule catalogue and static policy text; declines remediation; questions not stored; see [assistant](ASSISTANT.md) |
 | Alerting | In-app and webhook alerts for new or escalated incidents | Implemented; webhook delivery verified with mocked HTTP | One alert per incident severity; minimal payload; worker-delivered with bounded attempts; see [alerts](ALERTS.md). No email alerts by design; webhooks are unsigned |
 | Detection | Fourteen deterministic email/account rules | Implemented | Seeded rule catalogue and evidence-backed findings |
 | Detection | Workspace trusted senders (address or domain) | Implemented | `/api/v1/trusted-senders`, false-positive "trust this sender"; silences content-only rules for authenticated senders, never authentication/lookalike/brand/payment rules; new evidence only |

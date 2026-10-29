@@ -24,7 +24,7 @@ deleted with the workspace.
 | In-app | Always on. Bell with unread count; feed on the Connections page. | none |
 | Webhook | Opt-in per workspace. `POST` of a minimal JSON summary (`event`, `incident_id`, `severity`, `title`, `score`, `rule_codes`, `created_at`). | User-supplied `https` URL |
 
-Email alerts are deliberately not offered: email is the evidence SentinelSME
+Email alerts are deliberately not offered: email is the evidence LindaBiz
 analyses, so alerting through it would mix the monitored channel with the alert
 channel. Webhook URLs must be `https` on the default port, without embedded
 credentials, and every resolved address must be public. The delivery request does

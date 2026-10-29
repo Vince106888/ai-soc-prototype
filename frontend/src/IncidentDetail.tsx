@@ -169,7 +169,7 @@ export function IncidentDetail({
             <div className="case-response">
               <section>
                 <h3>Response guidance</h3>
-                <p className="field-help">Advisory only. SentinelSME will not change your account or perform remediation.</p>
+                <p className="field-help">Advisory only. LindaBiz will not change your account or perform remediation.</p>
                 <ol className="action-list">
                   {actions.map((action, index) => <li key={`${action}-${index}`}><span>{index + 1}</span><p>{action}</p></li>)}
                 </ol>
@@ -251,7 +251,7 @@ export function IncidentDetail({
                     <div>
                       <strong>{humanize(entry.action ?? 'Incident updated')}</strong>
                       {(entry.note || entry.detail) && <p>{entry.note || entry.detail}</p>}
-                      <small>{entry.actor ?? 'SentinelSME'} · {formatDateTime(entry.created_at ?? entry.timestamp)}</small>
+                      <small>{entry.actor ?? 'LindaBiz'} · {formatDateTime(entry.created_at ?? entry.timestamp)}</small>
                     </div>
                   </li>
                 ))}

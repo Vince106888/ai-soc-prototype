@@ -63,7 +63,7 @@ describe('incident presentation helpers', () => {
 
   it('does not claim active monitoring from engine support alone', () => {
     const coverage = telemetryCoverage([], {
-      service: 'SentinelSME', signal_types: ['email', 'signin'], source_types: ['controlled'],
+      service: 'LindaBiz', signal_types: ['email', 'signin'], source_types: ['controlled'],
       live_connectors: [], controlled_ingestion: true, template_explanations: true,
       ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500,
       privacy: { stores_full_bodies: false, stores_attachments: false },
@@ -80,7 +80,7 @@ describe('incident presentation helpers', () => {
 
   it('derives telemetry coverage from active source capabilities only', () => {
     const profile = {
-      service: 'SentinelSME', signal_types: ['email', 'signin', 'mfa'], source_types: ['controlled'],
+      service: 'LindaBiz', signal_types: ['email', 'signin', 'mfa'], source_types: ['controlled'],
       live_connectors: [] as string[], controlled_ingestion: true, template_explanations: true,
       ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500,
       privacy: { stores_full_bodies: false, stores_attachments: false },

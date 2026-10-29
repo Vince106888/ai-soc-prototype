@@ -325,7 +325,7 @@ open the existing volume, and a new token key makes stored Gmail tokens unreadab
    `uv run python -m scripts.backup create`, then `... verify data/backups/<file>.dump`.
    The verify output lists the current `schema_revision` and counts.
 3. Confirm the private files exist: `data/docker.env`, `data/compose.google.json`, and
-   the two files it mounts (`%LOCALAPPDATA%\SentinelSME\google-client-secret` and
+   the two files it mounts (`%LOCALAPPDATA%\LindaBiz\google-client-secret` and
    `token.key`). `restart.ps1` stops with a clear error if any is missing.
 4. Build, then recreate with volumes preserved:
    `powershell -NoProfile -ExecutionPolicy Bypass -File scriptsestart.ps1 -Build -NoBrowser`
@@ -340,7 +340,7 @@ alerts retroactively; alerts are raised for new or escalated incidents.
 
 ### Recovery notes from 29 October 2026
 
-- `restart.ps1` refused to run because `%LOCALAPPDATA%\SentinelSME\token.key` and
+- `restart.ps1` refused to run because `%LOCALAPPDATA%\LindaBiz\token.key` and
   `google-client-secret` were missing from the host. The running containers still held
   the bind-mounted copies, so they were restored with `docker cp` from the running API
   container (`/run/secrets/local_token_key`, `/run/secrets/local_google_client_secret`)

@@ -1,8 +1,8 @@
-# SentinelSME
+# LindaBiz
 
 [![CI](https://github.com/Vince106888/ai-soc-prototype/actions/workflows/ci.yml/badge.svg)](https://github.com/Vince106888/ai-soc-prototype/actions/workflows/ci.yml)
 
-SentinelSME is a privacy-aware, AI-assisted SOC-in-a-box research prototype for
+LindaBiz is a privacy-aware, AI-assisted SOC-in-a-box research prototype for
 individuals, micro-organisations, and small businesses that use cloud email but
 do not have a dedicated security analyst. It turns authorised or controlled
 email and account-security signals into traceable, prioritised incidents with
@@ -12,7 +12,7 @@ The platform is defensive by design. Rules create findings, transparent maths
 sets priority, and a human decides what happens next. No model is allowed to
 create evidence, change a score, or take action on an account.
 
-![SentinelSME system architecture](docs/assets/architecture.png)
+![LindaBiz system architecture](docs/assets/architecture.png)
 
 ## Public product deployment
 
@@ -50,7 +50,7 @@ validates the integration, not threat-detection accuracy. See [Gmail setup](docs
 The dashboard supports selected-email analysis, database-backed workspace totals,
 seven-day activity, readable evidence, and account deletion. Development Gmail trial
 accounts expire after seven days; production keeps connections and applies configurable evidence retention.
-Opt-in scheduled sampling now executes through a leased worker; see [scheduling](docs/SCHEDULING.md). High and critical incidents raise in-app and optional webhook alerts; see [alerts](docs/ALERTS.md).
+Opt-in scheduled sampling now executes through a leased worker; see [scheduling](docs/SCHEDULING.md). High and critical incidents raise in-app and optional webhook alerts; see [alerts](docs/ALERTS.md). An **Ask LindaBiz** panel explains incidents from stored findings without a model; see [assistant](docs/ASSISTANT.md).
 Workspace admin telemetry and automatic remediation remain absent. Public deployment uses the separate hardened Compose package described above. Generic jobs record work; selected-email
 submission and the Gmail scan route actually execute analysis.
 
@@ -65,7 +65,7 @@ isolation; controlled public HTTPS deployment acceptance passed. Live Google sig
 Native cloud alerts are often spread across inboxes, browser warnings, identity
 dashboards, and administrator consoles. Enterprise SIEM and SOC products can
 centralise this information, but their cost and operating complexity are often
-unrealistic for a small organisation. SentinelSME explores a narrower question:
+unrealistic for a small organisation. LindaBiz explores a narrower question:
 
 > Can selected cloud-email and account-security indicators be collected with
 > consent, correlated transparently, and explained well enough for a
@@ -94,11 +94,11 @@ controlled signal -> minimise and normalise -> deterministic rules
 The dashboard follows the incident-list and evidence-first detail design from
 the project report:
 
-![SentinelSME incident-list and incident-detail wireframes](docs/assets/dashboard-wireframes.png)
+![LindaBiz incident-list and incident-detail wireframes](docs/assets/dashboard-wireframes.png)
 
 ## Architecture
 
-SentinelSME is a modular monolith with explicit service boundaries:
+LindaBiz is a modular monolith with explicit service boundaries:
 
 | Layer | Current implementation |
 |---|---|
@@ -108,7 +108,7 @@ SentinelSME is a modular monolith with explicit service boundaries:
 | Persistence | SQLAlchemy; SQLite by default and PostgreSQL-compatible configuration |
 | External integrations | Read-only personal Gmail adapter; optional loopback Ollama explainer validated on synthetic laptop incidents; Workspace admin absent |
 
-![SentinelSME ingestion and incident sequence](docs/assets/sequence.png)
+![LindaBiz ingestion and incident sequence](docs/assets/sequence.png)
 
 The default SQLite database is created at `data/sentinelsme.db`. Set
 `AI_SOC_DATABASE_URL` to use another SQLAlchemy database URL. The repository
@@ -374,7 +374,7 @@ or screenshots containing private data. Read [AGENTS.md](AGENTS.md) and
 
 ## Scope and limitations
 
-SentinelSME is not an enterprise SIEM, endpoint detection platform, packet
+LindaBiz is not an enterprise SIEM, endpoint detection platform, packet
 sensor, malware sandbox, phishing simulator, compliance product, or substitute
 for professional incident response. A rule match is an indicator for human
 review, not proof of malicious activity. Recommendations remain advisory.

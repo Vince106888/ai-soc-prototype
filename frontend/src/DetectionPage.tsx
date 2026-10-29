@@ -42,7 +42,7 @@ export function DetectionPage({
     <div className="page detection-page">
       <PageHeader
         eyebrow="Deterministic detection"
-        title="How SentinelSME reaches a finding"
+        title="How LindaBiz reaches a finding"
         description="Rules create findings, transparent scoring orders attention, and optional AI only explains the result."
         actions={<button className="button button-primary" onClick={onAnalyse}><Icons.scan />Analyse selected message</button>}
       />

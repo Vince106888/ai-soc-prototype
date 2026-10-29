@@ -68,7 +68,7 @@ const responses: Record<string, unknown> = {
   '/accounts': [{ id: 'account-1', email: 'owner@example.test', display_name: 'Example workspace', provider: 'google' }],
   '/sources': [controlledSource, gmailSource],
   '/scan-jobs': [{ id: 'job-1', source_id: 'source-gmail', trigger: 'schedule', status: 'completed', attempts: 1, imported_count: 18, duplicate_count: 4, finding_count: 6, created_at: iso(14), completed_at: iso(14) }],
-  '/capabilities': { service: 'SentinelSME', signal_types: ['email'], source_types: ['controlled', 'gmail'], live_connectors: ['gmail'], controlled_ingestion: true, template_explanations: true, ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500, privacy: { stores_full_bodies: false, stores_attachments: false }, gmail: { implemented: true, configured: true, message: 'Ready', scope: 'gmail.readonly', maximum_messages: 50, signal_types: ['email'], automatic_scanning: true, trial: false, evidence_retention_days: 30 } },
+  '/capabilities': { service: 'LindaBiz', signal_types: ['email'], source_types: ['controlled', 'gmail'], live_connectors: ['gmail'], controlled_ingestion: true, template_explanations: true, ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500, privacy: { stores_full_bodies: false, stores_attachments: false }, gmail: { implemented: true, configured: true, message: 'Ready', scope: 'gmail.readonly', maximum_messages: 50, signal_types: ['email'], automatic_scanning: true, trial: false, evidence_retention_days: 30 } },
   '/overview': { incidents: { active: 3, critical: 1, under_review: 1, resolved: 1, false_positive: 0 }, accounts: 1, active_sources: 2, retained_signals: 42, source_activity: { 'source-gmail': { signal_count: 36, last_received_at: iso(14) } }, latest_job: { status: 'completed', completed_at: iso(14), imported_count: 18 }, activity: Array.from({ length: 7 }, (_, index) => ({ day: `2026-10-${23 + index}`, signals: [3, 8, 5, 12, 7, 15, 9][index], incidents: [0, 1, 0, 2, 1, 2, 1][index] })) },
   '/incidents/page': { items: incidents, total: incidents.length, limit: 25, offset: 0 },
   '/rules': rules,
@@ -88,6 +88,10 @@ export function installMockApi() {
     if (!url.pathname.startsWith('/api/')) return original(input, init)
     const path = url.pathname.replace('/api/v1', '')
     const method = (init?.method ?? 'GET').toUpperCase()
+    if (method === 'POST' && path === '/assistant') {
+      const reply = { answer: 'Three deterministic rules matched: urgent wording, a credential-themed link and mobile-money pressure wording. Verify the sender through a trusted channel before opening the link.', topic: 'why', references: ['EMAIL-002', 'EMAIL-008', 'URL-002'], suggestions: ['What does the score mean?', 'What should I do next?'], grounded_in: 'incident', source: 'grounded' }
+      return new Response(JSON.stringify(reply), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
     if (method !== 'GET' && !path.endsWith('/read')) {
       return new Response(JSON.stringify({ detail: 'Changes are disabled in the visual-review mock.' }), { status: 409, headers: { 'Content-Type': 'application/json' } })
     }

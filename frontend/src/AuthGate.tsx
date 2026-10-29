@@ -16,14 +16,14 @@ function hasLocalWorkspace() {
 
 function LegalPage({ session, privacy }: { session: AuthSession; privacy: boolean }) {
   useEffect(() => {
-    document.title = `${privacy ? 'Privacy' : 'Terms'} · SentinelSME`
+    document.title = `${privacy ? 'Privacy' : 'Terms'} · LindaBiz`
   }, [privacy])
 
   return (
     <div className="legal-shell">
       <a className="skip-link" href="#legal-main">Skip to main content</a>
       <header className="legal-header">
-        <a href="/" className="welcome-home" aria-label="SentinelSME home"><Brand subtitle="Evidence-led email security" /></a>
+        <a href="/" className="welcome-home" aria-label="LindaBiz home"><Brand subtitle="Evidence-led email security" /></a>
         <nav aria-label="Legal pages">
           <a href="/">Back to product</a>
           <a href="/privacy" aria-current={privacy ? 'page' : undefined}>Privacy</a>
@@ -33,7 +33,7 @@ function LegalPage({ session, privacy }: { session: AuthSession; privacy: boolea
       <main id="legal-main" className="legal-main">
         <header className="legal-intro">
           <p className="eyebrow">Product boundary</p>
-          <h1>{privacy ? 'Privacy and your data' : 'Using SentinelSME'}</h1>
+          <h1>{privacy ? 'Privacy and your data' : 'Using LindaBiz'}</h1>
           <p>
             {privacy
               ? 'What the workspace stores, why it stores it, and how to delete it.'
@@ -72,7 +72,7 @@ function LegalPage({ session, privacy }: { session: AuthSession; privacy: boolea
               </section>
               <section>
                 <h2>You control decisions</h2>
-                <p>SentinelSME does not block mail, change account settings, revoke access, or perform remediation. Verify recommendations through your provider and organisation’s procedures. Coverage is limited to the information supplied or explicitly collected with your consent.</p>
+                <p>LindaBiz does not block mail, change account settings, revoke access, or perform remediation. Verify recommendations through your provider and organisation’s procedures. Coverage is limited to the information supplied or explicitly collected with your consent.</p>
               </section>
             </>
           )}

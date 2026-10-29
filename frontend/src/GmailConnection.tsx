@@ -88,7 +88,7 @@ export function GmailConnection({
           title={activeGmailSources.length ? 'Gmail is connected' : gmailSources.length ? 'Reconnect Gmail' : 'Connect Gmail when you are ready'}
           meta={<span className={`connection-pill ${configuration?.configured ? 'ready' : ''}`}>{connectionStatus}</span>}
         />
-        <p className="gmail-lede">Read-only access lets SentinelSME inspect a recent inbox sample you explicitly request. Minimal email evidence stays in your workspace; message bodies and attachments are not retained.</p>
+        <p className="gmail-lede">Read-only access lets LindaBiz inspect a recent inbox sample you explicitly request. Minimal email evidence stays in your workspace; message bodies and attachments are not retained.</p>
 
         <div className="gmail-permission-grid">
           <div><Icons.check aria-hidden="true" /><strong>What it can read</strong><span>A bounded inbox sample you request</span></div>

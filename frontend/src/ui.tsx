@@ -9,7 +9,7 @@ export function Brand({ subtitle, inverse = false }: { subtitle?: string; invers
     <div className={`brand ${inverse ? 'brand-inverse' : ''}`}>
       <span className="brand-mark" aria-hidden="true"><Icons.shield /></span>
       <span className="brand-copy">
-        <strong>Sentinel<span>SME</span></strong>
+        <strong>Linda<span>Biz</span></strong>
         {subtitle && <small>{subtitle}</small>}
       </span>
     </div>
@@ -281,7 +281,7 @@ export function Modal({
       >
         <header>
           <div>
-            <p className="eyebrow">SentinelSME</p>
+            <p className="eyebrow">LindaBiz</p>
             <h2 id={titleId}>{title}</h2>
             {description && <p id={descriptionId}>{description}</p>}
           </div>

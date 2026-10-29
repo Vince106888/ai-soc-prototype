@@ -3,6 +3,7 @@ import type {
   AlertItem,
   AlertSettings,
   AlertSettingsUpdate,
+  AssistantReply,
   CapabilityProfile,
   Credentials,
   Incident,
@@ -60,7 +61,7 @@ async function request<T>(path: string, credentials: Credentials, options: Reque
       },
     })
   } catch {
-    throw new ApiError('Could not reach the SentinelSME API. Check that the service is running.', 0)
+    throw new ApiError('Could not reach the LindaBiz API. Check that the service is running.', 0)
   }
 
   const body: unknown = response.status === 204 ? null : await response.json().catch(() => null)
@@ -86,6 +87,9 @@ export const api = {
   },
   saveSchedule(credentials: Credentials, sourceId: string, settings: { enabled: boolean; acknowledged: boolean; interval_minutes: number; maximum_messages: number; recent_days: number }): Promise<ScanSchedule> {
     return request(`/api/v1/sources/${encodeURIComponent(sourceId)}/schedule`, credentials, { method: 'PUT', body: JSON.stringify(settings) })
+  },
+  askAssistant(credentials: Credentials, question: string, incidentId?: string): Promise<AssistantReply> {
+    return request('/api/v1/assistant', credentials, { method: 'POST', body: JSON.stringify({ question, incident_id: incidentId || null }) })
   },
   alertSettings(credentials: Credentials, signal?: AbortSignal): Promise<AlertSettings> {
     return request('/api/v1/alert-settings', credentials, { signal })

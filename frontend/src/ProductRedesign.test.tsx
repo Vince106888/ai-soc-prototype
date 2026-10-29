@@ -34,7 +34,7 @@ const overview: Overview = {
 }
 
 const profile: CapabilityProfile = {
-  service: 'SentinelSME',
+  service: 'LindaBiz',
   signal_types: ['email', 'forwarding', 'signin', 'mfa', 'oauth_grant'],
   source_types: ['controlled'],
   live_connectors: [],

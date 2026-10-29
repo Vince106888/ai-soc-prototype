@@ -77,7 +77,7 @@ export function Welcome({ session, onLocalStart }: { session: AuthSession; onLoc
   const pilot = session.mode === 'google'
 
   useEffect(() => {
-    document.title = 'SentinelSME · Evidence-led email security'
+    document.title = 'LindaBiz · Evidence-led email security'
     if (new URLSearchParams(window.location.search).has('signin')) {
       window.history.replaceState(null, '', window.location.pathname)
     }
@@ -115,7 +115,7 @@ export function Welcome({ session, onLocalStart }: { session: AuthSession; onLoc
     <div className="welcome-shell">
       <a className="skip-link" href="#welcome-main">Skip to main content</a>
       <header className="welcome-header">
-        <a className="welcome-home" href="/" aria-label="SentinelSME home"><Brand subtitle="Evidence-led email security" /></a>
+        <a className="welcome-home" href="/" aria-label="LindaBiz home"><Brand subtitle="Evidence-led email security" /></a>
         <nav aria-label="Product information">
           <a href="#how-it-works">How it works</a>
           <a href="#privacy">Privacy</a>
@@ -130,7 +130,7 @@ export function Welcome({ session, onLocalStart }: { session: AuthSession; onLoc
             <p className="eyebrow">Email security for small organisations</p>
             <h1 id="welcome-title">See the risk in email.<br /><span>Keep the evidence.</span></h1>
             <p className="welcome-lede">
-              SentinelSME helps your team inspect the messages you choose, understand why a message was flagged,
+              LindaBiz helps your team inspect the messages you choose, understand why a message was flagged,
               and decide what to do next. Rules make the finding. People make the decision.
             </p>
 
@@ -262,7 +262,7 @@ export function Welcome({ session, onLocalStart }: { session: AuthSession; onLoc
             <p className="eyebrow">Privacy by boundary</p>
             <h2 id="privacy-title">Your message is not the product.</h2>
             <p>
-              SentinelSME is designed around minimised evidence. It does not retain full message bodies or attachments,
+              LindaBiz is designed around minimised evidence. It does not retain full message bodies or attachments,
               and it does not send mail, delete mail or change account settings.
             </p>
             <div className="trust-points">
@@ -278,7 +278,7 @@ export function Welcome({ session, onLocalStart }: { session: AuthSession; onLoc
         <section className="welcome-boundary" aria-labelledby="boundary-title">
           <div>
             <p className="eyebrow">Honest scope</p>
-            <h2 id="boundary-title">What SentinelSME does not claim</h2>
+            <h2 id="boundary-title">What LindaBiz does not claim</h2>
           </div>
           <ul>
             <li><Icons.close aria-hidden="true" />It does not provide continuous monitoring or block mail delivery.</li>

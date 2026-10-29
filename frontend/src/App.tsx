@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api'
 import { AddSourceModal, type SourceDraft } from './AddSourceModal'
 import { AlertsPanel } from './AlertsPanel'
+import { AssistantWidget } from './AssistantWidget'
 import { ConnectionsPage } from './ConnectionsPage'
 import { DetectionPage } from './DetectionPage'
 import { type EmailDraft } from './EmailAnalysis'
@@ -15,7 +16,7 @@ import { readWorkspaceRoute, writeWorkspaceRoute, type AnalysisMethod, type Dete
 import { DeleteAccountDataModal, LocalSettingsModal, SessionModal } from './SettingsDialogs'
 import { Brand, InlineNotice, Panel, Toast } from './ui'
 import type { Account, AuthSession, CapabilityProfile, Credentials, Incident, IncidentFilters, IncidentStatus, Overview, ScanJob, Source, TrustChoice } from './types'
-import { prioritizeIncidents, telemetryCoverage } from './utils'
+import { incidentTitle, prioritizeIncidents, telemetryCoverage } from './utils'
 
 const KEY_STORAGE = 'sentinelsme.apiKey'
 const TENANT_STORAGE = 'sentinelsme.tenantId'
@@ -331,6 +332,7 @@ export default function App({ session, onSignOut, onLocalDisconnect }: { session
       {deleteTarget && <DeleteAccountDataModal account={deleteTarget} busy={operationBusy === 'delete'} onClose={() => setDeleteTarget(null)} onDelete={() => void deleteAccount()} />}
       {settingsOpen && (session?.user && onSignOut ? <SessionModal session={session} onClose={() => setSettingsOpen(false)} onSignOut={onSignOut} onDelete={async () => { await api.deleteIdentity(credentials); window.dispatchEvent(new Event('sentinelsme:session-expired')) }} onShowGuide={openGuide} onOpenConnections={() => { setSettingsOpen(false); navigate('connections') }} /> : <LocalSettingsModal currentKey={apiKey} currentTenant={tenantId} onClear={disconnect} onClose={() => setSettingsOpen(false)} onSave={connect} />)}
       {sourceOpen && <AddSourceModal accounts={accounts} onClose={() => setSourceOpen(false)} onCreate={createControlledSource} profile={capabilities} />}
+      {tenantId && <AssistantWidget credentials={credentials} incidentId={view === 'incidents' && selected ? selected.id : undefined} incidentTitle={view === 'incidents' && selected ? incidentTitle(selected) : undefined} />}
       {toast && <Toast message={toast} onDismiss={() => setToast('')} />}
     </div>
   )
