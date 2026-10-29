@@ -9,8 +9,16 @@ __pycache__
 *.db
 *.sqlite3
 .env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+**/__pycache__
+**/*.log
 data
 frontend/node_modules
 frontend/dist
+frontend/test-results
+frontend/playwright-report
 docs/assets/*.svg
 _codex_screens

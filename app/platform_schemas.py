@@ -381,7 +381,14 @@ class IncidentListItem(APIModel):
     updated_at: datetime
 
 
+class ExplanationJobView(APIModel):
+    status: Literal["queued", "running", "succeeded", "failed"]
+    reason: str | None = None
+    updated_at: datetime
+
+
 class IncidentDetail(IncidentListItem):
+    explanation_job: ExplanationJobView | None = None
     findings: list[FindingView]
     signals: list[SignalView]
     explanation: ExplanationView

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import Field
 
-from . import auth
+from . import auth, deployment
 from .api import DB, Context, _http_error, request_context
 from .gmail import (
     COOKIE_NAME,
@@ -44,20 +44,26 @@ def configuration() -> dict:
 def consent(payload: ConsentRequest, db: DB, context: Context, response: Response) -> dict:
     if not payload.acknowledged:
         raise HTTPException(
-            400, "Read-only access and seven-day local retention must be acknowledged."
+            400, "Read-only access and the displayed evidence retention must be acknowledged."
         )
     if not payload.email.endswith("@gmail.com"):
-        raise HTTPException(400, "This local trial currently supports personal Gmail addresses.")
+        raise HTTPException(400, "This connector currently supports personal Gmail addresses.")
     if context.email and payload.email != context.email:
         raise HTTPException(
-            400, "Connect the Gmail account used to sign in to your pilot workspace."
+            400, "Connect the Gmail account used to sign in to your private workspace."
         )
     try:
         url, cookie = begin_consent(db, context.tenant_id, payload.email)
     except GmailError as exc:
         raise HTTPException(503, str(exc)) from None
     response.set_cookie(
-        COOKIE_NAME, cookie, max_age=600, httponly=True, samesite="lax", path=COOKIE_PATH
+        COOKIE_NAME,
+        cookie,
+        max_age=600,
+        httponly=True,
+        samesite="lax",
+        path=COOKIE_PATH,
+        secure=deployment.production(),
     )
     return {"authorization_url": url}
 
@@ -71,7 +77,7 @@ def callback(
     error: Annotated[str | None, Query(max_length=200)] = None,
 ) -> RedirectResponse:
     try:
-        tenant = auth.principal(db, request).tenant_id if auth.required() else None
+        tenant = auth.principal(db, request, lock_user=True).tenant_id if auth.required() else None
         result = finish_consent(
             db, state, request.cookies.get(COOKIE_NAME, ""), code, bool(error), tenant
         )
@@ -79,7 +85,7 @@ def callback(
         # Never reflect a code, provider error, token, or account address into the URL.
         result = "failed"
     response = RedirectResponse("/?gmail=" + result, status_code=303)
-    response.delete_cookie(COOKIE_NAME, path=COOKIE_PATH)
+    response.delete_cookie(COOKIE_NAME, path=COOKIE_PATH, secure=deployment.production())
     return response
 
 

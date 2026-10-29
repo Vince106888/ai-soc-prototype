@@ -14,6 +14,16 @@ create evidence, change a score, or take action on an account.
 
 ![SentinelSME system architecture](docs/assets/architecture.png)
 
+## Public product deployment
+
+Public Google registration, server-owned private workspaces, secure sessions,
+account deletion, configurable evidence retention and a standalone HTTPS Docker
+stack are implemented. The deployment package targets a VPS/domain selected
+later. See [public deployment](docs/PUBLIC_DEPLOYMENT.md) for initialization,
+Google configuration, backups, recovery and the final live-release checks.
+Optional Gmail remains disabled until the actual deployment is approved for its
+scope. Optional AI explanations run independently of collection.
+
 ## Platform status
 
 This repository now contains an end-to-end **controlled-data** workflow:
@@ -38,19 +48,17 @@ authorised local consent-and-scan trial succeeded on 4 October 2026. That trial
 validates the integration, not threat-detection accuracy. See [Gmail setup](docs/GMAIL_SETUP.md).
 
 The dashboard supports selected-email analysis, database-backed workspace totals,
-seven-day activity, readable evidence, and local account deletion. Gmail trial
-accounts expire after seven days, with purge at startup/API requests/worker polls.
+seven-day activity, readable evidence, and account deletion. Development Gmail trial
+accounts expire after seven days; production keeps connections and applies configurable evidence retention.
 Opt-in scheduled sampling now executes through a leased worker; see [scheduling](docs/SCHEDULING.md).
-Workspace admin telemetry, external AI, automatic remediation,
-and production deployment hardening remain absent. Generic jobs record work; selected-email
+Workspace admin telemetry and automatic remediation remain absent. Public deployment uses the separate hardened Compose package described above. Generic jobs record work; selected-email
 submission and the Gmail scan route actually execute analysis.
 
-Invited Google app sign-in is now implemented behind `AI_SOC_AUTH_MODE=google`,
+Google app sign-in is implemented behind `AI_SOC_AUTH_MODE=google`,
 with verified identity, private server-assigned workspaces, eight-hour sessions
-and CSRF protection. A guided welcome page separates sign-in from optional
+and CSRF protection. Public deployments support self-registration; private pilots may retain an invitation list. A guided welcome page separates sign-in from optional
 Gmail consent; local demos remain available. Synthetic tests cover access and
-isolation; live Google sign-in and remote/public deployment are not yet
-validated. Configure the extra callback once using [onboarding](docs/ONBOARDING.md).
+isolation; controlled public HTTPS deployment acceptance passed. Live Google sign-in on the final public domain remains a release check. Configure the extra callback once using [onboarding](docs/ONBOARDING.md).
 
 ## Why it exists
 
@@ -98,7 +106,7 @@ SentinelSME is a modular monolith with explicit service boundaries:
 | HTTP/API | FastAPI health, compatibility analysis, and `/api/v1` platform routes |
 | Processing | Normalisation, configurable rules, scoring, correlation, lifecycle, templates, evaluation |
 | Persistence | SQLAlchemy; SQLite by default and PostgreSQL-compatible configuration |
-| External integrations | Read-only personal Gmail adapter; authorised local consent/sample validated; per-installation setup required; Workspace admin and LLM absent |
+| External integrations | Read-only personal Gmail adapter; optional loopback Ollama explainer validated on synthetic laptop incidents; Workspace admin absent |
 
 ![SentinelSME ingestion and incident sequence](docs/assets/sequence.png)
 
@@ -111,6 +119,46 @@ See [DATA_MODEL.md](docs/DATA_MODEL.md) for the persisted evidence chain and
 [OPERATIONS.md](docs/OPERATIONS.md) for deployment boundaries.
 
 ## Quick start
+
+### Portable launch (Windows, Linux, macOS)
+
+With Docker Desktop/Engine running and Python 3 available, run from the checkout:
+
+```bash
+python scripts/run.py docker --demo
+```
+
+This builds the dashboard/API image, starts private PostgreSQL and the worker,
+waits for readiness, seeds only synthetic tenant `demo`, and runs HTTP acceptance
+checks. It creates persistent random deployment secrets in ignored
+`data/docker.env`; preserve this private file with your database volume. Open
+`http://127.0.0.1:8000`, choose **Open an existing local workspace**, enter `demo`
+and the deployment key from that private file. No Google setup is needed.
+Use `python3` if that is your platform's Python command.
+
+```bash
+python scripts/run.py doctor
+python scripts/run.py check
+python scripts/run.py down
+```
+
+Stopping retains database volumes. `--port 8001` selects another host port.
+For optional container-local AI, add `--model` to launch/check/down commands;
+launch downloads `qwen2.5:3b` into its own named model volume. The API, worker
+and Ollama share a network namespace so model traffic remains loopback-only;
+no Ollama port is published. Host-installed models are separate from that volume.
+
+Without Docker, use Python 3.13, uv and Node.js/npm:
+
+```bash
+python scripts/run.py local --demo --model
+```
+
+This builds and serves the console and API together, using the separate
+`data/portable-demo.db`; it does not seed your existing application database.
+Omit `--model` for templates only. After the first build, `--skip-build` reuses
+the dashboard. Keep the terminal open; Ctrl+C stops the local server.
+See [operations](docs/OPERATIONS.md) for backup and deployment limits.
 
 ### Prerequisites
 
@@ -369,3 +417,24 @@ and an explicit protection coverage screen. `EMAIL-006` adds a deterministic
 payment-redirection indicator with phrase-only evidence and advisory guidance.
 See [product coverage and completion milestones](docs/PRODUCT_SCOPE.md) for the
 full INKY product/use-case/platform mapping and remaining research requirements.
+
+## Restart this laptop deployment
+
+Run this single PowerShell command from any folder:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\HP\OneDrive\Desktop\y4\ai-soc-prototype\scripts\restart.ps1"
+```
+
+It starts Docker Desktop when needed, restarts the API/website,
+collection worker, PostgreSQL and the installed optional model service, waits for
+container health checks and API readiness, and opens
+http://127.0.0.1:8001/. It preserves database/model volumes, private Google
+credential mounts and the existing token encryption key. It never downloads a
+model or silently falls back to unauthenticated local mode. Missing configuration
+or a mismatched OAuth callback port fails with an actionable error.
+Use `-Build` after source changes; the normal restart reuses installed images.
+Use `-NoBrowser` to leave the browser closed. Google configuration is required
+by default; `-LocalWorkspace` explicitly permits an unauthenticated local
+workspace when no Google configuration exists. Live Google consent still requires
+the registered callbacks and provider account approval.

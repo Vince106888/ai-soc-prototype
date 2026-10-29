@@ -89,6 +89,38 @@ GOOD = {
 }
 
 
+def test_late_model_response_is_discarded_when_guidance_changes(seeded, monkeypatch):
+    db, _, _ = seeded
+    incident = _incidents(db)[0]
+    score = incident.score
+
+    def changed(*args):
+        from datetime import timedelta
+
+        with database.SessionLocal() as other:
+            template = other.scalar(
+                select(IncidentExplanation)
+                .where(IncidentExplanation.incident_id == incident.id)
+                .order_by(IncidentExplanation.created_at.desc())
+            )
+            other.add(
+                IncidentExplanation(
+                    incident_id=incident.id,
+                    source="template",
+                    content=template.content,
+                    created_at=template.created_at + timedelta(seconds=1),
+                )
+            )
+            other.commit()
+        return {"what_happened": "Late response", "why_it_matters": "Late", "next_step": "Verify"}
+
+    monkeypatch.setattr(explainer, "generate", changed)
+    assert explainer.explain_incident(db, incident, ENABLED) == "evidence_changed"
+    db.expire_all()
+    assert incident.score == score
+    assert not db.scalar(select(IncidentExplanation).where(IncidentExplanation.source == "ai"))
+
+
 def test_settings_are_off_by_default_and_loopback_only(monkeypatch):
     monkeypatch.delenv("AI_SOC_EXPLAINER", raising=False)
     assert not explainer.settings().enabled

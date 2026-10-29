@@ -173,7 +173,24 @@ class AppUser(Base):
     google_subject: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String(320), nullable=False)
     tenant_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), default="active", server_default="active", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class RequestBudget(Base):
+    """Two-minute abuse counters; no raw addresses, IPs, paths or request content."""
+
+    __tablename__ = "request_budgets"
+    __table_args__ = (
+        Index("ix_request_budgets_expires", "expires_at"),
+        Index("ix_request_budgets_tenant", "tenant_id"),
+    )
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    count: Mapped[int] = mapped_column(Integer, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class AppSession(Base):
@@ -319,6 +336,30 @@ class IncidentExplanation(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     incident: Mapped[Incident] = relationship(back_populates="explanations")
+
+
+class ExplanationJob(Base):
+    """On-demand model work, bound to one immutable template revision."""
+
+    __tablename__ = "explanation_jobs"
+    __table_args__ = (
+        UniqueConstraint("incident_id", "template_id", name="uq_explanation_job_template"),
+        Index("ix_explanation_jobs_status_created", "status", "created_at"),
+        Index("ix_explanation_jobs_tenant", "tenant_id"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    tenant_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id", ondelete="CASCADE"))
+    template_id: Mapped[str] = mapped_column(
+        ForeignKey("incident_explanations.id", ondelete="CASCADE")
+    )
+    status: Mapped[str] = mapped_column(String(20), default="queued", nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    lease_id: Mapped[str | None] = mapped_column(String(36))
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str | None] = mapped_column(String(50))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Recommendation(Base):

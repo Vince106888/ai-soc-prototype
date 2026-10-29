@@ -153,3 +153,16 @@ Migration `9d213bf807a2` adds source-scoped schedules and nullable last-job refe
   earliest time seen and message count; unique per account/digest; deleted with
   the account.
 - Email features gain `trusted_sender`, `first_contact` and `local_scam_terms`.
+
+## Public account and explanation lifecycle
+
+AppUser.status is active or deleting. Session hashes are associated with the
+server-owned workspace. RequestBudget stores short-lived hashed per-user action
+counters without raw IPs, addresses or request content. ExplanationJob links a
+workspace/incident/template revision, bounded retry count, lease, status and safe
+failure reason. Incident/template deletion cascades queued work.
+
+Production evidence retention deletes whole expired cases and their evidence,
+leaving live cases intact. Connections persist until removed. Deletion receipts
+are opaque workspace IDs in an independent durable volume, not the database.
+The application database role is separate from the bootstrap administrator.

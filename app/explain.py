@@ -102,47 +102,52 @@ def check(runs: int, output: Path) -> dict:
 
     with tempfile.TemporaryDirectory() as tmp:
         database.configure_database(f"sqlite:///{(Path(tmp) / 'check.db').as_posix()}")
-        database.migrate_schema()
-        with database.SessionLocal() as session:
-            _seed(session)
-            for run in range(1, runs + 1):
-                session.execute(
-                    delete(IncidentExplanation).where(IncidentExplanation.source == "ai")
-                )
-                session.execute(
-                    delete(AuditRecord).where(AuditRecord.action.like("ai_explanation_%"))
-                )
-                session.commit()
-                session.expire_all()
-                incidents = session.scalars(
-                    select(Incident)
-                    .options(
-                        selectinload(Incident.findings),
-                        selectinload(Incident.explanations),
-                        selectinload(Incident.recommendations),
+        try:
+            database.migrate_schema()
+            with database.SessionLocal() as session:
+                _seed(session)
+                for run in range(1, runs + 1):
+                    session.execute(
+                        delete(IncidentExplanation).where(IncidentExplanation.source == "ai")
                     )
-                    .where(Incident.tenant_id == CHECK_TENANT)
-                    .order_by(Incident.score.desc())
-                ).all()
-                for incident in incidents:
-                    started = time.perf_counter()
-                    outcome = explainer.explain_incident(session, incident, config)
-                    elapsed = round(time.perf_counter() - started, 2)
-                    entry = {
-                        "run": run,
-                        "incident": incident.title,
-                        "severity": incident.severity,
-                        "outcome": outcome,
-                        "seconds": elapsed,
-                    }
-                    if outcome == "explained":
-                        session.refresh(incident)
-                        latest = max(incident.explanations, key=lambda item: item.created_at)
-                        entry["explanation"] = latest.content
-                    report["runs"].append(entry)
-                    print(
-                        json.dumps({k: entry[k] for k in ("run", "incident", "outcome", "seconds")})
+                    session.execute(
+                        delete(AuditRecord).where(AuditRecord.action.like("ai_explanation_%"))
                     )
+                    session.commit()
+                    session.expire_all()
+                    incidents = session.scalars(
+                        select(Incident)
+                        .options(
+                            selectinload(Incident.findings),
+                            selectinload(Incident.explanations),
+                            selectinload(Incident.recommendations),
+                        )
+                        .where(Incident.tenant_id == CHECK_TENANT)
+                        .order_by(Incident.score.desc())
+                    ).all()
+                    for incident in incidents:
+                        started = time.perf_counter()
+                        outcome = explainer.explain_incident(session, incident, config)
+                        elapsed = round(time.perf_counter() - started, 2)
+                        entry = {
+                            "run": run,
+                            "incident": incident.title,
+                            "severity": incident.severity,
+                            "outcome": outcome,
+                            "seconds": elapsed,
+                        }
+                        if outcome == "explained":
+                            session.refresh(incident)
+                            latest = max(incident.explanations, key=lambda item: item.created_at)
+                            entry["explanation"] = latest.content
+                        report["runs"].append(entry)
+                        print(
+                            json.dumps(
+                                {k: entry[k] for k in ("run", "incident", "outcome", "seconds")}
+                            )
+                        )
+        finally:
+            database.engine.dispose()
     times = [item["seconds"] for item in report["runs"]]
     valid = [item for item in report["runs"] if item["outcome"] == "explained"]
     report["summary"] = {

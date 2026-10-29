@@ -1,3 +1,5 @@
+Public VPS operations and release gates: see [PUBLIC_DEPLOYMENT.md](PUBLIC_DEPLOYMENT.md). The private laptop instructions below remain available for controlled development.
+
 # Operations Guide
 
 This runbook covers the current local/research deployment. It does not claim
@@ -16,7 +18,7 @@ Browser -> Vite dashboard (development) -> FastAPI -> SQLite/PostgreSQL
 
 The personal Gmail adapter executes bounded on-demand inbox collection inside
 FastAPI and encrypts consent tokens. Operator credentials and live validation
-are required; see [Gmail setup](GMAIL_SETUP.md). Workspace admin collection and external LLM remain absent. An opt-in polling
+are required; see [Gmail setup](GMAIL_SETUP.md). Workspace admin collection remains absent; optional loopback Ollama is available. An opt-in polling
 worker executes bounded schedules; see [scheduling](SCHEDULING.md). Generic jobs
 are consumed through explicit controlled ingestion.
 
@@ -132,7 +134,7 @@ does not establish a remote provider connection.
 | Job stays queued | No worker exists; submit controlled signals with its job ID |
 | No incident appears | No enabled rule met the 0.10 finding threshold |
 | Repeated signal adds nothing | Same source and external ID is intentionally idempotent |
-| No AI prose | Expected; current explanation source is `template` |
+| No AI prose | Templates are the default; enable loopback Ollama explicitly; inspect model availability and fallback audit records |
 
 Failed external calls must never be represented as a clean scan when live
 connectors are added. Bound and sanitise stored error text.
@@ -193,3 +195,124 @@ Compose now starts the API/dashboard, database and polling worker. It publishes 
 After building/starting the stack, execute `docker compose exec -T api python -m app.demo --tenant container-acceptance`, then `docker compose exec -T api python -m app.worker --once --enable-demo --tenant container-acceptance`. The CI smoke uses `scripts/verify_container.py` to check served dashboard, readiness, actual completed user/scheduled jobs, duplicates and incidents. The database volume remains sensitive; backup/delete using the documented operator policy.
 
 Start a local opt-in worker in the same configured terminal with `uv run python -m app.worker`. A stopped worker means no recurring collection; see `SCHEDULING.md`.
+
+
+## Portable deployment and acceptance — 28 October 2026
+
+`python scripts/run.py local --demo --model` builds the console and serves it
+with the API on loopback. It uses `data/portable-demo.db`, a separate database;
+open existing workspace `demo`. Omit `--model` to run fully without Ollama.
+The launcher resolves the repository location from its own path, so an absolute
+script invocation also works from another working directory. `--skip-build`
+requires an existing complete frontend build; `--port` selects the listener.
+No existing operator environment file is overwritten.
+
+`python scripts/run.py docker --demo` generates random deployment secrets once
+in ignored `data/docker.env` (POSIX mode 0600; Windows protection follows the
+parent directory ACL). Keep that file private and preserve it with the database.
+Do not put it in reports or screenshots. The launcher does not import the
+operator's `.env` or mount host mailbox/token files. Docker builds the dashboard,
+API and worker; PostgreSQL has no host port. The API binds only to host loopback.
+Application containers run without Linux capabilities, with a read-only root,
+temporary scratch space, and no-new-privileges. Forwarded headers are disabled;
+this launcher is for localhost, not an internet-facing proxy deployment.
+
+Add `--model` for `compose.ollama.yaml`: API, worker and Ollama share the API's
+network namespace. Ollama listens on 127.0.0.1:11434 inside that namespace and
+has no published port. The existing loopback-only validator is unchanged.
+Model downloads require internet and occupy a separate named volume; the host's
+Ollama installation is not reused. Container AI acceptance remains pending until
+that profile is executed. Use the same `--model` option for check/down commands.
+The container image pins the Ollama version; CPU inference is the default.
+
+After startup, `python scripts/run.py check` executes `scripts/smoke.py` in the
+API container. It creates a fresh labelled synthetic workspace and checks HTTP
+readiness, HTML and referenced assets, ingestion/completed jobs, idempotency,
+minimised evidence, tenant isolation, guidance, valid and invalid lifecycle
+transitions, and audit records. It also tests rejection of an invalid API key
+when a deployment key is configured. No Gmail consent or collection occurs.
+Smoke workspaces remain as synthetic acceptance evidence. For a native server,
+run `uv run python scripts/smoke.py`; inherit the server's API key if configured.
+CI executes this HTTP check alongside the scheduled-worker Compose check.
+
+`python scripts/run.py down` stops containers and retains volumes. Do not use
+`down --volumes` on retained evidence. A different PC starts with fresh volumes;
+copying the source alone does not transfer the database, model, provider tokens
+or consent. Use a reviewed backup/restore process for authorised evidence.
+For PostgreSQL, create a custom-format backup with `pg_dump -Fc` in the db
+container, copy the resulting file out using `docker compose cp`, and restore
+into a separate empty database using `pg_restore --exit-on-error --no-owner`.
+Use the launcher's same env-file and Compose file arguments for these commands.
+Verify counts and run acceptance checks before switching to a restored database.
+Never overwrite the original volume as a restore test. Treat backups as sensitive.
+
+Native acceptance on this laptop passed the HTTP smoke and controlled worker
+checks; Docker runtime acceptance is recorded separately when actually executed.
+The local Ollama evidence check produced 4/4 valid synthetic explanations,
+repeat median 27.62 seconds, maximum 47.17 seconds, with no fallbacks. These timings do
+not establish detection accuracy, explanation usefulness, or production readiness.
+
+The portable Docker launcher requires at least 5 GiB free on the checkout drive before a build. `--skip-build` uses `--no-build` and an existing image. Docker Desktop is installed on this laptop, but the private container image, HTTP workflow, polling worker and PostgreSQL restore were subsequently verified. Both Compose configurations validate. This guard is headroom for image/build storage, not a guarantee of total capacity on every Docker host.
+
+
+### Private deployment diagnostics and backups
+
+The private acceptance run targets this laptop. The public VPS package and its separate acceptance are documented in PUBLIC_DEPLOYMENT.md. `python scripts/run.py doctor`
+reports Docker CLI discovery, engine readiness, free disk, dashboard build and
+whether a deployment env file exists. It never prints the file's contents and
+works in an existing Windows terminal whose PATH predates Docker installation.
+Engine startup was successfully verified on 28 October after a Desktop restart.
+
+Logs rotate at 10 MB with three files per service. API, worker, PostgreSQL and
+optional model have memory/process limits; application scratch tmpfs is 64 MB.
+Memory defaults can be adjusted through `AI_SOC_API_MEMORY`,
+`AI_SOC_WORKER_MEMORY`, `AI_SOC_DB_MEMORY`, and `AI_SOC_MODEL_MEMORY` (768m,
+512m, 1g and 4g respectively). Docker allows a 150-second worker stop window before forced termination;
+the database gets 60 seconds. Interrupted work still relies on the documented
+lease recovery and idempotent ingestion rather than a claim of zero downtime. Verify these limits against the actual workload.
+
+After the Compose database is running, create a private backup from the checkout:
+
+```bash
+python -m scripts.backup create
+python -m scripts.backup verify data/backups/<generated-file>.dump
+```
+
+The helper streams `pg_dump -Fc` directly into a binary file, avoiding Windows
+PowerShell binary redirection issues. Backups and a SHA-256 sidecar stay under
+ignored `data/backups`. Failure removes only the partial file created by that
+invocation. Verification checks the checksum before accessing Docker, restores
+into a fresh randomly named `restorecheck_...` database, checks the schema and
+aggregate evidence counts, then removes only that temporary database. It cannot
+accept an existing database as a restore target. Restore failures are surfaced
+and still clean up the temporary target. Never restore an untrusted archive.
+
+Provider encryption keys and the deployment secret file are not included in
+the dump. Keep them separately in protected storage; losing a token key makes
+the corresponding encrypted provider tokens unusable. Backups contain retained
+evidence and encrypted tokens and must remain private. The Windows file ACL is
+inherited from the parent directory; protect that directory as well. These
+helpers have regression tests. Real private and public-stack schema backup/restore checks passed on 28 October; the public check restores using the restricted application role.
+
+The application image uses fixed UID/GID 10001. Application code and dependencies remain root-owned and readable; only the data directory is assigned to the application user. Dependency download caches are excluded from the runtime image.
+
+## Restart this laptop deployment
+
+Run this single PowerShell command from any folder:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\HP\OneDrive\Desktop\y4\ai-soc-prototype\scripts\restart.ps1"
+```
+
+It starts Docker Desktop when needed, restarts the API/website,
+collection worker, PostgreSQL and the installed optional model service, waits for
+container health checks and API readiness, and opens
+http://127.0.0.1:8001/. It preserves database/model volumes, private Google
+credential mounts and the existing token encryption key. It never downloads a
+model or silently falls back to unauthenticated local mode. Missing configuration
+or a mismatched OAuth callback port fails with an actionable error.
+Use `-Build` after source changes; the normal restart reuses installed images.
+Use `-NoBrowser` to leave the browser closed. Google configuration is required
+by default; `-LocalWorkspace` explicitly permits an unauthenticated local
+workspace when no Google configuration exists. Live Google consent still requires
+the registered callbacks and provider account approval.

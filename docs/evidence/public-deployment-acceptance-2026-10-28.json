@@ -1,0 +1,30 @@
+{
+  "tls": "private CA verified; hostname verified; no OS trust changes",
+  "dashboard": "passed",
+  "readiness": "passed",
+  "https_redirect": "passed",
+  "security_headers": "passed",
+  "public_signup_configuration": "passed",
+  "unauthenticated_and_header_spoofing": "rejected",
+  "live_google_signin": "requires operator Google client and chosen public domain",
+  "backend_full_suite": {
+    "passed": 234,
+    "coverage_percent": 91.73
+  },
+  "additional_public_queue_route_test": "passed; 202 then independent worker completion and deletion",
+  "frontend_suite": {
+    "passed": 58,
+    "lint": "passed",
+    "build": "passed"
+  },
+  "restricted_database_role": {
+    "superuser": false,
+    "create_database": false,
+    "create_role": false
+  },
+  "shutdown_recovery": "Docker restarted; persisted private and public volumes retained; private preview ready on port 8001",
+  "synthetic_session_https_workflow": "ingestion, duplicates, review and isolation passed",
+  "privacy": "message body excluded; actor supplied by server",
+  "backup_restore": "non-empty synthetic evidence restored as restricted application role",
+  "account_deletion": "both synthetic workspaces removed; sessions rejected"
+}

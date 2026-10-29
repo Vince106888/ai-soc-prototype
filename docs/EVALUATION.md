@@ -224,3 +224,32 @@ late session-check response restoring a signed-out workspace.
 ## Final regression checkpoint
 
 On 5 October 2026, all 131 backend tests passed at 93.66% application coverage; Ruff lint/format passed. A clean frontend install, security audit with zero reported vulnerabilities, ESLint, all 47 tests and production build passed. These establish implementation behavior, not detection generalisation or participant success. The final template list condenses repeated finding titles without dropping evidence; 29 focused regression tests also passed.
+
+
+## Portable native acceptance — 28 October 2026
+
+See [acceptance record](evidence/portable-acceptance-2026-10-28.json). The patched
+runtime passed 192 backend tests at 93.54% coverage, including ten backup
+and portable-launcher regression tests. The frontend passed 55 tests, lint and build.
+Both dependency audits reported no known vulnerabilities after the documented
+patches. A real HTTP smoke checked minimisation, tenant boundaries, idempotency,
+lifecycle and audit; a controlled scheduled worker job completed. Browser checks
+verified a populated overview and a labelled local-model incident explanation.
+
+Both base and optional Ollama Compose configurations validate with the installed
+Docker CLI. Image build/container runtime acceptance remains pending because
+available disk was below the launcher's 5 GiB minimum. Configuration validation
+is not runtime evidence. CI contains container acceptance and a Windows/Linux
+backend matrix; this local record does not claim those remote CI jobs ran.
+
+## Controlled public deployment acceptance
+
+The 28 October controlled HTTPS acceptance uses a verified private CA and
+hostname, synthetic sessions injected only through operator container access,
+and authorised synthetic message indicators. It verifies ingestion, duplicate
+handling, findings, review actor integrity, tenant isolation, body minimisation,
+account deletion and session revocation. A non-empty PostgreSQL backup restores
+as the restricted app role into an isolated temporary database. The product has
+no test authentication endpoint. Signed synthetic Google identities separately
+exercise OAuth identity contracts. These checks do not establish live Google
+approval, ACME/DNS availability, detection accuracy or a chosen VPS capacity.

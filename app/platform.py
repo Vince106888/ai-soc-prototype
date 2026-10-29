@@ -10,10 +10,13 @@ from sqlalchemy import case, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from . import deployment
 from .entities import (
     Account,
+    AppUser,
     AuditRecord,
     DetectionRule,
+    ExplanationJob,
     Finding,
     Incident,
     IncidentExplanation,
@@ -101,7 +104,32 @@ def _commit(session: Session) -> None:
         raise ConflictError("A record with the same stable identifier already exists.") from exc
 
 
+def workspace_write(session: Session, tenant_id: str) -> None:
+    if deployment.production():
+        user = session.scalar(
+            select(AppUser)
+            .where(AppUser.tenant_id == tenant_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if user is None or user.status != "active":
+            raise ConflictError("Workspace access is unavailable.")
+
+
 def create_account(session: Session, tenant_id: str, data: AccountCreate) -> Account:
+    workspace_write(session, tenant_id)
+    if (
+        deployment.production()
+        and session.scalar(
+            select(func.count())
+            .select_from(Account)
+            .where(
+                Account.tenant_id == tenant_id,
+            )
+        )
+        >= 25
+    ):
+        raise ConflictError("Workspace account limit reached. Remove an unused account first.")
     account = Account(tenant_id=tenant_id, **data.model_dump())
     session.add(account)
     _commit(session)
@@ -125,7 +153,35 @@ def get_account(session: Session, tenant_id: str, account_id: str) -> Account:
     return account
 
 
+def lock_account(session: Session, tenant_id: str, account_id: str) -> Account:
+    """Serialize account mutations across PostgreSQL API and worker processes."""
+    if deployment.production():
+        session.scalar(select(AppUser).where(AppUser.tenant_id == tenant_id).with_for_update())
+    account = session.scalar(
+        select(Account)
+        .where(Account.id == account_id, Account.tenant_id == tenant_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if account is None:
+        raise NotFoundError("Account not found.")
+    return account
+
+
 def create_source(session: Session, tenant_id: str, account_id: str, data: SourceCreate) -> Source:
+    workspace_write(session, tenant_id)
+    if (
+        deployment.production()
+        and session.scalar(
+            select(func.count())
+            .select_from(Source)
+            .where(
+                Source.tenant_id == tenant_id,
+            )
+        )
+        >= 50
+    ):
+        raise ConflictError("Workspace source limit reached. Remove an unused account first.")
     get_account(session, tenant_id, account_id)
     capabilities = ["signin" if item == "sign_in" else item for item in data.capabilities]
     source = Source(
@@ -158,7 +214,10 @@ def get_source(session: Session, tenant_id: str, source_id: str) -> Source:
 
 
 def update_source_status(session: Session, tenant_id: str, source_id: str, status: str) -> Source:
+    workspace_write(session, tenant_id)
     source = get_source(session, tenant_id, source_id)
+    lock_account(session, tenant_id, source.account_id)
+    session.refresh(source)
     source.status = status
     source.updated_at = utcnow()
     if status != "active":
@@ -170,6 +229,19 @@ def update_source_status(session: Session, tenant_id: str, source_id: str, statu
 
 
 def create_scan_job(session: Session, tenant_id: str, source_id: str, trigger: str) -> ScanJob:
+    workspace_write(session, tenant_id)
+    if (
+        deployment.production()
+        and session.scalar(
+            select(func.count())
+            .select_from(ScanJob)
+            .where(
+                ScanJob.tenant_id == tenant_id,
+            )
+        )
+        >= 2000
+    ):
+        raise ConflictError("Workspace scan history limit reached. Contact the service operator.")
     source = get_source(session, tenant_id, source_id)
     if source.status != "active":
         raise ConflictError("Disconnected sources cannot start scans.")
@@ -481,6 +553,8 @@ def _correlate(
             Incident.correlation_key == signal.correlation_key,
             Incident.last_seen_at >= start,
             Incident.first_seen_at <= end,
+            Incident.first_seen_at >= start,
+            Incident.last_seen_at <= end,
             Incident.status != "false_positive",
         )
         .order_by(Incident.last_seen_at.desc())
@@ -554,11 +628,15 @@ def ingest_signals(
     source_id: str,
     batch: SignalBatch,
 ) -> IngestionResult:
+    workspace_write(session, tenant_id)
     source = get_source(session, tenant_id, source_id)
+    lock_account(session, tenant_id, source.account_id)
     session.refresh(source)  # A source may have disconnected during provider collection.
     if source.status != "active":
         raise ConflictError("Disconnected sources cannot ingest signals.")
     job = get_scan_job(session, tenant_id, batch.scan_job_id) if batch.scan_job_id else None
+    if job:
+        session.refresh(job)
     if job and job.source_id != source.id:
         raise ConflictError("The scan job belongs to a different source.")
     if job:
@@ -601,6 +679,19 @@ def ingest_signals(
             )
             duplicate_count += 1
             continue
+
+        if (
+            deployment.production()
+            and session.scalar(
+                select(func.count())
+                .select_from(Signal)
+                .where(
+                    Signal.tenant_id == tenant_id,
+                )
+            )
+            >= 10000
+        ):
+            raise ConflictError("Workspace retained-signal limit reached.")
 
         signal_type, features = normalise_signal(raw_signal.signal_type, raw_signal.features)
         occurred_at = _as_utc(raw_signal.occurred_at)
@@ -922,12 +1013,22 @@ def incident_detail(session: Session, tenant_id: str, incident_id: str) -> Incid
     incident = _load_incident(session, tenant_id, incident_id)
     latest_explanation = max(incident.explanations, key=lambda item: item.created_at)
     explanation = {"source": latest_explanation.source, **latest_explanation.content}
+    job = session.scalar(
+        select(ExplanationJob)
+        .where(
+            ExplanationJob.tenant_id == tenant_id,
+            ExplanationJob.incident_id == incident_id,
+        )
+        .order_by(ExplanationJob.created_at.desc())
+        .limit(1)
+    )
     unique_signals = {finding.signal.id: finding.signal for finding in incident.findings}
     return IncidentDetail(
         **_incident_item(incident).model_dump(),
         findings=incident.findings,
         signals=list(unique_signals.values()),
         explanation=explanation,
+        explanation_job=job,
         recommendations=sorted(incident.recommendations, key=lambda item: item.position),
         audit=sorted(incident.audit_records, key=lambda item: item.created_at),
     )
@@ -947,7 +1048,10 @@ def transition_incident(
     incident_id: str,
     transition: IncidentTransition,
 ) -> IncidentDetail:
+    workspace_write(session, tenant_id)
     incident = _load_incident(session, tenant_id, incident_id)
+    lock_account(session, tenant_id, incident.account_id)
+    session.refresh(incident)
     previous = incident.status
     if transition.status not in VALID_TRANSITIONS[previous]:
         raise InvalidTransitionError(

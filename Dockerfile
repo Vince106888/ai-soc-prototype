@@ -15,22 +15,24 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project --no-cache
 
 COPY app/ app/
 COPY fixtures/ fixtures/
+COPY scripts/ scripts/
+COPY deploy/ deploy/
 COPY alembic.ini ./
 COPY alembic/ alembic/
 COPY --from=dashboard-build /build/frontend/dist/ frontend/dist/
 
-RUN addgroup --system sentinelsme \
-    && adduser --system --ingroup sentinelsme sentinelsme \
-    && mkdir -p /app/data \
-    && chown -R sentinelsme:sentinelsme /app
-USER sentinelsme
+RUN addgroup --system --gid 10001 sentinelsme \
+    && adduser --system --uid 10001 --ingroup sentinelsme --no-create-home sentinelsme \
+    && mkdir -p /app/data /app/deletion-ledger \
+    && chown sentinelsme:sentinelsme /app/data /app/deletion-ledger
+USER 10001:10001
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"
 
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--no-proxy-headers"]

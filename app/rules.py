@@ -325,6 +325,16 @@ def seed_rules(session: Session) -> None:
     """Insert the versioned defaults while preserving deliberate DB overrides."""
 
     existing = set(session.scalars(select(DetectionRule.code)).all())
+    missing = [item for item in DEFAULT_RULES if item["code"] not in existing]
+    dialect = session.get_bind().dialect.name
+    if missing and dialect in {"postgresql", "sqlite"}:
+        if dialect == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert
+        else:
+            from sqlalchemy.dialects.sqlite import insert
+        session.execute(insert(DetectionRule).values(missing).on_conflict_do_nothing())
+        session.flush()
+        return
     for item in DEFAULT_RULES:
         if item["code"] not in existing:
             session.add(DetectionRule(**item))

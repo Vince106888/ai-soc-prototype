@@ -145,3 +145,29 @@ session expiry and the local fallback. These do not prove live Google sign-in
 or remote hosting. Record the first real sign-in separately after registering
 the callback. The earlier authorised Gmail trial is mailbox integration
 evidence, not app sign-in or detection-accuracy validation.
+
+## Safe sign-in failure diagnostics
+
+The callback redirects failed login attempts to `/?signin=failed&reason=CODE`.
+CODE is a fixed allow-list: expired (state, browser binding or reuse), identity
+(signature/claims), permissions (unexpected grant), provider (token exchange or
+connectivity), not_allowed (account access), configuration, clock (identity timestamp too far ahead), or unavailable. The
+welcome page displays fixed recovery text and then removes the query string.
+Arbitrary URL text is never displayed. The API logs only this category, never
+provider errors, codes, states, cookies, identities or tokens. Failed verification
+never creates a user/session. Do not relax signature, nonce, audience, issuer,
+browser binding or permission checks to make a login pass.
+
+If Google sign-in switches from an embedded preview into another browser, open
+the app directly in that browser and start again there. The callback must return
+to the browser that holds the short-lived login cookie.
+
+Identity validation allows at most 30 seconds of clock skew for temporal claims.
+A local diagnostic found Google's HTTP Date about 1–2 seconds ahead of the
+container, which can make zero-leeway issued-at validation reject a fresh token.
+This is a measured symptom, not proof of the historical failure. Five-second
+future-issued synthetic identities pass; five-minute future identities and
+identities expired beyond the 30-second tolerance, unverified emails, wrong
+audiences and wrong nonces remain rejected. This
+uses PyJWT's documented bounded leeway, not disabled timestamp verification:
+https://pyjwt.readthedocs.io/en/stable/usage.html#expiration-time-claim-exp

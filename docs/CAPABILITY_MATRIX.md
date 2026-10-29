@@ -30,7 +30,7 @@ companion to this page.
 | Evidence | Persistent signal-to-rule-to-incident chain | Implemented | SQLAlchemy entities and detail API |
 | Evidence | Searchable retained signals including no-match records | Implemented | Tenant-scoped `/signals` page/detail; stored features only, no re-scoring |
 | Guidance | Plain-language template explanation | Implemented | Four-part explanation, per-indicator reasons with a "could be legitimate if" counterfactual, warning-sign count, advisory action catalogue |
-| Guidance | Local-model explanation (Ollama, loopback only) | Implemented; off by default | `AI_SOC_EXPLAINER=ollama`; redacted findings, validated output, template fallback; see `LOCAL_MODEL.md`. Run on the target laptop pending |
+| Guidance | Local-model explanation (Ollama, loopback only) | Implemented; off by default; synthetic laptop check passed | 28 October: 4/4 valid outputs, repeat median 27.62 s, max 47.17 s, no fallbacks; generated local report `data/explainer-check-2026-10-28.json`; not detection-accuracy evidence |
 | Response | Human review and lifecycle decisions | Implemented | Dashboard/API status change with audit record |
 | Response | Password reset, grant revocation, or mailbox change | Not implemented | Recommendations are advisory only |
 | Dashboard | Overview, priority queue, incident detail | Implemented | React/Vite SPA |
@@ -45,16 +45,16 @@ companion to this page.
 | Evaluation | Representative calibrated research dataset | Not implemented | Current examples and tests are controlled, not representative |
 | Evaluation | Isolated 500-signal local service benchmark | Implemented and measured | Three fresh SQLite runs; median 4.572 s; HTTP/dashboard/Gmail/concurrency excluded; see `BENCHMARK.md` |
 | Storage | SQLite zero-configuration persistence | Implemented | Default `data/sentinelsme.db` |
-| Storage | PostgreSQL-compatible SQLAlchemy URL and migration | Implemented, production hardening pending | Set `AI_SOC_DATABASE_URL`; Alembic owns the versioned schema |
+| Storage | PostgreSQL and versioned migrations | Implemented and container-tested | Private URL configuration; production secret files and separate restricted app role; isolated backup restoration passed |
 | Access | Tenant-scoped platform queries | Implemented | Google mode derives workspace from a verified server session; local mode uses caller-supplied `X-Tenant-ID` |
 | Access | Optional shared API key | Local prototype control | `AI_SOC_API_KEY` and `X-API-Key` in local mode only |
-| Access | Invited Google sign-in and app sessions | Implemented; live sign-in validation pending | Separate `openid email` login, eight-hour opaque cookies, CSRF, exact invite list and private workspaces; synthetic identity/isolation tests; localhost only |
+| Access | Google sign-in and app sessions | Implemented; live public sign-in pending | Separate `openid email`, public or invited policy, eight-hour opaque Secure cookies in production, exact-Origin CSRF and private workspaces |
 | Dashboard | Guided entry and account sign-out | Implemented | Google welcome screen, automatic workspace, prefilled Gmail account, local-demo alternative; see `ONBOARDING.md` |
-| Access | Remote/public registration and organisation roles | Not implemented | Requires HTTPS deployment, Google production setup and operations hardening |
+| Access | Public Google registration and private workspaces | Implemented; controlled identity/TLS tests passed | Public self-registration; server-derived tenant; live Google client/domain acceptance remains required; shared organisation roles are outside scope |
 | Cloud | Personal Gmail OAuth and bounded collection | Implemented; local consent/sample validated | Read-only scope, single-use browser-bound state/PKCE, encrypted tokens; refresh/disconnect covered by mocked tests; per-installation credentials required |
 | Cloud | Google Workspace admin telemetry | Not implemented | Controlled equivalents can be ingested |
-| Operations | API/dashboard/worker/PostgreSQL Compose deployment | Prepared; container runtime pending | Native PostgreSQL migration/scan/restore verified; Docker unavailable on this host; CI smoke path added |
-| Operations | Local trial retention/deletion | Implemented locally | Seven-day Gmail account expiry, purge at startup/API requests/worker polls and manual account deletion; general production retention pending |
+| Operations | API/dashboard/worker/PostgreSQL Compose deployment | Private runtime and controlled public TLS acceptance passed | Standalone public Caddy/Nginx stack; restricted app DB role; real ingestion/isolation/privacy/lifecycle/deletion and non-empty isolated restore; final live VPS/domain acceptance pending |
+| Operations | Retention and deletion | Implemented and tested | Seven-day development trial; configurable production evidence retention (default 30 days), full workspace deletion/session revocation, independent durable deletion receipts replayed before restored API readiness |
 
 ## Input profiles
 
@@ -71,8 +71,8 @@ companion to this page.
   executable adapter; Workspace administrator collection remains absent.
 - A queued scan job is an operational record; it is not evidence that a mailbox
   was scanned.
-- “AI-assisted” describes the bounded architecture. The current executable
-  explanation source is `template`.
+- Templates remain the default; explicitly enabled loopback Ollama may rewrite
+  structured findings. Any invalid output or model outage preserves templates.
 - The dashboard is a client of the API. It does not make detection decisions.
 
 Dashboard additions: tenant-scoped workspace totals independent of filters,
@@ -80,3 +80,11 @@ seven-day retained activity, observed signals, copied weight/confidence, process
 source counts, Gmail consent/sample scan controls, and local deletion. The opt-in
 scheduler/worker added on 5 October executes recurring bounded samples; generic
 queued jobs still require explicit ingestion.
+
+Public deployment procedures and remaining live release gates are in [PUBLIC_DEPLOYMENT.md](PUBLIC_DEPLOYMENT.md). Production AI requests are queued against a template revision in a separate leased worker; slow inference does not block collection or HTTP.
+
+UI upgrade (29 October): a shared blue theme, explicit hover/press/focus states,
+phone header and modal layouts, metric-to-filter navigation, deliberate search
+submission, and distinct selected-message/Gmail entry points are implemented.
+Isolated Playwright tests exercise real browser interactions at phone, tablet and
+desktop sizes using synthetic responses; these do not establish live Gmail consent.

@@ -9,14 +9,16 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import auth, explainer
+from . import auth, budgets, deployment, explainer
 from .database import get_session
 from .entities import AuditRecord, ScanSchedule
 from .evidence import signal_detail, signal_page
+from .explanation_jobs import enqueue
+from .explanation_jobs import expire as expire_explanation_jobs
 from .gmail import configuration_status
 from .overview import dashboard_overview
 from .platform import (
@@ -79,7 +81,7 @@ from .platform_schemas import (
     TrustedSenderCreate,
     TrustedSenderView,
 )
-from .retention import delete_account_data
+from .retention import delete_account_data, expire_workspace_evidence
 from .scheduling import configure_schedule
 
 TENANT_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$")
@@ -102,6 +104,16 @@ def request_context(
 
     if auth.required():
         identity = auth.principal(db, request)
+        if deployment.production():
+            # FastAPI caches this dependency once per request. Counters survive API restarts.
+            budgets.consume(
+                db, identity.user_id, identity.tenant_id, request.method, request.url.path
+            )
+            identity = auth.principal(db, request)
+            expire_workspace_evidence(db, identity.tenant_id)
+            expire_explanation_jobs(db, identity.tenant_id)
+            db.commit()
+            identity = auth.principal(db, request)
         return RequestContext(identity.tenant_id, identity.user_id, identity.email)
 
     expected = os.getenv("AI_SOC_API_KEY")
@@ -465,14 +477,21 @@ def incidents_get(incident_id: str, db: DB, context: Context) -> IncidentDetail:
 
 
 @router.post("/incidents/{incident_id}/explanation", response_model=IncidentDetail)
-def incidents_explain(incident_id: str, db: DB, context: Context) -> IncidentDetail:
+def incidents_explain(
+    incident_id: str, db: DB, context: Context, response: Response
+) -> IncidentDetail:
     """Ask the local model to explain one incident now; the template remains on failure."""
 
     if not explainer.settings().enabled:
         raise HTTPException(status_code=409, detail="Local model explanations are not enabled.")
     try:
         incident = _load_incident(db, context.tenant_id, incident_id)
-        explainer.explain_incident(db, incident)
+        if deployment.production():
+            enqueue(db, context.tenant_id, incident)
+            db.commit()
+            response.status_code = 202
+        else:
+            explainer.explain_incident(db, incident)
         db.expire_all()
         return incident_detail(db, context.tenant_id, incident_id)
     except NotFoundError as exc:

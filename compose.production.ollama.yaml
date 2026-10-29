@@ -1,0 +1,47 @@
+services:
+  api:
+    environment:
+      AI_SOC_EXPLAINER: ollama
+  worker:
+    network_mode: service:api
+    environment:
+      AI_SOC_EXPLAINER: ollama
+  explainer:
+    extends:
+      file: compose.production.yaml
+      service: worker
+    command: [python, -m, app.explanation_worker]
+    network_mode: service:api
+    stop_grace_period: 240s
+    depends_on:
+      ollama: {condition: service_healthy}
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+    network_mode: service:api
+    environment:
+      OLLAMA_HOST: 127.0.0.1:11434
+      OLLAMA_MAX_QUEUE: "2"
+      OLLAMA_NUM_PARALLEL: "1"
+    volumes: ["public-ollama-models:/models"]
+    depends_on:
+      api: {condition: service_healthy}
+    user: "10001:10001"
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 4g
+    pids_limit: 256
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    healthcheck:
+      test: [CMD, ollama, list]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+volumes:
+  public-ollama-models:

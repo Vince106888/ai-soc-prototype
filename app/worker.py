@@ -7,14 +7,14 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
-from . import auth, database, explainer
+from . import auth, database, deployment, explainer
 from .auth import purge_expired
 from .demo import DEFAULT_FIXTURE
 from .entities import Account, ScanSchedule, Source, utcnow
 from .gmail import scan_mailbox
 from .platform import create_scan_job, get_scan_job, ingest_signals, mark_scan_job_failed
 from .platform_schemas import EvaluationRequest, ScheduleUpdate, SignalBatch
-from .retention import expire_trials
+from .retention import expire_trials, production_maintenance
 from .scheduling import claim_due, complete_lease, configure_schedule
 
 
@@ -23,6 +23,7 @@ def run_due(*, maximum_jobs: int = 10, maximum_explanations: int = 3) -> dict:
     with database.SessionLocal() as db:
         expire_trials(db)
         purge_expired(db)
+        production_maintenance(db)
     for _ in range(maximum_jobs):
         with database.SessionLocal() as db:
             claimed = claim_due(db, utcnow())
@@ -43,7 +44,7 @@ def run_due(*, maximum_jobs: int = 10, maximum_explanations: int = 3) -> dict:
                 source = db.get(Source, source_id)
                 if source.source_type == "gmail":
                     account = db.get(Account, source.account_id)
-                    if auth.required() and account.email not in auth.invitations():
+                    if auth.required() and not auth.workspace_allowed(db, tenant, account.email):
                         schedule.enabled = False
                         db.commit()
                         raise ValueError("Pilot invitation withdrawn")
@@ -79,7 +80,7 @@ def run_due(*, maximum_jobs: int = 10, maximum_explanations: int = 3) -> dict:
                 mark_scan_job_failed(db, tenant, job_id, source_id, exc)
                 complete_lease(db, source_id, lease, succeeded=False)
                 counts["failed"] += 1
-    if explainer.settings().enabled:
+    if explainer.settings().enabled and maximum_explanations > 0:
         # Explanations run after collection has committed, so a slow or absent model
         # never delays or blocks evidence; the template stays visible until replaced.
         with database.SessionLocal() as db:
@@ -92,6 +93,7 @@ def run_due(*, maximum_jobs: int = 10, maximum_explanations: int = 3) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--collection-only", action="store_true")
     parser.add_argument("--poll-seconds", type=int, choices=range(5, 301), default=30)
     parser.add_argument(
         "--enable-demo",
@@ -100,6 +102,9 @@ def main() -> None:
     )
     parser.add_argument("--tenant", default="demo")
     args = parser.parse_args()
+    deployment.validate()
+    if deployment.production() and args.enable_demo:
+        parser.error("Synthetic demo schedules are disabled in production.")
     database.migrate_schema()
     if args.enable_demo:
         with database.SessionLocal() as db:
@@ -124,7 +129,10 @@ def main() -> None:
             db.commit()
     while True:
         # Aggregate counts only: never log source IDs, mailbox content or tokens.
-        print(json.dumps(run_due()), flush=True)
+        print(
+            json.dumps(run_due(maximum_explanations=0) if args.collection_only else run_due()),
+            flush=True,
+        )
         if args.once:
             return
         time.sleep(args.poll_seconds)
