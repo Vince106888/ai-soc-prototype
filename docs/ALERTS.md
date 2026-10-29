@@ -62,3 +62,6 @@ recurring-collection consent; nothing is enabled until that consent is ticked.
 Switching back to Manual pauses the schedule. Automatic scanning still needs the
 worker (`python -m app.worker`, or the Compose `worker` service) to be running;
 see [scheduling](SCHEDULING.md).
+
+The laptop Compose deployment runs the worker automatically, so automatic scans and
+webhook delivery need no extra process; see [operations](OPERATIONS.md).
