@@ -82,3 +82,18 @@ visual demonstration, not a production account or an accuracy dataset.
 ## Completion controls
 
 Connected Gmail sources expose a collapsed Scheduled samples form with separate recurring consent and bounded settings. A worker must be running; next eligibility is not a worker-health assertion. Incident filters include latest-evidence from/until local times; API requests convert to UTC, and incident detail displays explicit UTC time and correlation context. Review notes are capped at the API limit of 500 characters.
+
+## Browser interaction and responsive checks
+
+The blue product foundation is in `src/product.css`; the existing operational
+styles supply component structure. Use `npm run test:browser` after installing
+the development dependencies and `npx playwright install chromium`. On Windows,
+`$env:PLAYWRIGHT_CHANNEL="msedge"` reuses installed Edge without downloading a
+browser. Tests start a loopback Vite server on port 8010, create isolated browser
+contexts, and fulfil API requests with explicitly synthetic responses. They do
+not use your logged-in browser, Google credentials or mailbox data.
+
+Checks cover 375/768/1024/1440px layouts, navigation, metric filters, search,
+incident tabs, account dialogs, Gmail acknowledgement, and blue hover feedback.
+Screenshots are generated under ignored `data/ui-review/`; test traces and
+reports are ignored too. The same browser suite runs with Chromium in CI.

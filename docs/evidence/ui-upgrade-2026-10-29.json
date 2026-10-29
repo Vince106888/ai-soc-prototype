@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-29",
+  "theme": "blue primary, navy navigation, neutral workspace",
+  "frontend_tests": 63,
+  "browser_scenarios": 6,
+  "viewports": [
+    375,
+    768,
+    1024,
+    1440
+  ],
+  "checks": [
+    "clean npm ci",
+    "lint",
+    "production build",
+    "navigation and metrics",
+    "deliberate search",
+    "selected-message and Gmail entry points",
+    "phone filter disclosure",
+    "incident tabs",
+    "drawer and modal focus",
+    "resize recovery",
+    "reduced motion",
+    "hover feedback",
+    "no horizontal page overflow"
+  ],
+  "visual_review": [
+    "synthetic desktop overview",
+    "synthetic phone overview and incident detail",
+    "synthetic phone welcome"
+  ],
+  "privacy": "isolated browser contexts with synthetic API responses; no real mailbox data or user browser profile",
+  "screenshots": "generated under ignored data/ui-review; not committed"
+}

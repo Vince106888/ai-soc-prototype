@@ -82,3 +82,9 @@ scheduler/worker added on 5 October executes recurring bounded samples; generic
 queued jobs still require explicit ingestion.
 
 Public deployment procedures and remaining live release gates are in [PUBLIC_DEPLOYMENT.md](PUBLIC_DEPLOYMENT.md). Production AI requests are queued against a template revision in a separate leased worker; slow inference does not block collection or HTTP.
+
+UI upgrade (29 October): a shared blue theme, explicit hover/press/focus states,
+phone header and modal layouts, metric-to-filter navigation, deliberate search
+submission, and distinct selected-message/Gmail entry points are implemented.
+Isolated Playwright tests exercise real browser interactions at phone, tablet and
+desktop sizes using synthetic responses; these do not establish live Gmail consent.

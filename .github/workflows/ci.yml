@@ -74,6 +74,8 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
 
   container:
     runs-on: ubuntu-latest

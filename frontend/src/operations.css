@@ -61,7 +61,7 @@ th, td code { font-size: 11px; }
 .gmail-boundary { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 18px; }
 .gmail-boundary span { padding: 6px 10px; border: 1px solid #dce6f4; border-radius: 5px; color: #4c6380; font-size: 12px; background: #f7faff; }
 .connection-pill { color: #7c6019 !important; background: #fff7df; border: 1px solid #eddfb9; padding: 5px 10px; border-radius: 5px; font-size: 12px; }
-.connection-pill.ready { color: #216d58 !important; background: #eaf8f1; border-color: #c7e5d7; }
+.connection-pill.ready { color: #213d6d !important; background: #eaeff8; border-color: #c7d2e5; }
 .setup-message { border-left: 3px solid #d6a746; padding: 10px 16px; margin: 16px 0; background: #fffaf0; color: #68552d; font-size: 13px; }
 .setup-message p { line-height: 1.6; margin-bottom: 0; }
 .gmail-setup-details { margin: 14px 0; font-size: 13px; color: #485e7a; }
