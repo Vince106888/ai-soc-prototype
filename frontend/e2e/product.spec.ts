@@ -50,6 +50,7 @@ for (const width of [375, 768, 1024, 1440]) {
     const overflow = () => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
     expect(await overflow()).toBe(false)
     await page.screenshot({ path: `../data/ui-review/overview-${width}.png`, fullPage: true })
+    await expect(page.getByRole('button', { name: 'View critical priority' })).toHaveAccessibleDescription('0')
     await page.getByRole('button', { name: 'View critical priority' }).click()
     await expect(page.getByRole('combobox', { name: 'Severity', exact: true })).toHaveValue('critical')
     await page.getByRole('button', { name: 'Show all incident statuses' }).click()
