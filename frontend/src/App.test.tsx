@@ -4,7 +4,13 @@ import App from './App'
 import { api } from './api'
 import type { Incident } from './types'
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); sessionStorage.clear() })
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+  sessionStorage.clear()
+  localStorage.clear()
+  window.history.replaceState(null, '', '/')
+})
 
 const incident: Incident = { id: 'case-a', title: 'Controlled critical case', summary: 'Synthetic evidence', severity: 'critical', status: 'new', score: 0.9, account_id: 'account-a' }
 
@@ -37,11 +43,10 @@ describe('workspace investigation state', () => {
     vi.spyOn(api, 'incidentPage').mockResolvedValue({ items: [], total: 0, offset: 0, limit: 25 })
     render(<App session={{ mode: 'google', configured: true, invitation_only: false, session_hours: 8, mailbox_consent_separate: true, csrf_token: 'synthetic', user: { id: 'a', email: 'owner@example.test', workspace_id: 'a' } }} />)
     await screen.findByRole('heading', { name: 'Security overview' })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Analyse email' })[0])
-    expect(await screen.findByLabelText('Selected message text')).toBeVisible()
-    fireEvent.click(screen.getByRole('button', { name: 'Overview' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Set up Gmail' }))
-    expect(await screen.findByRole('button', { name: 'Connect Gmail' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Analyse message' }))
+    await waitFor(() => expect(screen.getByRole('main')).toHaveTextContent('Analyse email'))
+    fireEvent.click(screen.getByRole('button', { name: /Gmail sample/ }))
+    expect(await screen.findByRole('button', { name: /Continue with Google/ })).toBeVisible()
     expect(screen.queryByLabelText('Selected message text')).not.toBeInTheDocument()
   })
 
@@ -50,10 +55,10 @@ describe('workspace investigation state', () => {
     mockWorkspace()
     vi.spyOn(api, 'incidentPage').mockResolvedValue({ items: [incident], total: 1, offset: 0, limit: 25 })
     render(<App />)
-    fireEvent.click(await screen.findByRole('button', { name: 'View critical priority' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Critical priority: 1/ }))
     expect(screen.getByLabelText('Severity')).toHaveValue('critical')
-    fireEvent.click(screen.getByRole('button', { name: 'Show all incident statuses' }))
-    expect(screen.queryByRole('button', { name: 'Show all incident statuses' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove filter: Open cases only' }))
+    expect(screen.queryByRole('button', { name: 'Remove filter: Open cases only' })).not.toBeInTheDocument()
   })
   it('keeps keyboard focus inside the mobile drawer and restores it on Escape', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }))
@@ -65,7 +70,7 @@ describe('workspace investigation state', () => {
       fireEvent.click(opener)
       expect(panel).not.toHaveAttribute('inert')
       expect(screen.getByRole('button', { name: 'Overview' })).toHaveFocus()
-      screen.getByRole('button', { name: 'Settings' }).focus()
+      screen.getByRole('button', { name: 'Account & settings' }).focus()
       fireEvent.keyDown(window, { key: 'Tab' })
       expect(screen.getByRole('button', { name: 'Overview' })).toHaveFocus()
       fireEvent.keyDown(window, { key: 'Escape' })
@@ -74,14 +79,14 @@ describe('workspace investigation state', () => {
     } finally { vi.unstubAllGlobals() }
   })
 
-  it('traps settings dialog focus and returns it to the opener', () => {
+  it('traps settings dialog focus and returns it to the opener', async () => {
     render(<App />)
-    const opener = screen.getByRole('button', { name: 'API settings' })
+    const opener = screen.getByRole('button', { name: 'Local workspace settings' })
     opener.focus()
     fireEvent.click(opener)
     const dialog = within(screen.getByRole('dialog'))
     const close = dialog.getByRole('button', { name: 'Close dialog' })
-    expect(close).toHaveFocus()
+    await waitFor(() => expect(close).toHaveFocus())
     fireEvent.keyDown(window, { key: 'Tab', shiftKey: true })
     expect(dialog.getByRole('button', { name: 'Cancel' })).toHaveFocus()
     fireEvent.keyDown(window, { key: 'Tab' })
@@ -111,7 +116,7 @@ describe('workspace investigation state', () => {
     await screen.findByRole('button', { name: /Controlled critical case/ })
     fireEvent.click(screen.getByRole('button', { name: 'All incidents' }))
     fireEvent.change(screen.getAllByLabelText('Status')[0], { target: { value: 'resolved' } })
-    await screen.findByText('No matching incidents')
+    await screen.findByText('No incidents match these filters')
     expect(pages.mock.calls.some(([, filters]) => filters.openOnly === true && filters.status === '')).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Overview' }))
     await screen.findByRole('button', { name: /Controlled critical case/ })
@@ -127,10 +132,10 @@ describe('workspace investigation state', () => {
       return { items: credentials.tenantId === 'a' ? [incident] : [], total: credentials.tenantId === 'a' ? 1 : 0, offset: 0, limit: 25 }
     })
     render(<App />)
-    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Account & settings' }))
     const dialog = within(screen.getByRole('dialog'))
     fireEvent.change(dialog.getByLabelText('Workspace ID'), { target: { value: 'b' } })
-    fireEvent.click(dialog.getByRole('button', { name: 'Save & connect' }))
+    fireEvent.click(dialog.getByRole('button', { name: 'Open workspace' }))
     await screen.findByText('No open incidents in this view')
     release?.()
     await waitFor(() => expect(screen.queryByRole('button', { name: /Controlled critical case/ })).not.toBeInTheDocument())

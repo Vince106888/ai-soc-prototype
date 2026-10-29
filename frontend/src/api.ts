@@ -1,5 +1,8 @@
 import type {
   Account,
+  AlertItem,
+  AlertSettings,
+  AlertSettingsUpdate,
   CapabilityProfile,
   Credentials,
   Incident,
@@ -83,6 +86,18 @@ export const api = {
   },
   saveSchedule(credentials: Credentials, sourceId: string, settings: { enabled: boolean; acknowledged: boolean; interval_minutes: number; maximum_messages: number; recent_days: number }): Promise<ScanSchedule> {
     return request(`/api/v1/sources/${encodeURIComponent(sourceId)}/schedule`, credentials, { method: 'PUT', body: JSON.stringify(settings) })
+  },
+  alertSettings(credentials: Credentials, signal?: AbortSignal): Promise<AlertSettings> {
+    return request('/api/v1/alert-settings', credentials, { signal })
+  },
+  saveAlertSettings(credentials: Credentials, settings: AlertSettingsUpdate): Promise<AlertSettings> {
+    return request('/api/v1/alert-settings', credentials, { method: 'PUT', body: JSON.stringify(settings) })
+  },
+  alerts(credentials: Credentials, unreadOnly = false, signal?: AbortSignal): Promise<AlertItem[]> {
+    return request(`/api/v1/alerts${unreadOnly ? '?unread=true' : ''}`, credentials, { signal })
+  },
+  markAlertRead(credentials: Credentials, alertId?: string): Promise<void> {
+    return request(alertId ? `/api/v1/alerts/${encodeURIComponent(alertId)}/read` : '/api/v1/alerts/read', credentials, { method: 'POST' })
   },
   session(signal?: AbortSignal): Promise<AuthSession> {
     return request('/api/v1/auth/session', { apiKey: '', tenantId: '' }, { signal })
