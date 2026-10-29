@@ -131,7 +131,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="SentinelSME API",
+    title="LindaBiz API",
     description="Evidence-backed security-signal analysis and incident management.",
     version="1.0.0",
     lifespan=lifespan,
@@ -289,7 +289,7 @@ else:
     @app.get("/", include_in_schema=False)
     def dashboard_not_built() -> dict[str, str]:
         return {
-            "service": "SentinelSME API",
+            "service": "LindaBiz API",
             "dashboard": "Run `npm --prefix frontend run build` to build the web console.",
             "docs": "/docs",
         }

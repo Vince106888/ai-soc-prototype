@@ -15,7 +15,7 @@ else {
         (Join-Path $env:ProgramFiles 'Docker\Docker\resources\bin\docker.exe')
     ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
 }
-if (-not $restartDocker) { throw 'Docker Desktop is not installed. Install it before starting SentinelSME.' }
+if (-not $restartDocker) { throw 'Docker Desktop is not installed. Install it before starting LindaBiz.' }
 
 function Test-RestartDocker([string]$Arguments) {
     # Keep a stopped/unresponsive engine bounded and hide expected native stderr
@@ -92,11 +92,14 @@ try {
     if ($restartExpectedGoogle) { $restartCompose += @('-f', $restartGoogle) }
     & $restartDocker @restartCompose config --quiet
     if ($LASTEXITCODE -ne 0) { throw 'Saved Compose configuration is invalid; services were not restarted.' }
+    # Docker writes build/up progress to stderr, which Windows PowerShell 5.1 turns into a
+    # terminating error under 'Stop'. Exit codes are checked explicitly below instead.
+    $ErrorActionPreference = 'Continue'
     if ($Build) {
         & $restartDocker @restartCompose build api worker
         if ($LASTEXITCODE -ne 0) { throw 'Application build failed; existing services were not restarted.' }
     }
-    Write-Host 'Restarting SentinelSME services. Existing database and model volumes are preserved.'
+    Write-Host 'Restarting LindaBiz services. Existing database and model volumes are preserved.'
     & $restartDocker @restartCompose up --wait --wait-timeout 240 --force-recreate --no-build
     if ($LASTEXITCODE -ne 0) { throw 'A service failed to start. Review the service error above; saved volumes were preserved.' }
     $restartUrl = "http://127.0.0.1:$Port"
@@ -106,7 +109,7 @@ try {
     if ($restartExpectedGoogle -and ($restartSession.mode -ne 'google' -or -not $restartSession.configured)) {
         throw 'Services started, but saved Google sign-in configuration is not ready.'
     }
-    Write-Host "SentinelSME is ready: $restartUrl"
+    Write-Host "LindaBiz is ready: $restartUrl"
     if (-not $NoBrowser) { Start-Process $restartUrl }
 } finally {
     $env:AI_SOC_PORT = $restartOldPort

@@ -46,7 +46,7 @@ def create(
     directory = directory or ROOT / "data/backups"
     directory.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    path = directory / f"sentinelsme-{stamp}-{uuid4().hex[:8]}.dump"
+    path = directory / f"lindabiz-{stamp}-{uuid4().hex[:8]}.dump"
     created = False
     try:
         with path.open("xb") as stream:

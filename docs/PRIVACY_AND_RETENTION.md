@@ -1,5 +1,9 @@
 # Privacy and Retention
 
+Alerts store incident title, severity, score and rule codes only and are deleted with the
+incident; webhook alerts send the same minimal summary, never message content
+(see [alerts](ALERTS.md)).
+
 Scheduled collection requires separate acknowledgement, defaults to disabled
 and keeps the same minimal evidence boundary. Worker/API must share the protected
 token key. Sign-out leaves a separately authorised schedule in effect; pause,
@@ -7,7 +11,7 @@ disconnect, invitation withdrawal and account deletion stop future collection.
 Deletion/expiry also removes schedule/job audit references. An in-flight read may
 finish, but ingestion requires the source still to be active. See [scheduling](SCHEDULING.md).
 
-SentinelSME is designed around data minimisation. Its safe default is controlled
+LindaBiz is designed around data minimisation. Its safe default is controlled
 synthetic data, not live mail. A deployment must have an explicit lawful basis,
 user or administrator authorisation, and a documented retention period before
 processing real organisational data.

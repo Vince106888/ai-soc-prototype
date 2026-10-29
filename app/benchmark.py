@@ -69,7 +69,7 @@ def main() -> None:
     measurements = []
     original_url = database.engine.url.render_as_string(hide_password=False)
     try:
-        with tempfile.TemporaryDirectory(prefix="sentinelsme-benchmark-") as directory:
+        with tempfile.TemporaryDirectory(prefix="lindabiz-benchmark-") as directory:
             for run in range(args.runs):
                 database.configure_database(
                     f"sqlite:///{(Path(directory) / f'run-{run}.db').as_posix()}"

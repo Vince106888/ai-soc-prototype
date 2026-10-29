@@ -18,13 +18,13 @@ describe('Gmail connection and bounded sampling', () => {
     render(<GmailConnection credentials={{ tenantId: 'assigned', apiKey: '', userEmail: 'invited@example.test', csrfToken: 'csrf' }} configuration={{ ...configuration, configured: false }} sources={[]} onRefresh={vi.fn()} />)
     expect(screen.getByLabelText('Gmail address')).toHaveValue('invited@example.test')
     expect(screen.getByLabelText('Gmail address')).toHaveAttribute('readonly')
-    expect(screen.getByRole('button', { name: 'Connect Gmail' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDisabled()
     expect(screen.queryByText('Local setup instructions')).not.toBeInTheDocument()
   })
   it('shows a connected source instead of asking for initial consent again', () => {
     render(<GmailConnection credentials={{ tenantId: 'trial', apiKey: '' }} configuration={configuration} sources={[source]} onRefresh={vi.fn()} />)
     expect(screen.getByRole('heading', { name: 'Gmail is connected' })).toBeInTheDocument()
-    expect(screen.getByText('Connected · read-only')).toBeInTheDocument()
+    expect(screen.getAllByText('Connected · read-only')).not.toHaveLength(0)
     expect(screen.queryByText('Ready for consent')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Scan Gmail · read-only' })).toBeDisabled()
     fireEvent.click(screen.getByRole('checkbox', { name: /^I authorise read-only analysis/ }))
@@ -33,7 +33,7 @@ describe('Gmail connection and bounded sampling', () => {
 
   it('requires reconnection for a disconnected source and blocks scanning it', () => {
     render(<GmailConnection credentials={{ tenantId: 'trial', apiKey: '' }} configuration={configuration} sources={[{ ...source, status: 'disconnected' }]} onRefresh={vi.fn()} />)
-    expect(screen.getByText('Reconnect required')).toBeInTheDocument()
+    expect(screen.getAllByText('Reconnect required')).not.toHaveLength(0)
     expect(screen.getByLabelText('Gmail address')).toBeVisible()
     fireEvent.click(screen.getByRole('checkbox', { name: /^I authorise read-only analysis/ }))
     expect(screen.getByRole('button', { name: 'Scan Gmail · read-only' })).toBeDisabled()

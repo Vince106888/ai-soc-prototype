@@ -8,6 +8,7 @@ export function GmailSchedule({ credentials, source }: { credentials: Credential
   const [ready, setReady] = useState(false)
   const [busy, setBusy] = useState(false)
   const [acknowledged, setAcknowledged] = useState(false)
+  const [mode, setMode] = useState<'manual' | 'automatic'>('manual')
   const [interval, setInterval] = useState(60)
   const [maximum, setMaximum] = useState(20)
   const [days, setDays] = useState(7)
@@ -17,6 +18,7 @@ export function GmailSchedule({ credentials, source }: { credentials: Credential
     void api.schedule(credentials, source.id, controller.signal).then(value => {
       if (controller.signal.aborted) return
       setSchedule(value); setReady(true)
+      if (value?.enabled) setMode('automatic')
       if (value) { setInterval(value.interval_minutes); setMaximum(value.maximum_messages); setDays(value.recent_days) }
     }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not load schedule.') })
     return () => controller.abort()
@@ -33,11 +35,18 @@ export function GmailSchedule({ credentials, source }: { credentials: Credential
   return <details className="gmail-schedule"><summary>Scheduled samples · {source.name} · {schedule?.enabled ? 'Enabled' : 'Paused'}</summary>
     <p>Runs only while the local scan worker is running. Each run reads a bounded inbox sample. Three consecutive failures pause the schedule; disconnecting or deleting the account stops future runs.</p>
     {schedule?.enabled && <p role="status">Next eligible run: {formatDateTime(schedule.next_run_at)}. Consecutive failures: {schedule.failure_count}.</p>}
-    <form onSubmit={event => { event.preventDefault(); void save(true) }}>
+    <fieldset className="scan-mode">
+      <legend>How should this mailbox be scanned?</legend>
+      <label className="check-field"><input type="radio" name={`scan-mode-${source.id}`} checked={mode === 'manual'} onChange={() => setMode('manual')} /><span><strong>Manual</strong> — scan only when I request a sample.</span></label>
+      <label className="check-field"><input type="radio" name={`scan-mode-${source.id}`} checked={mode === 'automatic'} onChange={() => setMode('automatic')} /><span><strong>Automatic</strong> — scan on a schedule. Requires separate consent below.</span></label>
+    </fieldset>
+    {mode === 'manual' && <div className="form-actions"><button type="button" className="button" disabled={!schedule?.enabled || busy} onClick={() => void save(false)}>Pause schedule</button></div>}
+    {mode === 'automatic' && <form onSubmit={event => { event.preventDefault(); void save(true) }}>
       <div className="gmail-scan-controls"><label>Interval (minutes)<input type="number" min={15} max={1440} value={interval} onChange={event => setInterval(Number(event.target.value))} /></label><label>Messages per run<input type="number" min={1} max={50} value={maximum} onChange={event => setMaximum(Number(event.target.value))} /></label><label>Look-back (days)<input type="number" min={1} max={30} value={days} onChange={event => setDays(Number(event.target.value))} /></label></div>
       <label className="check-field"><input type="checkbox" checked={acknowledged} onChange={event => setAcknowledged(event.target.checked)} /><span>I separately authorise recurring read-only inbox samples with these limits and seven-day retention of minimal evidence.</span></label>
+      <label>Quick interval<select aria-label="Quick interval" value="" onChange={event => { if (event.target.value) setInterval(Number(event.target.value)) }}><option value="">Choose a preset…</option><option value="15">Every 15 minutes</option><option value="60">Hourly</option><option value="360">Every 6 hours</option><option value="1440">Daily</option></select></label>
       <div className="form-actions"><button className="button button-primary" disabled={!ready || busy || !acknowledged || !valid}>{busy ? 'Saving…' : schedule?.enabled ? 'Update schedule' : 'Enable schedule'}</button><button type="button" className="button" disabled={!schedule?.enabled || busy} onClick={() => void save(false)}>Pause schedule</button></div>
-    </form>
+    </form>}
     {error && <p role="alert">{error}</p>}
   </details>
 }

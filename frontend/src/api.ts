@@ -1,5 +1,9 @@
 import type {
   Account,
+  AlertItem,
+  AlertSettings,
+  AlertSettingsUpdate,
+  AssistantReply,
   CapabilityProfile,
   Credentials,
   Incident,
@@ -57,12 +61,12 @@ async function request<T>(path: string, credentials: Credentials, options: Reque
       },
     })
   } catch {
-    throw new ApiError('Could not reach the SentinelSME API. Check that the service is running.', 0)
+    throw new ApiError('Could not reach the LindaBiz API. Check that the service is running.', 0)
   }
 
   const body: unknown = response.status === 204 ? null : await response.json().catch(() => null)
   if (!response.ok) {
-    if (response.status === 401 && credentials.csrfToken) window.dispatchEvent(new Event('sentinelsme:session-expired'))
+    if (response.status === 401 && credentials.csrfToken) window.dispatchEvent(new Event('lindabiz:session-expired'))
     const parsed = messageFrom(body, `Request failed (${response.status})`)
     throw new ApiError(parsed.message, response.status, parsed.code)
   }
@@ -83,6 +87,21 @@ export const api = {
   },
   saveSchedule(credentials: Credentials, sourceId: string, settings: { enabled: boolean; acknowledged: boolean; interval_minutes: number; maximum_messages: number; recent_days: number }): Promise<ScanSchedule> {
     return request(`/api/v1/sources/${encodeURIComponent(sourceId)}/schedule`, credentials, { method: 'PUT', body: JSON.stringify(settings) })
+  },
+  askAssistant(credentials: Credentials, question: string, incidentId?: string): Promise<AssistantReply> {
+    return request('/api/v1/assistant', credentials, { method: 'POST', body: JSON.stringify({ question, incident_id: incidentId || null }) })
+  },
+  alertSettings(credentials: Credentials, signal?: AbortSignal): Promise<AlertSettings> {
+    return request('/api/v1/alert-settings', credentials, { signal })
+  },
+  saveAlertSettings(credentials: Credentials, settings: AlertSettingsUpdate): Promise<AlertSettings> {
+    return request('/api/v1/alert-settings', credentials, { method: 'PUT', body: JSON.stringify(settings) })
+  },
+  alerts(credentials: Credentials, unreadOnly = false, signal?: AbortSignal): Promise<AlertItem[]> {
+    return request(`/api/v1/alerts${unreadOnly ? '?unread=true' : ''}`, credentials, { signal })
+  },
+  markAlertRead(credentials: Credentials, alertId?: string): Promise<void> {
+    return request(alertId ? `/api/v1/alerts/${encodeURIComponent(alertId)}/read` : '/api/v1/alerts/read', credentials, { method: 'POST' })
   },
   session(signal?: AbortSignal): Promise<AuthSession> {
     return request('/api/v1/auth/session', { apiKey: '', tenantId: '' }, { signal })

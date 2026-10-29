@@ -30,9 +30,9 @@ from .gmail import (
     _settings,
 )
 
-SESSION_COOKIE = "sentinelsme_session"
-CSRF_COOKIE = "sentinelsme_csrf"
-LOGIN_COOKIE = "sentinelsme_login"
+SESSION_COOKIE = "lindabiz_session"
+CSRF_COOKIE = "lindabiz_csrf"
+LOGIN_COOKIE = "lindabiz_login"
 LOGIN_PATH = "/api/v1/auth/callback"
 GOOGLE_KEYS = "https://www.googleapis.com/oauth2/v3/certs"
 LOGIN_SCOPE = "openid email"
@@ -371,7 +371,7 @@ def principal(
     token = request.cookies.get(SESSION_COOKIE, "")
     record = db.get(AppSession, digest(token)) if token and len(token) <= 256 else None
     if not record or record.expires_at.replace(tzinfo=UTC) <= utcnow():
-        raise HTTPException(401, "Sign in to SentinelSME to continue.")
+        raise HTTPException(401, "Sign in to LindaBiz to continue.")
     statement = select(AppUser).where(AppUser.id == record.user_id)
     if lock_user or request.method not in {"GET", "HEAD", "OPTIONS"}:
         statement = statement.with_for_update().execution_options(populate_existing=True)

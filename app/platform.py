@@ -10,7 +10,7 @@ from sqlalchemy import case, delete, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from . import deployment
+from . import alerts, deployment
 from .entities import (
     Account,
     AppUser,
@@ -619,6 +619,7 @@ def _correlate(
         strongest = max(all_findings, key=lambda item: item.weight)
         incident.title = strongest.title
     _refresh_guidance(session, incident)
+    alerts.record_alert(session, incident, [item.rule_code for item in all_findings])
     return incident
 
 

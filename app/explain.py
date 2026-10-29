@@ -56,7 +56,7 @@ def _ollama_info(config: explainer.Settings) -> dict:
 def _seed(session) -> None:
     fixture = EvaluationRequest.model_validate_json(DEFAULT_FIXTURE.read_text("utf-8"))
     account = create_account(
-        session, CHECK_TENANT, AccountCreate(email="security@sentinelsme.example")
+        session, CHECK_TENANT, AccountCreate(email="security@lindabiz.example")
     )
     source = create_source(
         session,

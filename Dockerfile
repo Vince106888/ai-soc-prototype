@@ -25,10 +25,10 @@ COPY alembic.ini ./
 COPY alembic/ alembic/
 COPY --from=dashboard-build /build/frontend/dist/ frontend/dist/
 
-RUN addgroup --system --gid 10001 sentinelsme \
-    && adduser --system --uid 10001 --ingroup sentinelsme --no-create-home sentinelsme \
+RUN addgroup --system --gid 10001 lindabiz \
+    && adduser --system --uid 10001 --ingroup lindabiz --no-create-home lindabiz \
     && mkdir -p /app/data /app/deletion-ledger \
-    && chown sentinelsme:sentinelsme /app/data /app/deletion-ledger
+    && chown lindabiz:lindabiz /app/data /app/deletion-ledger
 USER 10001:10001
 
 EXPOSE 8000

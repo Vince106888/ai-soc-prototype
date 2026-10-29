@@ -16,6 +16,8 @@ companion to this page.
 | Scanning | User or schedule-labelled scan-job records | Implemented | Scan jobs can be created, listed, and inspected |
 | Scanning | Bounded Gmail fetch performed by a worker | Implemented; mocked worker/provider contract | Opt-in recurring sample; no real-time interception; `app/worker.py`, `SCHEDULING.md` |
 | Scanning | Periodic scheduler process | Implemented and controlled execution verified | Atomic lease, bounded retry/backoff, pause after three failures; controlled CLI fallback |
+| Explanation | "Ask LindaBiz" grounded Q&A panel | Implemented; deterministic, no model | Answers from stored findings, rule catalogue and static policy text; declines remediation; questions not stored; see [assistant](ASSISTANT.md) |
+| Alerting | In-app and webhook alerts for new or escalated incidents | Implemented; webhook delivery verified with mocked HTTP | One alert per incident severity; minimal payload; worker-delivered with bounded attempts; see [alerts](ALERTS.md). No email alerts by design; webhooks are unsigned |
 | Detection | Fourteen deterministic email/account rules | Implemented | Seeded rule catalogue and evidence-backed findings |
 | Detection | Workspace trusted senders (address or domain) | Implemented | `/api/v1/trusted-senders`, false-positive "trust this sender"; silences content-only rules for authenticated senders, never authentication/lookalike/brand/payment rules; new evidence only |
 | Detection | Lookalike checks against trusted domains | Implemented | Trusted domains become `claimed_domains`, so `EMAIL-003` works for Gmail samples |
@@ -44,7 +46,7 @@ companion to this page.
 | Evaluation | Labelled-case confusion matrix and metrics | Implemented | `/api/v1/evaluation` |
 | Evaluation | Representative calibrated research dataset | Not implemented | Current examples and tests are controlled, not representative |
 | Evaluation | Isolated 500-signal local service benchmark | Implemented and measured | Three fresh SQLite runs; median 4.572 s; HTTP/dashboard/Gmail/concurrency excluded; see `BENCHMARK.md` |
-| Storage | SQLite zero-configuration persistence | Implemented | Default `data/sentinelsme.db` |
+| Storage | SQLite zero-configuration persistence | Implemented | Default `data/lindabiz.db` |
 | Storage | PostgreSQL and versioned migrations | Implemented and container-tested | Private URL configuration; production secret files and separate restricted app role; isolated backup restoration passed |
 | Access | Tenant-scoped platform queries | Implemented | Google mode derives workspace from a verified server session; local mode uses caller-supplied `X-Tenant-ID` |
 | Access | Optional shared API key | Local prototype control | `AI_SOC_API_KEY` and `X-API-Key` in local mode only |

@@ -1,5 +1,5 @@
 <#
-  SentinelSME - one-shot local model setup (Windows, PowerShell 5.1+)
+  LindaBiz - one-shot local model setup (Windows, PowerShell 5.1+)
 
   Checks disk space, installs Ollama if missing, pulls the explainer model,
   confirms it answers on 127.0.0.1, then runs the synthetic evidence check.

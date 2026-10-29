@@ -1,0 +1,172 @@
+/*
+ * Design tokens. Every colour, size, radius and shadow in the app comes from here.
+ * Components read tokens only, so a theme change is a change to this file.
+ */
+:root {
+  color-scheme: light;
+
+  /* Surfaces */
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #f2f4fa;
+  --surface-3: #e8ebf5;
+  --overlay: rgb(12 16 32 / 52%);
+
+  /* Text */
+  --ink: #0e1325;
+  --ink-2: #3f475f;
+  --ink-3: #626b88;
+  --ink-inverse: #ffffff;
+
+  /* Lines */
+  --line: #e3e6f0;
+  --line-strong: #c9cfe0;
+
+  /* Brand */
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-press: #3730a3;
+  --accent-soft: #eef0ff;
+  --accent-ink: #3730a3;
+  --accent-gradient: linear-gradient(135deg, #5b5cf0 0%, #7a4df0 100%);
+  --focus: #6366f1;
+
+  /* Semantic */
+  --critical: #d4123f;
+  --critical-soft: #fff0f3;
+  --high: #c2410c;
+  --high-soft: #fff4ec;
+  --medium: #92610a;
+  --medium-soft: #fff8e1;
+  --low: #1d4ed8;
+  --low-soft: #eef4ff;
+  --success: #15803d;
+  --success-soft: #ecfdf3;
+  --danger: #b42318;
+  --danger-soft: #fff1f0;
+
+  /* Type */
+  --font: 'Geist Variable', Geist, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  --text-xs: 0.71875rem;
+  --text-sm: 0.78125rem;
+  --text-base: 0.875rem;
+  --text-md: 0.96875rem;
+  --text-lg: 1.0625rem;
+  --text-xl: 1.25rem;
+  --text-2xl: clamp(1.5rem, 1.25rem + 0.9vw, 1.875rem);
+  --text-hero: clamp(2.125rem, 1.4rem + 2.8vw, 3.5rem);
+
+  /* Space (4px grid) */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.25rem;
+  --s6: 1.5rem;
+  --s8: 2rem;
+  --s10: 2.5rem;
+  --s12: 3rem;
+  --s16: 4rem;
+
+  /* Shape */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 24px;
+  --r-full: 999px;
+
+  /* Depth */
+  --sh-1: 0 1px 2px rgb(16 24 56 / 6%);
+  --sh-2: 0 1px 2px rgb(16 24 56 / 5%), 0 6px 16px -4px rgb(16 24 56 / 9%);
+  --sh-3: 0 12px 32px -8px rgb(16 24 56 / 20%), 0 4px 10px -4px rgb(16 24 56 / 10%);
+  --ring: 0 0 0 3px rgb(99 102 241 / 28%);
+
+  /* Layout */
+  --sidebar: 17rem;
+  --topbar: 4rem;
+  --page: 78rem;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --fast: 140ms;
+  --base: 220ms;
+}
+
+/* Dark theme: follows the system unless the user picked a theme with the toggle. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    color-scheme: dark;
+    --bg: #0a0d18;
+    --surface: #11162a;
+    --surface-2: #171d35;
+    --surface-3: #202846;
+    --overlay: rgb(2 4 12 / 70%);
+    --ink: #eef0fa;
+    --ink-2: #bcc3da;
+    --ink-3: #8f98b8;
+    --line: #232b48;
+    --line-strong: #323c61;
+    --accent: #8b8ff8;
+    --accent-hover: #a2a6fa;
+    --accent-press: #b6b9fb;
+    --accent-soft: #1b2146;
+    --accent-ink: #c7caff;
+    --accent-gradient: linear-gradient(135deg, #6c6df5 0%, #8a5cf6 100%);
+    --focus: #a5a8fb;
+    --critical: #ff6b8a;
+    --critical-soft: #34131f;
+    --high: #fb9a5c;
+    --high-soft: #34200f;
+    --medium: #f2c14e;
+    --medium-soft: #302407;
+    --low: #7aa8ff;
+    --low-soft: #14223f;
+    --success: #4ade80;
+    --success-soft: #0d2b1b;
+    --danger: #ff8a7e;
+    --danger-soft: #3a1512;
+    --sh-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --sh-2: 0 1px 2px rgb(0 0 0 / 40%), 0 8px 20px -6px rgb(0 0 0 / 50%);
+    --sh-3: 0 16px 40px -8px rgb(0 0 0 / 65%);
+    --ring: 0 0 0 3px rgb(139 143 248 / 35%);
+  }
+}
+
+/* Explicit choice from the theme toggle (stored as data-theme on <html>). */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0a0d18;
+  --surface: #11162a;
+  --surface-2: #171d35;
+  --surface-3: #202846;
+  --overlay: rgb(2 4 12 / 70%);
+  --ink: #eef0fa;
+  --ink-2: #bcc3da;
+  --ink-3: #8f98b8;
+  --line: #232b48;
+  --line-strong: #323c61;
+  --accent: #8b8ff8;
+  --accent-hover: #a2a6fa;
+  --accent-press: #b6b9fb;
+  --accent-soft: #1b2146;
+  --accent-ink: #c7caff;
+  --accent-gradient: linear-gradient(135deg, #6c6df5 0%, #8a5cf6 100%);
+  --focus: #a5a8fb;
+  --critical: #ff6b8a;
+  --critical-soft: #34131f;
+  --high: #fb9a5c;
+  --high-soft: #34200f;
+  --medium: #f2c14e;
+  --medium-soft: #302407;
+  --low: #7aa8ff;
+  --low-soft: #14223f;
+  --success: #4ade80;
+  --success-soft: #0d2b1b;
+  --danger: #ff8a7e;
+  --danger-soft: #3a1512;
+  --sh-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --sh-2: 0 1px 2px rgb(0 0 0 / 40%), 0 8px 20px -6px rgb(0 0 0 / 50%);
+  --sh-3: 0 16px 40px -8px rgb(0 0 0 / 65%);
+  --ring: 0 0 0 3px rgb(139 143 248 / 35%);
+}

@@ -47,7 +47,7 @@ AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 GMAIL_URL = "https://gmail.googleapis.com/gmail/v1/users/me"
-COOKIE_NAME = "sentinelsme_oauth"
+COOKIE_NAME = "lindabiz_oauth"
 COOKIE_PATH = "/api/v1/gmail/callback"
 MAX_RESPONSE_BYTES = 2_000_000
 SCAN_BUDGET_SECONDS = 120
@@ -571,5 +571,5 @@ def disconnect_gmail(db: Session, tenant: str, source_id: str) -> dict:
         "provider_revoked": revoked,
         "message": "Local tokens removed."
         if revoked
-        else "Local tokens removed. Remove SentinelSME access in Google to confirm revocation.",
+        else "Local tokens removed. Remove LindaBiz access in Google to confirm revocation.",
     }
