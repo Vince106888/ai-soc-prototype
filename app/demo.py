@@ -41,7 +41,7 @@ def main() -> None:
         account = session.scalar(
             select(Account).where(
                 Account.tenant_id == args.tenant,
-                Account.email == "security@sentinelsme.example",
+                Account.email == "security@lindabiz.example",
             )
         )
         if account is None:
@@ -49,7 +49,7 @@ def main() -> None:
                 session,
                 args.tenant,
                 AccountCreate(
-                    email="security@sentinelsme.example",
+                    email="security@lindabiz.example",
                     display_name="SentinelSME Demo",
                 ),
             )

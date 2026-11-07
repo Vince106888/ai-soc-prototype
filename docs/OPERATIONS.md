@@ -26,7 +26,7 @@ are consumed through explicit controlled ingestion.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `AI_SOC_DATABASE_URL` | `sqlite:///data/sentinelsme.db` | SQLAlchemy database URL |
+| `AI_SOC_DATABASE_URL` | `sqlite:///data/lindabiz.db` | SQLAlchemy database URL |
 | `AI_SOC_ALLOWED_HOSTS` | `localhost,127.0.0.1,testserver` | Comma-separated accepted Host headers |
 | `AI_SOC_API_KEY` | unset | Shared `X-API-Key` for local data routes; not used in Google mode |
 | `AI_SOC_AUTH_MODE` | `local` | `google` enables invited app sessions; invalid values fail closed |
@@ -105,7 +105,7 @@ docker compose up --build
 The multi-stage image builds the React console, installs the locked Python
 runtime, applies Alembic migrations, and serves the console and API on localhost
 port `8000`. Compose starts a separate opt-in scan worker after API readiness. PostgreSQL is private to the Compose network and stores data in the
-named `sentinelsme-data` volume.
+named `lindabiz-data` volume.
 
 Local Gmail trial expiry is enforced at startup/platform requests; general production retention remains pending. Plan and document deletion before using
 real data; see `PRIVACY_AND_RETENTION.md`.
@@ -295,6 +295,63 @@ inherited from the parent directory; protect that directory as well. These
 helpers have regression tests. Real private and public-stack schema backup/restore checks passed on 28 October; the public check restores using the restricted application role.
 
 The application image uses fixed UID/GID 10001. Application code and dependencies remain root-owned and readable; only the data directory is assigned to the application user. Dependency download caches are excluded from the runtime image.
+
+## Why Compose is the laptop deployment
+
+Decision (29 October 2026): this laptop runs the Compose stack, not a native
+`uvicorn` process. Reasons, from what the repository and the running stack show:
+
+- **Setup already exists.** `data/docker.env` (generated secrets), `data/compose.google.json`
+  (Google sign-in and Gmail mounts), the Postgres volume and the optional model are
+  saved. A native run would need a second database and a second Gmail consent, and
+  could not read the Compose database or its encrypted tokens.
+- **The worker comes with it.** Automatic scans and webhook alerts are delivered by
+  the polling worker. Compose starts and restarts it with the API; natively it is a
+  second terminal that is easy to forget.
+- **Hardened and repeatable.** Read-only roots, dropped capabilities, bounded memory
+  and logs, loopback-only port, PostgreSQL not exposed, the same image as CI.
+- **Costs.** About 400 MB per image and a Docker Desktop dependency; builds need
+  free disk (this drive had 5.2 GiB free on 29 October, below the launcher's
+  5 GiB build guard once images accumulate; free space before large rebuilds).
+  Never run `docker compose down --volumes`: it deletes evidence and the database.
+
+Do not create a new `.env` or `data/docker.env`. A new `POSTGRES_PASSWORD` cannot
+open the existing volume, and a new token key makes stored Gmail tokens unreadable.
+
+## Deploy a new version (runbook)
+
+1. Run the checks in `AGENTS.md` and commit.
+2. Back up first when a migration is included:
+   `uv run python -m scripts.backup create`, then `... verify data/backups/<file>.dump`.
+   The verify output lists the current `schema_revision` and counts.
+3. Confirm the private files exist: `data/docker.env`, `data/compose.google.json`, and
+   the two files it mounts (`%LOCALAPPDATA%\LindaBiz\google-client-secret` and
+   `token.key`). `restart.ps1` stops with a clear error if any is missing.
+4. Build, then recreate with volumes preserved:
+   `powershell -NoProfile -ExecutionPolicy Bypass -File scriptsestart.ps1 -Build -NoBrowser`
+5. Verify: `curl http://127.0.0.1:8001/health/ready`; `docker compose ps` shows api, worker,
+   db (and ollama) healthy; the worker log prints aggregate counts only; the database
+   `alembic_version` equals the newest file in `alembic/versions`.
+
+Migrations run automatically when the API and worker start. The Alerts migration
+`a7c9e1d3b5f2` was applied this way on 29 October 2026 to the retained database
+(15 incidents and 6 accounts unchanged). Existing incidents do not receive
+alerts retroactively; alerts are raised for new or escalated incidents.
+
+### Recovery notes from 29 October 2026
+
+- `restart.ps1` refused to run because `%LOCALAPPDATA%\LindaBiz\token.key` and
+  `google-client-secret` were missing from the host. The running containers still held
+  the bind-mounted copies, so they were restored with `docker cp` from the running API
+  container (`/run/secrets/local_token_key`, `/run/secrets/local_google_client_secret`)
+  before recreating anything. Do this before any `--force-recreate`; once the old
+  containers are gone the files cannot be recovered from Docker. Keep an offline copy
+  of both files with the database backups.
+- Windows PowerShell 5.1 treated Docker's progress output on stderr as an error and
+  aborted the script. `restart.ps1` now sets `$ErrorActionPreference = 'Continue'`
+  around the Docker calls and relies on its explicit exit-code checks.
+- A second stack (`lindabiz-public-acceptance`) was also running; it is separate,
+  uses no ports on 8001, and was left untouched.
 
 ## Restart this laptop deployment
 

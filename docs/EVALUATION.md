@@ -27,7 +27,7 @@ The prepared Compose smoke test still needs execution on a Docker host.
 The [usability study protocol](USABILITY_STUDY.md) and anonymous sheet are ready;
 participants are unavailable and NFR-04 remains unverified.
 
-SentinelSME evaluation has three distinct layers. Automated tests prove code
+LindaBiz evaluation has three distinct layers. Automated tests prove code
 behaviour, labelled scenarios measure detector behaviour, and a user study
 measures whether alerts help non-specialists. None substitutes for the others.
 

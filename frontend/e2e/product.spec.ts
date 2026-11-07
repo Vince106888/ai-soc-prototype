@@ -1,37 +1,107 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const incident = {
-  id: 'case-synthetic', title: 'Sender details need a closer look',
+  id: 'case-synthetic',
+  title: 'Sender details need a closer look',
   summary: 'The selected message contains a mismatched reply-to address.',
-  account_id: 'account-synthetic', severity: 'high', status: 'new', score: 0.7,
-  first_seen_at: '2026-10-29T09:00:00Z', last_seen_at: '2026-10-29T09:00:00Z',
-  findings: [{ id: 'finding-synthetic', rule_code: 'EMAIL-002', title: 'Reply-to mismatch', weight: 0.7, confidence: 0.8, evidence: { reply_to_mismatch: true } }],
-  explanation: { source: 'template', what_happened: 'The reply-to address differs from the sender.', why_it_matters: 'A reply may go to a different person.', severity: 'High priority', next_step: 'Verify through a trusted contact.' },
-  recommendations: [{ position: 1, action: 'Verify through a trusted contact.' }],
-  signals: [{ id: 'signal-synthetic', signal_type: 'email', occurred_at: '2026-10-29T09:00:00Z', received_at: '2026-10-29T09:00:00Z', features: { sender: 'sender@example.test', subject: 'Synthetic review sample' } }],
+  account_id: 'account-synthetic',
+  severity: 'high',
+  status: 'new',
+  score: 0.7,
+  first_seen_at: '2026-10-29T09:00:00Z',
+  last_seen_at: '2026-10-29T09:00:00Z',
+  correlation_key: 'synthetic-account:thread-1',
+  findings: [{
+    id: 'finding-synthetic',
+    rule_code: 'EMAIL-002',
+    title: 'Reply-to mismatch',
+    weight: 0.7,
+    confidence: 0.8,
+    evidence: { reply_to_mismatch: true, matched_terms: ['verify your account'] },
+  }],
+  explanation: {
+    source: 'template',
+    what_happened: 'The reply-to address differs from the sender.',
+    why_it_matters: 'A reply may go to a different person.',
+    severity: 'High priority',
+    next_step: 'Verify through a trusted contact.',
+    reasons: [{ rule_code: 'EMAIL-002', indicator: 'Reply-to mismatch', why: 'The addresses differ.', legitimate_if: 'A mailing service uses a separate reply address.' }],
+    warning_signs: 1,
+    warning_level: 'few',
+  },
+  recommendations: [{ position: 1, action: 'Verify through a trusted contact.', advisory: true }],
+  signals: [{
+    id: 'signal-synthetic',
+    signal_type: 'email',
+    occurred_at: '2026-10-29T09:00:00Z',
+    received_at: '2026-10-29T09:00:00Z',
+    features: { sender: 'sender@example.test', reply_to: 'reply@different.test', subject: 'Synthetic review sample' },
+  }],
   audit: [],
 }
 
 async function workspace(page: Page, signedIn = true) {
-  // Browser-only synthetic responses. No application authentication bypass,
-  // live provider calls, private mailbox content or real browser profile.
-  await page.route('**/api/**', async route => {
+  // Browser-only synthetic responses. No authentication bypass, live provider
+  // calls, private mailbox content or real browser profile.
+  await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url())
     const path = url.pathname.replace('/api/v1', '')
     const responses: Record<string, unknown> = {
-      '/auth/session': { mode: 'google', configured: true, invitation_only: false, environment: 'production', session_hours: 8, csrf_token: 'synthetic', mailbox_consent_separate: true, user: signedIn ? { id: 'synthetic-user', email: 'owner@example.test', workspace_id: 'synthetic-workspace' } : null },
+      '/auth/session': {
+        mode: 'google',
+        configured: true,
+        invitation_only: false,
+        environment: 'production',
+        session_hours: 8,
+        evidence_retention_days: 30,
+        csrf_token: 'synthetic',
+        mailbox_consent_separate: true,
+        user: signedIn ? { id: 'synthetic-user', email: 'owner@example.test', workspace_id: 'synthetic-workspace' } : null,
+      },
       '/accounts': [{ id: 'account-synthetic', email: 'owner@example.test', display_name: 'Example workspace', provider: 'controlled' }],
       '/sources': [{ id: 'source-synthetic', account_id: 'account-synthetic', name: 'Selected messages', source_type: 'controlled', status: 'active', capabilities: ['email'] }],
       '/scan-jobs': [],
-      '/capabilities': { service: 'SentinelSME', signal_types: ['email'], source_types: ['controlled'], live_connectors: [], controlled_ingestion: true, template_explanations: true, ai_explanations: false, correlation_window_minutes: 30, maximum_batch_size: 500, privacy: { stores_full_bodies: false, stores_attachments: false }, gmail: { implemented: true, configured: true, maximum_messages: 50, automatic_scanning: false, trial: false, evidence_retention_days: 30 } },
-      '/overview': { incidents: { active: 1, critical: 0, under_review: 0, resolved: 0, false_positive: 0 }, accounts: 1, active_sources: 1, retained_signals: 7, source_activity: {}, latest_job: null, activity: Array.from({ length: 7 }, (_, i) => ({ day: `2026-10-${22 + i}`, signals: i + 1, incidents: i % 2 })) },
+      '/capabilities': {
+        service: 'LindaBiz',
+        signal_types: ['email'],
+        source_types: ['controlled'],
+        live_connectors: [],
+        controlled_ingestion: true,
+        template_explanations: true,
+        ai_explanations: false,
+        correlation_window_minutes: 30,
+        maximum_batch_size: 500,
+        privacy: { stores_full_bodies: false, stores_attachments: false },
+        gmail: { implemented: true, configured: true, message: 'Ready', scope: 'gmail.readonly', maximum_messages: 50, signal_types: ['email'], automatic_scanning: false, trial: false, evidence_retention_days: 30 },
+      },
+      '/overview': {
+        incidents: { active: 1, critical: 0, under_review: 0, resolved: 0, false_positive: 0 },
+        accounts: 1,
+        active_sources: 1,
+        retained_signals: 7,
+        source_activity: {},
+        latest_job: { status: 'completed', completed_at: '2026-10-29T09:05:00Z', imported_count: 1 },
+        activity: Array.from({ length: 7 }, (_, index) => ({ day: `2026-10-${22 + index}`, signals: index + 1, incidents: index % 2 })),
+      },
       '/incidents/page': { items: [incident], total: 1, limit: 25, offset: 0 },
       '/incidents/case-synthetic': incident,
-      '/rules': [], '/trusted-senders': [],
+      '/rules': [],
+      '/trusted-senders': [],
       '/signals': { items: [], total: 0, limit: 25, offset: 0 },
       '/sources/source-synthetic/schedule': null,
+      '/alert-settings': {
+        minimum_severity: 'high',
+        webhook_enabled: false,
+        webhook_url: null,
+      },
+      '/alerts': [],
+      '/alerts/read': null,
     }
     if (!(path in responses)) throw new Error(`Unmocked synthetic browser request: ${path}`)
+    if (path.endsWith('/read') && route.request().method() === 'POST') {
+      await route.fulfill({ status: 204, body: '' })
+      return
+    }
     await route.fulfill({ json: responses[path] })
   })
   await page.goto('/')
@@ -42,97 +112,113 @@ async function navigate(page: Page, name: string, mobile: boolean) {
   await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('button', { name: name === 'Incidents' ? /^Incidents/ : name, exact: name !== 'Incidents' }).click()
 }
 
+async function expectNoOverflow(page: Page, label: string) {
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
+  expect(overflow, `${label} must not create page-level horizontal overflow`).toBe(false)
+}
+
 for (const width of [375, 768, 1024, 1440]) {
-  test(`workspace controls and layout at ${width}px`, async ({ page }) => {
+  test(`workspace journey and responsive layout at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 950 })
     await workspace(page)
+
     await expect(page.getByRole('heading', { name: 'Security overview' })).toBeVisible()
-    const overflow = () => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)
-    expect(await overflow()).toBe(false)
+    await expect(page.getByRole('region', { name: /Getting started/i })).toBeVisible()
+    await expectNoOverflow(page, 'Overview')
     await page.screenshot({ path: `../data/ui-review/overview-${width}.png`, fullPage: true })
-    await expect(page.getByRole('button', { name: 'View critical priority' })).toHaveAccessibleDescription('0')
-    await page.getByRole('button', { name: 'View critical priority' }).click()
+
+    await page.getByRole('button', { name: /Critical priority: 0/ }).click()
     await expect(page.getByRole('combobox', { name: 'Severity', exact: true })).toHaveValue('critical')
-    await page.getByRole('button', { name: 'Show all incident statuses' }).click()
-    await navigate(page, 'Overview', width <= 900)
-    for (const name of ['Evidence workspace', 'Accounts & sources', 'Protection coverage', 'Detection catalogue']) {
+    await page.getByRole('button', { name: 'Remove filter: Open cases only' }).click()
+    await expect(page.getByRole('button', { name: 'Remove filter: Open cases only' })).not.toBeVisible()
+
+    for (const name of ['Evidence', 'Connections', 'Detection']) {
       await navigate(page, name, width <= 900)
-      await expect(page.locator('main h1')).toBeVisible()
-      expect(await overflow(), `${name} must fit ${width}px`).toBe(false)
+      await expect(page.locator('main h1:visible').first()).toBeVisible()
+      await expectNoOverflow(page, name)
     }
-    if (width <= 900) {
-      await page.getByRole('button', { name: 'Open navigation', exact: true }).click()
-      await page.getByRole('button', { name: 'Settings', exact: true }).click()
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Close dialog', exact: true })).toBeFocused()
-      await page.keyboard.press('Escape')
-      await expect(page.getByRole('dialog')).not.toBeVisible()
-    }
+    await page.screenshot({ path: `../data/ui-review/detection-${width}.png`, fullPage: true })
 
     await navigate(page, 'Incidents', width <= 900)
     await expect(page.getByRole('heading', { name: 'Incidents', exact: true })).toBeVisible()
     if (width <= 900) {
       const toggle = page.getByRole('button', { name: 'Toggle incident filters' })
-      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
-      await toggle.click()
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
       await expect(page.getByRole('combobox', { name: 'Severity', exact: true })).toBeVisible()
       await toggle.click()
       await expect(page.getByRole('combobox', { name: 'Severity', exact: true })).not.toBeVisible()
+      await toggle.click()
+      await expect(page.getByRole('combobox', { name: 'Severity', exact: true })).toBeVisible()
     }
     await page.locator('.incident-row').first().click()
+    await expect(page.getByRole('tab', { name: /Evidence/ })).toBeVisible()
     await page.getByRole('tab', { name: /Evidence/ }).click()
     await expect(page.getByRole('tabpanel')).toContainText('Reply-to mismatch')
-    expect(await overflow()).toBe(false)
-    await page.evaluate(() => window.scrollTo(0, 0))
+    await expectNoOverflow(page, 'Incident detail')
     await page.screenshot({ path: `../data/ui-review/incident-${width}.png`, fullPage: true })
-    await page.getByRole('button', { name: 'Analyse email', exact: true }).first().click()
+
+    await navigate(page, 'Analyse', width <= 900)
     await expect(page.getByLabel('Selected message text')).toBeVisible()
+    await expectNoOverflow(page, 'Analyse')
+    if (width === 375 || width === 1440) await page.screenshot({ path: `../data/ui-review/analyse-${width}.png`, fullPage: true })
     await page.getByRole('button', { name: /Gmail sample/ }).click()
-    await expect(page.getByRole('button', { name: 'Connect Gmail', exact: true })).toBeDisabled()
+    await expect(page.getByRole('button', { name: /Continue with Google/ })).toBeDisabled()
     await page.getByRole('checkbox').first().check()
-    await expect(page.getByRole('button', { name: 'Connect Gmail', exact: true })).toBeEnabled()
-    expect(await overflow()).toBe(false)
+    await expect(page.getByRole('button', { name: /Continue with Google/ })).toBeEnabled()
+    await expectNoOverflow(page, 'Gmail sample')
+
     await page.getByRole('button', { name: 'Your account', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Close dialog', exact: true })).toBeFocused()
+    await expect(page.locator('#root')).toHaveAttribute('inert')
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).not.toBeVisible()
+
     await page.getByRole('textbox', { name: 'Search incidents' }).fill('sender')
     await page.getByRole('button', { name: 'Search workspace' }).click()
     await expect(page.getByRole('heading', { name: 'Incidents', exact: true })).toBeVisible()
-    await navigate(page, 'Overview', width <= 900)
-    await page.getByRole('button', { name: 'Set up Gmail', exact: true }).click()
-    await expect(page.getByRole('button', { name: 'Gmail sample Connect and collect on demand' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('button', { name: 'Remove filter: Search: sender' })).toBeVisible()
   })
 }
 
-test('welcome page uses blue feedback and fits a phone', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 900 })
+test('public welcome explains the product, privacy and sign-in boundary', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 })
   await workspace(page, false)
-  const button = page.getByRole('button', { name: 'Sign in with Google' })
-  await expect(button).toBeVisible()
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-  const before = await button.evaluate(element => getComputedStyle(element).backgroundColor)
+  await expect(page.getByRole('heading', { name: /See the risk in email/i })).toBeVisible()
+  await expect(page.getByText(/first sign-in creates your private account and workspace/i)).toBeVisible()
+  await expect(page.getByText(/Gmail access is requested separately/i).first()).toBeVisible()
+  await expect(page.getByText(/AI explains only/i)).toBeVisible()
+  await expectNoOverflow(page, 'Welcome')
+  await page.screenshot({ path: '../data/ui-review/welcome-1440.png', fullPage: true })
+
+  await page.setViewportSize({ width: 375, height: 900 })
+  await expect(page.getByRole('heading', { name: /See the risk in email/i })).toBeVisible()
+  await expectNoOverflow(page, 'Welcome phone')
+  const button = page.getByRole('button', { name: 'Sign in with Google' }).first()
+  const before = await button.evaluate((element) => getComputedStyle(element).backgroundColor)
   await button.hover()
   await page.waitForTimeout(200)
-  const after = await button.evaluate(element => getComputedStyle(element).backgroundColor)
+  const after = await button.evaluate((element) => getComputedStyle(element).backgroundColor)
   expect(before).not.toBe(after)
-  expect(after).toBe('rgb(29, 78, 216)')
-  await page.screenshot({ path: '../data/ui-review/welcome-mobile.png', fullPage: true })
+  await page.screenshot({ path: '../data/ui-review/welcome-375.png', fullPage: true })
 })
 
-test('drawer resize, keyboard focus and reduced motion remain usable', async ({ page }) => {
+test('drawer focus, background inertness and reduced motion remain usable', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 })
   await workspace(page)
   await page.getByRole('button', { name: 'Open navigation' }).click()
   await expect(page.locator('.app-main')).toHaveAttribute('inert', '')
-  await page.setViewportSize({ width: 1024, height: 900 })
+  await expect(page.getByRole('button', { name: 'Overview' })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Open navigation' })).toBeFocused()
   await expect(page.locator('.app-main')).not.toHaveAttribute('inert')
-  await expect(page.locator('.sidebar-scrim')).toHaveCount(0)
-  await navigate(page, 'Email analysis', false)
+
+  await page.setViewportSize({ width: 1024, height: 900 })
+  await navigate(page, 'Analyse', false)
   await expect(page.getByLabel('Selected message text')).toBeVisible()
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  const transitions = await page.getByRole('button', { name: 'Your account' }).evaluate(element => getComputedStyle(element).transitionDuration)
-  expect(transitions.split(',').every(duration => parseFloat(duration) === 0)).toBe(true)
+  const durations = await page.getByRole('button', { name: 'Your account' }).evaluate((element) => getComputedStyle(element).transitionDuration)
+  expect(durations.split(',').every((duration) => parseFloat(duration) === 0)).toBe(true)
   await page.getByRole('button', { name: 'Your account' }).focus()
   await page.keyboard.press('Tab')
   expect(await page.evaluate(() => getComputedStyle(document.activeElement!).outlineStyle)).toBe('solid')

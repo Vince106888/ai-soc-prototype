@@ -65,7 +65,7 @@ def main():
     args = parser.parse_args()
     original = database.engine.url.render_as_string(hide_password=False)
     try:
-        with tempfile.TemporaryDirectory(prefix="sentinelsme-evaluation-") as directory:
+        with tempfile.TemporaryDirectory(prefix="lindabiz-evaluation-") as directory:
             database.configure_database(f"sqlite:///{Path(directory).as_posix()}/evaluation.db")
             database.migrate_schema()
             results = [

@@ -285,3 +285,32 @@ export interface PostureResult {
   skipped: string[]
   ingestion: IngestionResult
 }
+
+export interface AlertSettings {
+  minimum_severity: 'medium' | 'high' | 'critical'
+  webhook_enabled: boolean
+  webhook_url: string | null
+}
+
+export type AlertSettingsUpdate = Pick<AlertSettings, 'minimum_severity' | 'webhook_enabled' | 'webhook_url'>
+
+export interface AlertItem {
+  id: string
+  incident_id: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  title: string
+  score: number
+  rule_codes: string[]
+  webhook_status: string
+  read: boolean
+  created_at: string
+}
+
+export interface AssistantReply {
+  answer: string
+  topic: string
+  references: string[]
+  suggestions: string[]
+  grounded_in: 'incident' | 'general'
+  source: 'grounded'
+}

@@ -1,6 +1,6 @@
-# SentinelSME security console
+# LindaBiz security console
 
-The frontend is a responsive React and TypeScript operations console for the SentinelSME API. It gives a small-business responder a risk-prioritized queue, an explainable incident record, explicit lifecycle controls, and a view of protected accounts and enabled capabilities.
+The frontend is a responsive React and TypeScript operations console for the LindaBiz API. It gives a small-business responder a risk-prioritized queue, an explainable incident record, explicit lifecycle controls, and a view of protected accounts and enabled capabilities.
 
 ## Run locally
 
@@ -71,7 +71,7 @@ Gmail supplies email signals only; collection runs on demand.
 
 ## Analyst interface
 
-`console.css` implements the reviewed design in `design-system/sentinelsme/MASTER.md`.
+`console.css` implements the reviewed design in `design-system/lindabiz/MASTER.md`.
 Incident details have keyboard-accessible Overview, Evidence and Activity tabs.
 The Email analysis screen separates selected messages from Gmail consent/sampling;
 Protection coverage documents current limits and missing provider integrations.

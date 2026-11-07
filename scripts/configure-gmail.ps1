@@ -2,7 +2,7 @@ param(
     [string]$ClientId,
     [string]$CredentialsFile,
     [string]$RedirectUri = 'http://127.0.0.1:5173/api/v1/gmail/callback',
-    [string]$DataDirectory = (Join-Path $env:LOCALAPPDATA 'SentinelSME'),
+    [string]$DataDirectory = (Join-Path $env:LOCALAPPDATA 'LindaBiz'),
     [switch]$EnableSignIn,
     [string[]]$InvitedEmails = @(),
     [string]$LoginRedirectUri = 'http://127.0.0.1:5173/api/v1/auth/callback',

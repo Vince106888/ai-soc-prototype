@@ -13,6 +13,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, R
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import alerts as alert_service
+from . import assistant as assistant_service
 from . import auth, budgets, deployment, explainer
 from .database import get_session
 from .entities import AuditRecord, ScanSchedule
@@ -53,6 +55,11 @@ from .platform import (
 from .platform_schemas import (
     AccountCreate,
     AccountView,
+    AlertSettingsUpdate,
+    AlertSettingsView,
+    AlertView,
+    AssistantReply,
+    AssistantRequest,
     AuditView,
     CanonicalSignalType,
     CompatibilityScanCreate,
@@ -191,6 +198,85 @@ def schedule_put(source_id: str, payload: ScheduleUpdate, db: DB, context: Conte
         )
         return ScheduleView.model_validate(schedule)
     except (ConflictError, NotFoundError) as exc:
+        raise _http_error(exc) from exc
+
+
+def _alert_settings_view(db: Session, tenant: str) -> AlertSettingsView:
+    row = alert_service.get_settings(db, tenant)
+    return AlertSettingsView(
+        minimum_severity=row.minimum_severity,
+        webhook_enabled=row.webhook_enabled,
+        webhook_url=row.webhook_url,
+    )
+
+
+def _alert_view(row) -> AlertView:
+    return AlertView(
+        id=row.id,
+        incident_id=row.incident_id,
+        severity=row.severity,
+        title=row.title,
+        score=row.score,
+        rule_codes=row.rule_codes.split(",") if row.rule_codes else [],
+        webhook_status=row.webhook_status,
+        read=row.read_at is not None,
+        created_at=row.created_at,
+    )
+
+
+@router.get("/alert-settings", response_model=AlertSettingsView)
+def alert_settings_get(db: DB, context: Context) -> AlertSettingsView:
+    return _alert_settings_view(db, context.tenant_id)
+
+
+@router.put("/alert-settings", response_model=AlertSettingsView)
+def alert_settings_put(payload: AlertSettingsUpdate, db: DB, context: Context) -> AlertSettingsView:
+    try:
+        alert_service.configure(
+            db,
+            context.tenant_id,
+            payload,
+            actor=context.user_id or "console-user",
+        )
+    except alert_service.AlertConfigError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return _alert_settings_view(db, context.tenant_id)
+
+
+@router.get("/alerts", response_model=list[AlertView])
+def alerts_list(
+    db: DB, context: Context, unread: bool = False, limit: int = Query(50, ge=1, le=200)
+) -> list[AlertView]:
+    rows = alert_service.list_alerts(db, context.tenant_id, unread_only=unread, limit=limit)
+    return [_alert_view(row) for row in rows]
+
+
+@router.post("/alerts/read", status_code=204)
+def alerts_read_all(db: DB, context: Context) -> Response:
+    alert_service.mark_read(db, context.tenant_id)
+    return Response(status_code=204)
+
+
+@router.post("/alerts/{alert_id}/read", status_code=204)
+def alerts_read_one(alert_id: str, db: DB, context: Context) -> Response:
+    if not alert_service.mark_read(db, context.tenant_id, alert_id):
+        raise HTTPException(status_code=404, detail="Alert not found or already read.")
+    return Response(status_code=204)
+
+
+@router.post("/assistant", response_model=AssistantReply)
+def assistant_ask(payload: AssistantRequest, db: DB, context: Context) -> AssistantReply:
+    """Answer from stored findings only; no model, no stored question."""
+
+    try:
+        return assistant_service.ask(
+            db,
+            context.tenant_id,
+            payload.question,
+            payload.incident_id,
+            actor=context.user_id or "console-user",
+        )
+    except NotFoundError as exc:
         raise _http_error(exc) from exc
 
 

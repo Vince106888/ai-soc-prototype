@@ -1,4 +1,4 @@
-# SentinelSME console design system
+# LindaBiz console design system
 
 Direction established 4 October 2026 using the installed UI/UX Pro Max skill.
 The verified Data-Dense Dashboard recommendation fits operational analytics.

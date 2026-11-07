@@ -13,7 +13,7 @@ configuration. This CLI is an operator function and has no public write API.
 Adding a supported matcher instance requires no schema or dashboard change;
 new feature extraction or matcher families require code and separate tests.
 
-SentinelSME's persistent pipeline uses deterministic, versioned rules. Each
+LindaBiz's persistent pipeline uses deterministic, versioned rules. Each
 match records the rule code, copied weight, copied confidence, and selected
 evidence. Rules create review indicators, not verdicts.
 

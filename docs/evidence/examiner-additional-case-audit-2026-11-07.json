@@ -1,0 +1,99 @@
+{
+  "measured_at": "2026-11-07T03:24:59.462120+00:00",
+  "basis": "Signal payload and stipulated-label comparison with record identifiers excluded between the two fixture files; rerun per-case outputs.",
+  "development_controls": 24,
+  "additional_cases": 8,
+  "additional_correct": 0,
+  "additional_cases_results": [
+    {
+      "case_id": "legitimate-urgent",
+      "expected": false,
+      "predicted": true,
+      "score": 0.3,
+      "rules": [
+        "EMAIL-002"
+      ]
+    },
+    {
+      "case_id": "approved-shortener",
+      "expected": false,
+      "predicted": true,
+      "score": 0.3,
+      "rules": [
+        "URL-001"
+      ]
+    },
+    {
+      "case_id": "approved-new-device",
+      "expected": false,
+      "predicted": true,
+      "score": 0.65,
+      "rules": [
+        "SIGNIN-001"
+      ]
+    },
+    {
+      "case_id": "approved-full-grant",
+      "expected": false,
+      "predicted": true,
+      "score": 0.8,
+      "rules": [
+        "OAUTH-001"
+      ]
+    },
+    {
+      "case_id": "legitimate-routing",
+      "expected": false,
+      "predicted": true,
+      "score": 0.45,
+      "rules": [
+        "EMAIL-001"
+      ]
+    },
+    {
+      "case_id": "unseen-bec-language",
+      "expected": true,
+      "predicted": false,
+      "score": 0.0,
+      "rules": []
+    },
+    {
+      "case_id": "unseen-phish-language",
+      "expected": true,
+      "predicted": false,
+      "score": 0.0,
+      "rules": []
+    },
+    {
+      "case_id": "malware-attachment-only",
+      "expected": true,
+      "predicted": false,
+      "score": 0.0,
+      "rules": []
+    }
+  ],
+  "wilson_95": {
+    "recall_12_of_15": [
+      0.5481455128483065,
+      0.9295245065301844
+    ],
+    "precision_12_of_17": [
+      0.4686688993346016,
+      0.8672001038970478
+    ],
+    "false_positive_rate_5_of_17": [
+      0.1327998961029523,
+      0.5313311006653985
+    ],
+    "additional_accuracy": [
+      0,
+      0.32440756488388023
+    ]
+  },
+  "dataset_hashes": {
+    "development-v1.json": "fb9d1d54d8ea806b0e5603ca8e57203f809d0922d090acb0e91f26595ef65972",
+    "heldout-v1.json": "b4588dd654a4d8898756af84e9d027228772e43bb701993d731f585c3e2c7135"
+  },
+  "detector_sha256": "06443a3fee76beb0b55d0a75bc5f4bf8153fdddec6c3ae6227ba8e8c99d34082",
+  "rule_snapshot_sha256": "627364f6c1478f8d474e7930bc14ee6509086cbc98e71597c6e14b3377a7c65a"
+}
