@@ -14,6 +14,9 @@ the next worker marks the abandoned job failed and starts a fresh scheduled job.
 Source/external identifiers make repeated imports idempotent. This is one small
 polling worker, not a distributed task broker or real-time mail gateway.
 
+Each mailbox first asks for a scan mode: Manual (default) or Automatic. Choosing
+Automatic reveals the controls and consent below; Manual pauses any schedule.
+
 In Email analysis > Gmail, expand Scheduled samples for the connected source.
 Separately acknowledge recurring collection and choose an interval of 15–1,440
 minutes, 1–50 messages per run and a look-back of 1–30 days. The first run is

@@ -25,14 +25,14 @@ jobs:
           import json
           from pathlib import Path
           from scripts.production import initialise
-          client=Path('/tmp/sentinelsme-synthetic-google.json')
+          client=Path('/tmp/lindabiz-synthetic-google.json')
           client.write_text(json.dumps({'web': {'client_id':'synthetic-client', 'client_secret':'synthetic-secret', 'redirect_uris':['https://sentinel.example.test:8443/api/v1/auth/callback']}}))
-          initialise(Path('/tmp/sentinelsme-acceptance'), 'https://sentinel.example.test:8443', client, 'operator@example.test', True)
+          initialise(Path('/tmp/lindabiz-acceptance'), 'https://sentinel.example.test:8443', client, 'operator@example.test', True)
           PY
-      - run: python scripts/production.py up --directory /tmp/sentinelsme-acceptance
-      - run: python -m scripts.verify_public --directory /tmp/sentinelsme-acceptance
+      - run: python scripts/production.py up --directory /tmp/lindabiz-acceptance
+      - run: python -m scripts.verify_public --directory /tmp/lindabiz-acceptance
       - if: always()
-        run: python scripts/production.py down --directory /tmp/sentinelsme-acceptance
+        run: python scripts/production.py down --directory /tmp/lindabiz-acceptance
   test:
     strategy:
       matrix:
@@ -83,7 +83,7 @@ jobs:
     needs: [test, dashboard]
     steps:
       - uses: actions/checkout@v7
-      - run: docker build --tag sentinelsme:test .
+      - run: docker build --tag lindabiz:test .
       - name: Execute controlled Compose scan and worker smoke test
         env:
           AI_SOC_API_KEY: ci-controlled-synthetic-key

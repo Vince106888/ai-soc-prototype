@@ -11,7 +11,7 @@ services:
     environment:
       AI_SOC_API_KEY: ${AI_SOC_API_KEY:?set AI_SOC_API_KEY in .env}
       AI_SOC_ALLOWED_HOSTS: localhost,127.0.0.1,api
-      AI_SOC_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sentinelsme}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-sentinelsme}
+      AI_SOC_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lindabiz}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-lindabiz}
     depends_on:
       db:
         condition: service_healthy
@@ -36,7 +36,7 @@ services:
     env_file: ${AI_SOC_ENV_FILE:-.env}
     command: ["python", "-m", "app.worker"]
     environment:
-      AI_SOC_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-sentinelsme}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-sentinelsme}
+      AI_SOC_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-lindabiz}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-lindabiz}
     depends_on:
       api:
         condition: service_healthy
@@ -56,8 +56,8 @@ services:
   db:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-sentinelsme}
-      POSTGRES_USER: ${POSTGRES_USER:-sentinelsme}
+      POSTGRES_DB: ${POSTGRES_DB:-lindabiz}
+      POSTGRES_USER: ${POSTGRES_USER:-lindabiz}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
@@ -65,7 +65,7 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - sentinelsme-data:/var/lib/postgresql/data
+      - lindabiz-data:/var/lib/postgresql/data
     restart: unless-stopped
     logging: *bounded-logging
     pids_limit: 256
@@ -73,4 +73,6 @@ services:
     stop_grace_period: 60s
 
 volumes:
-  sentinelsme-data:
+  lindabiz-data:
+    # Existing installs pin this to their original volume name in their private env file.
+    name: ${AI_SOC_DATA_VOLUME:-lindabiz-data}

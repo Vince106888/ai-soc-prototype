@@ -19,7 +19,7 @@ it('offers a local-model explanation only when the capability is enabled', async
   const explain = vi.fn().mockResolvedValue(undefined)
   const { rerender } = render(<IncidentDetail incident={{ ...base, explanation: template }} loading={false} onStatus={vi.fn()} statusBusy={false} />)
   expect(screen.queryByRole('button', { name: /plain language/ })).not.toBeInTheDocument()
-  expect(screen.getByText(/template explanation/)).toBeVisible()
+  expect(screen.getByText('Deterministic template')).toBeVisible()
   rerender(<IncidentDetail incident={{ ...base, explanation: template }} loading={false} onStatus={vi.fn()} statusBusy={false} aiAvailable onExplain={explain} />)
   await user.click(screen.getByRole('button', { name: 'Explain in plain language (local model)' }))
   expect(explain).toHaveBeenCalledOnce()
@@ -29,8 +29,8 @@ it('offers a local-model explanation only when the capability is enabled', async
 
 it('labels model-written explanations and keeps the approved next step', () => {
   render(<IncidentDetail incident={{ ...base, explanation: { ...template, source: 'ai', what_happened: 'An unverified app was given full mailbox access.' } }} loading={false} onStatus={vi.fn()} statusBusy={false} aiAvailable onExplain={vi.fn()} />)
-  expect(screen.getByRole('note')).toHaveTextContent('Rules, score and response guidance are unchanged.')
+  expect(screen.getByText(/Rules, score and response guidance are unchanged/)).toBeVisible()
   expect(screen.getByText('An unverified app was given full mailbox access.')).toBeVisible()
   expect(screen.queryByRole('button', { name: /plain language/ })).not.toBeInTheDocument()
-  expect(screen.getByText(/local-model explanation/)).toBeVisible()
+  expect(screen.getByText('AI-generated explanation')).toBeVisible()
 })

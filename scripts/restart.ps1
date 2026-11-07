@@ -92,6 +92,9 @@ try {
     if ($restartExpectedGoogle) { $restartCompose += @('-f', $restartGoogle) }
     & $restartDocker @restartCompose config --quiet
     if ($LASTEXITCODE -ne 0) { throw 'Saved Compose configuration is invalid; services were not restarted.' }
+    # Docker writes build/up progress to stderr, which Windows PowerShell 5.1 turns into a
+    # terminating error under 'Stop'. Exit codes are checked explicitly below instead.
+    $ErrorActionPreference = 'Continue'
     if ($Build) {
         & $restartDocker @restartCompose build api worker
         if ($LASTEXITCODE -ne 0) { throw 'Application build failed; existing services were not restarted.' }

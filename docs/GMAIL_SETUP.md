@@ -52,10 +52,10 @@ Without `-CredentialsFile`, the script asks for your OAuth client ID and reads
 the client secret with hidden input. In either mode, the secret is passed through
 the configuring process's environment to the child API process. The script
 generates an encryption key outside the repository under
-`%LOCALAPPDATA%\SentinelSME\token.key`, restricted to your Windows user. Do not
+`%LOCALAPPDATA%\LindaBiz\token.key`, restricted to your Windows user. Do not
 share the key or secret. Keep the key for as long as encrypted consent exists;
 replacing it requires reconnecting Gmail.
-It also selects `%LOCALAPPDATA%\SentinelSME\trial.db` for the real-mail trial,
+It also selects `%LOCALAPPDATA%\LindaBiz\trial.db` for the real-mail trial,
 outside the project and its OneDrive folder. The existing controlled demo
 database stays separate. The trial workspace starts empty on first use. The
 directory's Windows permissions are restricted to your user; the database
